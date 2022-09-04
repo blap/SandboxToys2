@@ -2,13 +2,11 @@
 #persistent
 #singleinstance off
 
-version = 2.1
+version = 2.2
 ; SandboxToys: Main Menu
-; Author: r0lZ
-; Developed and compiled with AHK_Lw v 1.1.34.04 in Sep 2022.
+; Author: r0lZ updated by blap
+; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.34.04.
 ; Tested under Win10 x64 with Sandboxie v1.32.
-; AHK_Lw is a build of AutoHotkey supporting unicode and icons in menus:
-; http://www.autohotkey.net/~Lexikos/AutoHotkey_L/
 ;
 ; AutoHotkey script to show a menu with several tools related to Sandboxie,
 ; and a menu to launch applications installed in any sandbox.
@@ -98,7 +96,7 @@ if (NOT A_IsCompiled && trayiconfile == "") {
 
 ; some useful constants
 setWorkingDir %A_ScriptDir%
-title = SandboxToys v%version% by r0lZ
+title = SandboxToys v%version% by r0lZ updated by blap
 if (nameNoExt != "SandboxToys")
     title = %title% (%nameNoExt%)
 
@@ -1671,7 +1669,7 @@ writeUnsandboxedShortcutFileToDesktop(target,name,dir,args,description,iconFile,
 ; return the box name of the last selected menu item
 getBoxFromMenu()
 {
-    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2MenuReg")-1))
+    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2Menu")-1))
 }
 
 ; create a sandboxed shortcut on the desktop
@@ -1901,7 +1899,7 @@ ListFiles(box, path, comparefilename="")
     {
         Progress, OFF
         if (comparefilename == "")
-            MsgBox, 64, %title%, No meaningfull files in box "%box%"!
+            MsgBox, 64, %title%, No meaningful files in box "%box%"!
         else
             MsgBox, 64, %title%, No new or modified files in box "%box%"!
         Return
@@ -3193,7 +3191,7 @@ ListReg(box, path, filename="")
         if (comparemode)
             MsgBox, 64, %title%, No registry keys or values have been modified in box "%box%"!
         else
-            MsgBox, 64, %title%, No meaningfull registry keys or values found in box "%box%"!
+            MsgBox, 64, %title%, No meaningful registry keys or values found in box "%box%"!
         Return
     }
 
