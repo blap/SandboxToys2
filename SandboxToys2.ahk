@@ -2,11 +2,11 @@
 #persistent
 #singleinstance off
 
-version = 2.0
+version = 2.1
 ; SandboxToys: Main Menu
 ; Author: r0lZ
-; Developed and compiled with AHK_Lw v 1.0.48.05.L51 in May 2010.
-; Tested under Win7 Ultimate x64 with Sandboxie v3.442.
+; Developed and compiled with AHK_Lw v 1.1.34.04 in Sep 2022.
+; Tested under Win10 x64 with Sandboxie v1.32.
 ; AHK_Lw is a build of AutoHotkey supporting unicode and icons in menus:
 ; http://www.autohotkey.net/~Lexikos/AutoHotkey_L/
 ;
@@ -26,9 +26,9 @@ version = 2.0
 ; To do:
 ; - Option to automatically launch all apps supposed to be launched at Windows
 ;   startup (from Start Menu\Programs\Startup and RUN keys in registry).
-; - Options to clone the sandboxed Start Menu, Desttop or QuickLaunch shortcuts
+; - Options to clone the sandboxed Start Menu, Desktop or QuickLaunch shortcuts
 ;   as sandboxed shortcuts in the real equivalent folders.
-; - Add an "Explore" item in each sub-menu of the Start Menu, Desttop and
+; - Add an "Explore" item in each sub-menu of the Start Menu, Desktop and
 ;   QuickLaunch menus (like in the standard Sandboxie Start Menu).
 ; - Add _ask_ box name in the list of boxes for the Create Shortcut option.
 
@@ -128,11 +128,6 @@ if (SESSION == "" || SESSION == "Console")
 
 if (NOT A_IsUnicode) {
     msgBox, 16, %title%, This program must be run under the AutoHotkey_L (AHK_Lw) build of AutoHotkey.
-    ExitApp
-}
-
-if (A_OSVersion != "WIN_VISTA" && A_OSVersion != "WIN_7") {
-    msgBox, 16, %title%, This program must be run under Windows 7 or Vista (although using Vista is not recommended and the program has been tested only under Windows 7).
     ExitApp
 }
 
@@ -1676,7 +1671,7 @@ writeUnsandboxedShortcutFileToDesktop(target,name,dir,args,description,iconFile,
 ; return the box name of the last selected menu item
 getBoxFromMenu()
 {
-    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_")-1))
+    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2MenuReg")-1))
 }
 
 ; create a sandboxed shortcut on the desktop
