@@ -104,7 +104,7 @@ A_nl = `n
 A_Quotes = "
 shell32  = %A_WinDir%\system32\shell32.dll
 imageres = %A_Windir%\system32\imageres.dll
-explorer = %A_WinDir%\system32\explorer.exe
+explorer = %A_WinDir%\system32\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
 
 ; we need the %SID% and %SESSION% variables, supported by Sandboxie,
 ; but not directly available as Windows environment variables.
@@ -4468,27 +4468,27 @@ Return
 SExploreMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Explore sandbox " box " (Sandboxed)","","/box:" box " explorer.exe","Launches Explorer sandboxed in sandbox " box,"explorer.exe",1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Explore sandbox " box " (Sandboxed)","","/box:" box " explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}","Launches Explorer sandboxed in sandbox " box,"explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",1,1, box)
     else
-        run, %start% /box:%box% explorer.exe, , UseErrorLevel
+        run, %start% /box:%box% explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}, , UseErrorLevel
 Return
 
 UExploreMenuHandler:
     box := getBoxFromMenu()
     path := sandboxes_array[box,"path"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(WinDir "\explorer.exe","Explore sandbox " box " (Unsandboxed)",path,A_Quotes path A_Quotes,"Launches Explorer unsandboxed in sandbox " box,"explorer.exe",1,1)
+        writeUnsandboxedShortcutFileToDesktop(WinDir "\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}","Explore sandbox " box " (Unsandboxed)",path,A_Quotes path A_Quotes,"Launches Explorer unsandboxed in sandbox " box,"explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",1,1)
     else
-        run, explorer.exe "%path%", , UseErrorLevel
+        run, explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D} "%path%", , UseErrorLevel
 Return
 
 URExploreMenuHandler:
     box := getBoxFromMenu()
     path := sandboxes_array[box,"path"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(WinDir "\explorer.exe","Explore sandbox " box " (Unsandboxed, restricted)",path,"/root`,"A_Quotes path A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,"explorer.exe",1,1)
+        writeUnsandboxedShortcutFileToDesktop(WinDir "\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}","Explore sandbox " box " (Unsandboxed, restricted)",path,"/root`,"A_Quotes path A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,"explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",1,1)
     else
-        run, explorer.exe /root`,"%path%", , UseErrorLevel
+        run, explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D} /root`,"%path%", , UseErrorLevel
 Return
 
 LaunchSbieCtrlMenuHandler:
