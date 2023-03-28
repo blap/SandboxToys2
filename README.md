@@ -1,6 +1,8 @@
 # SandboxToys2
 SandboxToys2 by r0lZ updated by blap
 
+I just updated the original file by r0lZ to be more compatible to recent files of Sandboxie Plus (https://github.com/sandboxie-plus/Sandboxie).
+
 Original file from: https://sandboxie-website-archive.github.io/www.sandboxie.com/old-forums/viewtopic33fc33fc.html?f=22&t=2028
 
 Original README file:
