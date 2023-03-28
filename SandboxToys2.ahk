@@ -2,11 +2,11 @@
 #persistent
 #singleinstance off
 
-version = 2.2
+version = 2.4
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap
-; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.34.04.
-; Tested under Win10 x64 with Sandboxie v1.32.
+; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
+; Tested under Win10 x64 with Sandboxie-Plus v1.8.1.
 ;
 ; AutoHotkey script to show a menu with several tools related to Sandboxie,
 ; and a menu to launch applications installed in any sandbox.
@@ -134,8 +134,8 @@ RegRead, imagepath, HKEY_LOCAL_MACHINE, SYSTEM\CurrentControlSet\services\SbieSv
 imagepath := Trim(imagepath,A_Quotes)
 splitpath, imagepath, , sbdir
 start    = %sbdir%\Start.exe
-sbiectrl = %sbdir%\SbieCtrl.exe
-if (! FileExist(sbiectrl))
+SandMan = %sbdir%\SandMan.exe
+if (! FileExist(SandMan))
 {
     MsgBox 16, %title%, Can't find Sandboxie installation folder.  Sorry.
     ExitApp
@@ -259,7 +259,7 @@ if (traymode) {
     setMenuIcon("Tray", "Exit", shell32, 28, smalliconsize)
     Menu, Tray, Add
     Menu, Tray, Add, SandboxToys menu, BuildMainMenu
-    setMenuIcon("Tray", "SandboxToys menu", sbiectrl, 1, smalliconsize)
+    setMenuIcon("Tray", "SandboxToys menu", SandMan, 1, smalliconsize)
     if (trayiconfile != "") {
         if (trayiconnum == "")
             trayiconnum = 1
@@ -343,9 +343,9 @@ BuildMainMenu:
             Menu, %singlebox%_ST2MenuBox, Add, Box  %boxlabel%, DummyMenuHandler
             Menu, %singlebox%_ST2MenuBox, Disable, Box  %boxlabel%
             if (boxexist) {
-                setMenuIcon(singlebox "_ST2MenuBox", "Box  " boxlabel, sbiectrl, 3, smalliconsize)
+                setMenuIcon(singlebox "_ST2MenuBox", "Box  " boxlabel, SandMan, 3, smalliconsize)
             } else {
-                setMenuIcon(singlebox "_ST2MenuBox", "Box  " boxlabel, sbiectrl, 10, smalliconsize)
+                setMenuIcon(singlebox "_ST2MenuBox", "Box  " boxlabel, SandMan, 10, smalliconsize)
             }
             Menu, %singlebox%_ST2MenuBox, Add
         }
@@ -492,9 +492,9 @@ BuildMainMenu:
 
         ; add sandboxie's start menu and run dialob in all boxes
         Menu, %box%_ST2MenuBox, Add,  Sandboxie's Start Menu, StartMenuMenuHandler
-        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Start Menu", sbiectrl, 1, largeiconsize)
+        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Start Menu", SandMan, 1, largeiconsize)
         Menu, %box%_ST2MenuBox, Add,  Sandboxie's Run Dialog, RunDialogMenuHandler
-        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Run Dialog", sbiectrl, 1, largeiconsize)
+        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Run Dialog", SandMan, 1, largeiconsize)
         Menu, %box%_ST2MenuBox, Add
         if (NOT boxexist) {
             Menu, %box%_ST2MenuBox, Add, Explore (Sandboxed),   SExploreMenuHandler
@@ -565,9 +565,9 @@ BuildMainMenu:
         if (! singleboxmode) {
             Menu, ST2MainMenu, Add,  %boxlabel%, :%box%_ST2MenuBox
             if (boxexist) {
-                setMenuIcon("ST2MainMenu", boxlabel, sbiectrl, 3, largeiconsize)
+                setMenuIcon("ST2MainMenu", boxlabel, SandMan, 3, largeiconsize)
             } else {
-                setMenuIcon("ST2MainMenu", boxlabel, sbiectrl, 10, largeiconsize)
+                setMenuIcon("ST2MainMenu", boxlabel, SandMan, 10, largeiconsize)
             }
         }
     }
@@ -587,11 +587,11 @@ BuildMainMenu:
     }
 
     ; add Launch Sandboxie Control if it is not already running
-    process, Exist, SbieCtrl.exe
+    process, Exist, SandMan.exe
     if (ErrorLevel == 0) {
         Menu, %mainmenu%, Add
-        Menu, %mainmenu%, Add,  Launch Sandboxie Control, LaunchSbieCtrlMenuHandler
-        setMenuIcon(mainmenu, "Launch Sandboxie Control", sbiectrl, 1, largeiconsize)
+        Menu, %mainmenu%, Add,  Launch Sandboxie Control, LaunchSandManMenuHandler
+        setMenuIcon(mainmenu, "Launch Sandboxie Control", SandMan, 1, largeiconsize)
     }
 
     ; add Help & Options menu
@@ -686,7 +686,7 @@ getSandboxesArray(array,ini)
 ; Returns "" if the user selects cancel or discard the menu.
 getSandboxName(sandboxes_array, title, include_ask=false)
 {
-    global __box__, sbiectrl, largeiconsize
+    global __box__, SandMan, largeiconsize
     numboxes := sandboxes_array[0]
 
     Menu, Menu, Add
@@ -700,17 +700,17 @@ getSandboxName(sandboxes_array, title, include_ask=false)
         box := sandboxes_array[A_Index,"name"]
         if (sandboxes_array[box,"exist"]) {
             Menu, Menu, Add, %box%, getSandboxNameBoxMenuHandler
-            setMenuIcon("Menu", box, sbiectrl, 3, largeiconsize)
+            setMenuIcon("Menu", box, SandMan, 3, largeiconsize)
         } else {
             Menu, Menu, Add, %box% (empty), getSandboxNameBoxMenuHandler
-            setMenuIcon("Menu", box " (empty)", sbiectrl, 10, largeiconsize)
+            setMenuIcon("Menu", box " (empty)", SandMan, 10, largeiconsize)
         }
     }
     if (include_ask)
     {
         Menu, Menu, Add
         Menu, Menu, Add, Ask box at run time, getSandboxNameAskMenuHandler
-        setMenuIcon("Menu", "Ask box at run time", sbiectrl, 1, largeiconsize)
+        setMenuIcon("Menu", "Ask box at run time", SandMan, 1, largeiconsize)
     }
     Menu, Menu, Add
     Menu, Menu, Add, Cancel, getSandboxNameCancelMenuHandler
@@ -4371,7 +4371,7 @@ NewShortcutMenuHandler(box)
 RunDialogMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Run dialog","","/box:" box " run_dialog","Launch Sandboxie's Run Dialog in sandbox " box,sbiectrl,1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Run dialog","","/box:" box " run_dialog","Launch Sandboxie's Run Dialog in sandbox " box,SandMan,1,1, box)
     else
         run, %start% /box:%box% run_dialog, , UseErrorLevel
 Return
@@ -4379,7 +4379,7 @@ Return
 StartMenuMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Start Menu","","/box:" box " start_menu","Launch Sandboxie's Start Menu in sandbox " box,sbiectrl,1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Start Menu","","/box:" box " start_menu","Launch Sandboxie's Start Menu in sandbox " box,SandMan,1,1, box)
     else
         run, %start% /box:%box% start_menu, , UseErrorLevel
 Return
@@ -4491,11 +4491,11 @@ URExploreMenuHandler:
         run, explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D} /root`,"%path%", , UseErrorLevel
 Return
 
-LaunchSbieCtrlMenuHandler:
+LaunchSandManMenuHandler:
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(sbiectrl,"Sandboxie Control","","","Launches Sandboxie Control","","",1)
+        writeUnsandboxedShortcutFileToDesktop(SandMan,"Sandboxie Control","","","Launches Sandboxie Control","","",1)
     else
-        run, %sbiectrl%, , UseErrorLevel
+        run, %SandMan%, , UseErrorLevel
 Return
 
 ListFilesMenuHandler:
