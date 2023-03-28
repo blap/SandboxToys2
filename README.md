@@ -3,6 +3,10 @@ SandboxToys2 by r0lZ updated by blap
 
 I just updated the original file by r0lZ to be more compatible to recent files of Sandboxie Plus (https://github.com/sandboxie-plus/Sandboxie).
 
+Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression.
+
+You can download the last SandboxToys2 here: https://github.com/blap/SandboxToys2/releases/latest
+
 Original file from: https://sandboxie-website-archive.github.io/www.sandboxie.com/old-forums/viewtopic33fc33fc.html?f=22&t=2028
 
 Original README file:
