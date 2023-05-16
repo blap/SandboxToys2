@@ -137,7 +137,7 @@ start    = %sbdir%\Start.exe
 SandMan = %sbdir%\SandMan.exe
 if (! FileExist(SandMan))
 {
-    MsgBox 16, %title%, Can't find Sandboxie installation folder.  Sorry.
+    MsgBox 16, %title%, Can't find Sandboxie-Plus installation folder.  Sorry.
     ExitApp
 }
 
@@ -490,7 +490,7 @@ BuildMainMenu:
                 Menu, %box%_ST2MenuBox, Add
         }
 
-        ; add sandboxie's start menu and run dialob in all boxes
+        ; add Sandboxie's start menu and run dialog in all boxes
         Menu, %box%_ST2MenuBox, Add,  Sandboxie's Start Menu, StartMenuMenuHandler
         setMenuIcon(box "_ST2MenuBox", "Sandboxie's Start Menu", SandMan, 1, largeiconsize)
         Menu, %box%_ST2MenuBox, Add,  Sandboxie's Run Dialog, RunDialogMenuHandler
@@ -586,12 +586,12 @@ BuildMainMenu:
         setMenuIcon(mainmenu, "User Tools", imageres, 118, largeiconsize)
     }
 
-    ; add Launch Sandboxie Control if it is not already running
+    ; add Launch Sandboxie Manager if it is not already running
     process, Exist, SandMan.exe
     if (ErrorLevel == 0) {
         Menu, %mainmenu%, Add
-        Menu, %mainmenu%, Add,  Launch Sandboxie Control, LaunchSandManMenuHandler
-        setMenuIcon(mainmenu, "Launch Sandboxie Control", SandMan, 1, largeiconsize)
+        Menu, %mainmenu%, Add,  Launch Sandboxie Manager, LaunchSandManMenuHandler
+        setMenuIcon(mainmenu, "Launch Sandboxie Manager", SandMan, 1, largeiconsize)
     }
 
     ; add Help & Options menu
@@ -1507,7 +1507,7 @@ expandEnvVars(str)
     return src
 }
 
-; execute a program under the control of sandboxie.
+; execute a program under the control of Sandboxie.
 ; TODO: On an x64 system, AHK cannot launch shortcuts pointing to x64 programs
 executeShortcut(box, shortcut)
 {
@@ -1547,7 +1547,7 @@ executeShortcut(box, shortcut)
     Return
 }
 
-; creates a shortut on the (normal) desktop to run the program under the control of sandboxie.
+; creates a shortut on the (normal) desktop to run the program under the control of Sandboxie.
 createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
 {
     global start
@@ -4493,7 +4493,7 @@ Return
 
 LaunchSandManMenuHandler:
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(SandMan,"Sandboxie Control","","","Launches Sandboxie Control","","",1)
+        writeUnsandboxedShortcutFileToDesktop(SandMan,"Sandboxie Manager","","","Launches Sandboxie Manager","","",1)
     else
         run, %SandMan%, , UseErrorLevel
 Return
