@@ -2,11 +2,11 @@
 #persistent
 #singleinstance off
 
-version = 2.4
+version = 2.4.1
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
-; Tested under Win10 x64 with Sandboxie-Plus v1.8.1.
+; Tested under Win10 x64 with Sandboxie-Plus v1.9.3.
 ;
 ; AutoHotkey script to show a menu with several tools related to Sandboxie,
 ; and a menu to launch applications installed in any sandbox.
@@ -106,7 +106,7 @@ shell32  = %A_WinDir%\system32\shell32.dll
 imageres = %A_Windir%\system32\imageres.dll
 explorer = %A_WinDir%\system32\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
 
-; we need the %SID% and %SESSION% variables, supported by Sandboxie,
+; we need the %SID% and %SESSION% variables, supported by Sandboxie-Plus,
 ; but not directly available as Windows environment variables.
 ; Get them from the registry.
 ; %SID%:
