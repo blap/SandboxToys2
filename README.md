@@ -5,6 +5,8 @@ I just updated the original file by r0lZ to be more compatible to recent files o
 
 Developed and compiled with AHK2Exe 1.1.36.02 (Unicode 64-bit.bin) with no compression.
 
+NOTE: AutoHotKey deprecated version 1.1. With the new changes in version 2 (https://www.autohotkey.com/docs/v2/v2-changes.htm) in a matter of time SandboxToys2 will be deprecated too with my lack of programming knowledge in AutoHotKey.
+
 You can download the last SandboxToys2 here: https://github.com/blap/SandboxToys2/releases/latest
 
 Original file from: https://sandboxie-website-archive.github.io/www.sandboxie.com/old-forums/viewtopic33fc33fc.html?f=22&t=2028
