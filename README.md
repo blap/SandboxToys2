@@ -9,8 +9,8 @@ You can download the last SandboxToys2 here: https://github.com/blap/SandboxToys
 
 Original file from: https://sandboxie-website-archive.github.io/www.sandboxie.com/old-forums/viewtopic33fc33fc.html?f=22&t=2028
 
-Original README file:
-
+Original README file from here:
+-------------------------------------------------------------------------------
 SandboxToys2 is a freeware tool to facilitate the use of Sandboxie, and especially to launch programs and open files located in your sandbox.
 
 SandboxToys2 is designed to run under Windows 7 (x32 or x64).  It works probably under Vista as well, but this hasn't been tested.  Do not try to run it under an earlier system, as it will certainly not work properly.
