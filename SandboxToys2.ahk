@@ -1,8 +1,8 @@
 #UseHook off
 #persistent
-#singleinstance off
+#singleinstance on
 
-version = 2.4.1
+version = 2.5
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
@@ -35,26 +35,25 @@ SplitPath, A_ScriptName, , , , nameNoExt
 ; Settings
 ; Note: these values are overwritten if SandboxToys.ini exists in the directrory
 ; containing the script, in %appdata% or in %appdata%\SandboxToys2\
-smalliconsize = 16  ; other icons
-largeiconsize = 32  ; sandbox icons
+smalliconsize = 16 ; other icons
+largeiconsize = 32 ; sandbox icons
 seperatedstartmenus = 0
 includeboxnames = 1
 trayiconfile =
 trayiconnumber = 1
 sbcommandpromptdir = `%userprofile`%
 
-
-inidir       = %A_ScriptDir%
-sbtini       = %A_ScriptDir%\%nameNoExt%.ini
-regconfig    = %A_ScriptDir%\%nameNoExt%_RegConfig.cfg
-ignorelist   = %A_ScriptDir%\%nameNoExt%_Ignore_
+inidir = %A_ScriptDir%
+sbtini = %A_ScriptDir%\%nameNoExt%.ini
+regconfig = %A_ScriptDir%\%nameNoExt%_RegConfig.cfg
+ignorelist = %A_ScriptDir%\%nameNoExt%_Ignore_
 usertoolsdir = %A_ScriptDir%\%nameNoExt%_UserTools
 if (NOT FileExist(sbtini))
 {
-    inidir       = %appdata%\SandboxToys2
-    sbtini       = %inidir%\%nameNoExt%.ini
-    regconfig    = %inidir%\%nameNoExt%_RegConfig.cfg
-    ignorelist   = %inidir%\%nameNoExt%_Ignore_
+    inidir = %appdata%\SandboxToys2
+    sbtini = %inidir%\%nameNoExt%.ini
+    regconfig = %inidir%\%nameNoExt%_RegConfig.cfg
+    ignorelist = %inidir%\%nameNoExt%_Ignore_
     usertoolsdir = %inidir%\%nameNoExt%_UserTools
     if (NOT FileExist(inidir))
         FileCreateDir, %inidir%
@@ -63,23 +62,23 @@ if (NOT FileExist(usertoolsdir))
     FileCreateDir, %usertoolsdir%
 
 if (FileExist(sbtini)) {
-    IniRead, largeiconsize,       %sbtini%, AutoConfig, LargeIconSize,       %largeiconsize%
-    IniRead, smalliconsize,       %sbtini%, AutoConfig, SmallIconSize,       %smalliconsize%
+    IniRead, largeiconsize, %sbtini%, AutoConfig, LargeIconSize, %largeiconsize%
+    IniRead, smalliconsize, %sbtini%, AutoConfig, SmallIconSize, %smalliconsize%
     IniRead, seperatedstartmenus, %sbtini%, AutoConfig, SeperatedStartMenus, %seperatedstartmenus%
-    IniRead, includeboxnames,     %sbtini%, AutoConfig, IncludeBoxNames,     %includeboxnames%
-    IniRead, trayiconfile,        %sbtini%, UserConfig, TrayIconFile,        %trayiconfile%
-    IniRead, trayiconnumber,      %sbtini%, UserConfig, TrayIconNumber,      %trayiconnumber%
-    IniRead, sbcommandpromptdir,  %sbtini%, UserConfig, SandboxedCommandPromptDir, %sbcommandpromptdir%
+    IniRead, includeboxnames, %sbtini%, AutoConfig, IncludeBoxNames, %includeboxnames%
+    IniRead, trayiconfile, %sbtini%, UserConfig, TrayIconFile, %trayiconfile%
+    IniRead, trayiconnumber, %sbtini%, UserConfig, TrayIconNumber, %trayiconnumber%
+    IniRead, sbcommandpromptdir, %sbtini%, UserConfig, SandboxedCommandPromptDir, %sbcommandpromptdir%
 }
 else
 {
-    IniWrite, %largeiconsize%,       %sbtini%, AutoConfig, LargeIconSize
-    IniWrite, %smalliconsize%,       %sbtini%, AutoConfig, SmallIconSize
+    IniWrite, %largeiconsize%, %sbtini%, AutoConfig, LargeIconSize
+    IniWrite, %smalliconsize%, %sbtini%, AutoConfig, SmallIconSize
     IniWrite, %seperatedstartmenus%, %sbtini%, AutoConfig, SeperatedStartMenus
-    IniWrite, %includeboxnames%,     %sbtini%, AutoConfig, IncludeBoxNames
-    IniWrite, %trayiconfile%,        %sbtini%, UserConfig, TrayIconFile
-    IniWrite, %trayiconnumber%,      %sbtini%, UserConfig, TrayIconNumber
-    IniWrite, %sbcommandpromptdir%,  %sbtini%, UserConfig, SandboxedCommandPromptDir
+    IniWrite, %includeboxnames%, %sbtini%, AutoConfig, IncludeBoxNames
+    IniWrite, %trayiconfile%, %sbtini%, UserConfig, TrayIconFile
+    IniWrite, %trayiconnumber%, %sbtini%, UserConfig, TrayIconNumber
+    IniWrite, %sbcommandpromptdir%, %sbtini%, UserConfig, SandboxedCommandPromptDir
 }
 if (trayiconfile == "ERROR")
     trayiconfile =
@@ -93,7 +92,6 @@ if (NOT A_IsCompiled && trayiconfile == "") {
         trayiconfile := tmp
 }
 
-
 ; some useful constants
 setWorkingDir %A_ScriptDir%
 title = SandboxToys v%version% by r0lZ updated by blap
@@ -102,11 +100,37 @@ if (nameNoExt != "SandboxToys")
 
 A_nl = `n
 A_Quotes = "
-shell32  = %A_WinDir%\system32\shell32.dll
-imageres = %A_Windir%\system32\imageres.dll
-explorer = %A_WinDir%\system32\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
+shell32 = %A_WinDir%\system32\shell32.dll
+imageres = %A_WinDir%\system32\imageres.dll
 
-; we need the %SID% and %SESSION% variables, supported by Sandboxie-Plus,
+cmdRes = %A_WinDir%\system32\cmd.exe
+
+explorerImg = %A_WinDir%\system32\explorer.exe
+if (! FileExist(explorerImg)) {
+    explorerImg = %A_WinDir%\explorer.exe
+}
+explorerRes = %A_WinDir%\system32\explorer.exe
+if (! FileExist(explorerRes)) {
+    explorerRes = %A_WinDir%\explorer.exe
+}
+explorer = %explorerImg% /e`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
+explorerE = %explorerImg% /e
+explorerER = %explorerImg% /e /root
+explorerERArg = %explorerImg% /e /root`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
+explorerArg = `,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
+explorerArgE = /e`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
+explorerArgER = /e /root`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
+
+regeditImg = %A_WinDir%\system32\regedit.exe
+if (! FileExist(regeditImg)) {
+    regeditImg = %A_WinDir%\regedit.exe
+}
+regeditRes = %A_WinDir%\system32\regedit.exe
+if (! FileExist(regeditRes)) {
+    regeditRes = %A_WinDir%\regedit.exe
+}
+
+; we need the %SID% and %SESSION% variables, supported by Sandboxie,
 ; but not directly available as Windows environment variables.
 ; Get them from the registry.
 ; %SID%:
@@ -122,8 +146,6 @@ RegRead, SESSION, HKEY_CURRENT_USER, Volatile Environment, SESSION
 if (SESSION == "" || SESSION == "Console")
     SESSION = 0
 
-
-
 if (NOT A_IsUnicode) {
     msgBox, 16, %title%, This program must be run under the AutoHotkey_L (AHK_Lw) build of AutoHotkey.
     ExitApp
@@ -133,12 +155,55 @@ if (NOT A_IsUnicode) {
 RegRead, imagepath, HKEY_LOCAL_MACHINE, SYSTEM\CurrentControlSet\services\SbieSvc, ImagePath
 imagepath := Trim(imagepath,A_Quotes)
 splitpath, imagepath, , sbdir
-start    = %sbdir%\Start.exe
-SandMan = %sbdir%\SandMan.exe
-if (! FileExist(SandMan))
-{
-    MsgBox 16, %title%, Can't find Sandboxie-Plus installation folder.  Sorry.
-    ExitApp
+start = %sbdir%\Start.exe
+SbieCtrl = %sbdir%\SbieCtrl.exe
+SbieMngr = %sbdir%\SandMan.exe
+SbieAgent = %SbieMngr%
+if (! FileExist(SbieAgent)) {
+    SbieAgent = %sbdir%\SbieCtrl.exe
+    if (! FileExist(SbieAgent)) {
+        MsgBox 16, %title%, Can't find Sandboxie installation folder. Sorry.
+        ExitApp
+    }
+}
+
+;@Ahk2Exe-AddResource Resources\IconFull.ico ; Id=6
+;@Ahk2Exe-AddResource Resources\IconEmpty.ico ; Id=7
+if (SbieAgent == SbieCtrl) {
+    SbieAgentResMain = %SbieAgent%
+    SbieAgentResMainId := 1
+    SbieAgentResMainText = Sandboxie Control
+    SbieAgentResFull = %SbieCtrl%
+    SbieAgentResFullId := 3
+    SbieAgentResEmpty = %SbieCtrl%
+    SbieAgentResEmptyId = 10
+    if (A_IsCompiled) {
+        SbieAgentResMain = %SbieCtrl%
+        SbieAgentResMainId := 1
+        SbieAgentResMainText = Sandboxie Control
+        SbieAgentResFull = %SbieCtrl%
+        SbieAgentResFullId := 3
+        SbieAgentResEmpty = %SbieCtrl%
+        SbieAgentResEmptyId := 10
+    }
+}
+else {
+    SbieAgentResMain = %SbieAgent%
+    SbieAgentResMainId := 1
+    SbieAgentResMainText = Sandboxie-Plus Manager
+    SbieAgentResFull = Resources\IconFull.ico
+    SbieAgentResFullId := 1
+    SbieAgentResEmpty = Resources\IconEmpty.ico
+    SbieAgentResEmptyId := 1
+    if (A_IsCompiled) {
+        SbieAgentResMain = %SbieMngr%
+        SbieAgentResMainId := 1
+        SbieAgentResMainText = Sandboxie-Plus Manager
+        SbieAgentResFull = %A_ScriptFullPath%
+        SbieAgentResFullId := 6
+        SbieAgentResEmpty = %A_ScriptFullPath%
+        SbieAgentResEmptyId := 7
+    }
 }
 
 ; find Sandboxie's INI file in %A_WinDir% and in Sandboxie's install dir
@@ -241,10 +306,10 @@ if (! FileExist(regconfig))
         msg = %msg% that Sandboxie needs to create in the sandbox for its own use
         msg = %msg% from the output of the "Registry List and Export" and "Watch
         msg = %msg% Registry Changes" functions.`n`n
-        msg = %msg%SandboxToys needs an EMPTY sandbox to create that file.  The box
+        msg = %msg%SandboxToys needs an EMPTY sandbox to create that file. The box
         msg = %msg% "%emptybox%" is empty, and has been used to generate the file.`n`n
         msg = %msg%If you need to recreate that file, just delete the file, be sure
-        msg = %msg% to delete a sandbox, and launch SandboxToys again.  You should see
+        msg = %msg% to delete a sandbox, and launch SandboxToys again. You should see
         msg = %msg% this dialog again.
         MsgBox, 64, %title%, %msg%
         runWait, %start% /box:%emptybox% delete_sandbox, , UseErrorLevel
@@ -258,8 +323,8 @@ if (traymode) {
     Menu, Tray, Add, Exit, ExitMenuHandler
     setMenuIcon("Tray", "Exit", shell32, 28, smalliconsize)
     Menu, Tray, Add
-    Menu, Tray, Add, SandboxToys menu, BuildMainMenu
-    setMenuIcon("Tray", "SandboxToys menu", SandMan, 1, smalliconsize)
+    Menu, Tray, Add, SandboxToys Menu, BuildMainMenu
+    setMenuIcon("Tray", "SandboxToys Menu", SbieAgentResMain, SbieAgentResMainId, smalliconsize)
     if (trayiconfile != "") {
         if (trayiconnum == "")
             trayiconnum = 1
@@ -267,17 +332,16 @@ if (traymode) {
         Menu, Tray, Icon, %trayiconfile%, %trayiconnum%, 1
         menu, %menu%, UseErrorLevel, off
     }
-    Menu, Tray, Default, SandboxToys menu
+    Menu, Tray, Default, SandboxToys Menu
     Menu, Tray, Click, 1
     if (singleboxmode)
-        Menu, Tray, Tip, %title%`nBox :  %singlebox%
+        Menu, Tray, Tip, %title%`nBox : %singlebox%
     else
         Menu, Tray, Tip, %title%
 } else {
     GoSub, BuildMainMenu
     ExitApp
 }
-
 
 Return
 
@@ -294,7 +358,7 @@ BuildMainMenu:
 
     ; Init the arrays of menu commands and icons (requires AHK_L)
     menucommands := Object()
-    menuicons    := Object()
+    menuicons := Object()
 
     Menu, ST2MainMenu, Add
     Menu, ST2MainMenu, DeleteAll
@@ -309,9 +373,9 @@ BuildMainMenu:
     ; Build the Main menu
     loop, %numboxes%
     {
-        box             := sandboxes_array[A_Index,"name"]
-        boxpath         := sandboxes_array[box,"path"]
-        boxexist        := sandboxes_array[box,"exist"]
+        box := sandboxes_array[A_Index,"name"]
+        boxpath := sandboxes_array[box,"path"]
+        boxexist := sandboxes_array[box,"exist"]
         dropadminrights := sandboxes_array[box,"DropAdminRights"]
 
         if (boxexist)
@@ -336,16 +400,20 @@ BuildMainMenu:
         Menu, %box%_ST2QuickLaunch, DeleteAll
         Menu, %box%_ST2MenuExplore, Add
         Menu, %box%_ST2MenuExplore, DeleteAll
+        Menu, %box%_ST2MenuReg, Add
+        Menu, %box%_ST2MenuReg, DeleteAll
         Menu, %box%_ST2MenuTools, Add
         Menu, %box%_ST2MenuTools, DeleteAll
+        Menu, SBMenuSetup, Add
+        Menu, SBMenuSetup, DeleteAll
 
         if (singleboxmode) {
-            Menu, %singlebox%_ST2MenuBox, Add, Box  %boxlabel%, DummyMenuHandler
-            Menu, %singlebox%_ST2MenuBox, Disable, Box  %boxlabel%
+            Menu, %singlebox%_ST2MenuBox, Add, Box %boxlabel%, DummyMenuHandler
+            Menu, %singlebox%_ST2MenuBox, Disable, Box %boxlabel%
             if (boxexist) {
-                setMenuIcon(singlebox "_ST2MenuBox", "Box  " boxlabel, SandMan, 3, smalliconsize)
+                setMenuIcon(singlebox "_ST2MenuBox", "Box " boxlabel, SbieAgentResFull, SbieAgentResFullId, smalliconsize)
             } else {
-                setMenuIcon(singlebox "_ST2MenuBox", "Box  " boxlabel, SandMan, 10, smalliconsize)
+                setMenuIcon(singlebox "_ST2MenuBox", "Box " boxlabel, SbieAgentResEmpty, SbieAgentResEmptyId, smalliconsize)
             }
             Menu, %singlebox%_ST2MenuBox, Add
         }
@@ -369,7 +437,7 @@ BuildMainMenu:
                 Sort, topicons, CL D`n
                 if (topicons) {
                     numtopicons := addCmdsToMenu(box, "ST2StartMenuAU", topicons)
-                    Menu, %box%_ST2MenuBox, Add,  Start Menu (all users), :%box%_ST2StartMenuAU
+                    Menu, %box%_ST2MenuBox, Add, Start Menu (all users), :%box%_ST2StartMenuAU
                     setMenuIcon(box "_ST2MenuBox", "Start Menu (all users)", shell32, 20, largeiconsize)
                     added_menus = 1
                 }
@@ -383,7 +451,7 @@ BuildMainMenu:
                 if (numicons)
                     added_menus = 1
                 if (topicons == "" && numicons > 0) {
-                    Menu, %box%_ST2MenuBox, Add,  Start Menu (all users), :%box%_ST2StartMenuAU
+                    Menu, %box%_ST2MenuBox, Add, Start Menu (all users), :%box%_ST2StartMenuAU
                     setMenuIcon(box "_ST2MenuBox", "Start Menu (all users)", shell32, 20, largeiconsize)
                 }
 
@@ -394,7 +462,7 @@ BuildMainMenu:
                 Sort, topicons, CL D`n
                 if (topicons) {
                     numtopicons := addCmdsToMenu(box, "ST2StartMenuCU", topicons)
-                    Menu, %box%_ST2MenuBox, Add,  Start Menu (current user), :%box%_ST2StartMenuCU
+                    Menu, %box%_ST2MenuBox, Add, Start Menu (current user), :%box%_ST2StartMenuCU
                     setMenuIcon(box "_ST2MenuBox", "Start Menu (current user)", shell32, 20, largeiconsize)
                     added_menus = 1
                 }
@@ -408,7 +476,7 @@ BuildMainMenu:
                 if (numicons)
                     added_menus = 1
                 if (topicons == "" && numicons > 0) {
-                    Menu, %box%_ST2MenuBox, Add,  Start Menu (current user), :%box%_ST2StartMenuCU
+                    Menu, %box%_ST2MenuBox, Add, Start Menu (current user), :%box%_ST2StartMenuCU
                     setMenuIcon(box "_ST2MenuBox", "Start Menu (current user)", shell32, 20, largeiconsize)
                 }
 
@@ -418,7 +486,7 @@ BuildMainMenu:
                 m := buildProgramsMenu1(box, "ST2DesktopAU", tmp1)
                 if (m) {
                     added_menus = 1
-                    Menu, %box%_ST2MenuBox, Add,  Desktop (all users), :%box%_%m%
+                    Menu, %box%_ST2MenuBox, Add, Desktop (all users), :%box%_%m%
                     setMenuIcon(box "_ST2MenuBox", "Desktop (all users)", shell32, 35, largeiconsize)
                 }
                 ; process User's Desktop
@@ -427,7 +495,7 @@ BuildMainMenu:
                 m := buildProgramsMenu1(box, "ST2DesktopCU", tmp1)
                 if (m) {
                     added_menus = 1
-                    Menu, %box%_ST2MenuBox, Add,  Desktop (current user), :%box%_%m%
+                    Menu, %box%_ST2MenuBox, Add, Desktop (current user), :%box%_%m%
                     setMenuIcon(box "_ST2MenuBox", "Desktop (current user)", shell32, 35, largeiconsize)
                 }
             } else {
@@ -441,7 +509,7 @@ BuildMainMenu:
                 Sort, topicons, CL D`n
                 if (topicons) {
                     numtopicons := addCmdsToMenu(box, "ST2StartMenu", topicons)
-                    Menu, %box%_ST2MenuBox, Add,  Start Menu, :%box%_ST2StartMenu
+                    Menu, %box%_ST2MenuBox, Add, Start Menu, :%box%_ST2StartMenu
                     setMenuIcon(box "_ST2MenuBox", "Start Menu", shell32, 20, largeiconsize)
                     added_menus = 1
                 }
@@ -457,7 +525,7 @@ BuildMainMenu:
                 if (numicons)
                     added_menus = 1
                 if (topicons == "" && numicons > 0) {
-                    Menu, %box%_ST2MenuBox, Add,  Start Menu, :%box%_ST2StartMenu
+                    Menu, %box%_ST2MenuBox, Add, Start Menu, :%box%_ST2StartMenu
                     setMenuIcon(box "_ST2MenuBox", "Start Menu", shell32, 20, largeiconsize)
                 }
 
@@ -467,12 +535,12 @@ BuildMainMenu:
                 tmp2 = %boxpath%\user\current\Desktop
                 files2 := getFilenames(tmp2, 1)
                 if ((files1 || files2) && topicons)
-                     Menu, %box%_ST2MenuBox, Add
+                    Menu, %box%_ST2MenuBox, Add
                 menunum = 0
                 m := buildProgramsMenu2(box, "ST2Desktop", tmp1, tmp2)
                 if (m) {
                     added_menus = 1
-                    Menu, %box%_ST2MenuBox, Add,  Desktop, :%box%_%m%
+                    Menu, %box%_ST2MenuBox, Add, Desktop, :%box%_%m%
                     setMenuIcon(box "_ST2MenuBox", "Desktop", shell32, 35, largeiconsize)
                 }
             }
@@ -483,7 +551,7 @@ BuildMainMenu:
             m := buildProgramsMenu1(box, "ST2QuickLaunch", tmp1)
             if (m) {
                 added_menus = 1
-                Menu, %box%_ST2MenuBox, Add,  QuickLaunch, :%box%_%m%
+                Menu, %box%_ST2MenuBox, Add, QuickLaunch, :%box%_%m%
                 setMenuIcon(box "_ST2MenuBox", "QuickLaunch", shell32, 215, largeiconsize)
             }
             if (added_menus)
@@ -491,71 +559,71 @@ BuildMainMenu:
         }
 
         ; add Sandboxie's start menu and run dialog in all boxes
-        Menu, %box%_ST2MenuBox, Add,  Sandboxie's Start Menu, StartMenuMenuHandler
-        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Start Menu", SandMan, 1, largeiconsize)
-        Menu, %box%_ST2MenuBox, Add,  Sandboxie's Run Dialog, RunDialogMenuHandler
-        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Run Dialog", SandMan, 1, largeiconsize)
+        Menu, %box%_ST2MenuBox, Add, Sandboxie's Start Menu, StartMenuMenuHandler
+        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Start Menu", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        Menu, %box%_ST2MenuBox, Add, Sandboxie's Run Dialog, RunDialogMenuHandler
+        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Run Dialog", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
         Menu, %box%_ST2MenuBox, Add
         if (NOT boxexist) {
-            Menu, %box%_ST2MenuBox, Add, Explore (Sandboxed),   SExploreMenuHandler
-            setMenuIcon(box "_ST2MenuBox", "Explore (Sandboxed)", explorer, 1, largeiconsize)
-            Menu, %box%_ST2MenuBox, Add,  New Sandboxed Shortcut, NewShortcutMenuHandler
+            Menu, %box%_ST2MenuBox, Add, Explore (Sandboxed), SExploreMenuHandler
+            setMenuIcon(box "_ST2MenuBox", "Explore (Sandboxed)", explorerRes, 1, largeiconsize)
+            Menu, %box%_ST2MenuBox, Add, New Sandboxed Shortcut, NewShortcutMenuHandler
             setMenuIcon(box "_ST2MenuBox", "New Sandboxed Shortcut", imageres, 155, largeiconsize)
         }
         if (boxexist) {
             ; Add the Explore items to the Box menu
-            Menu, %box%_ST2MenuExplore, Add,  Unsandboxed, UExploreMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Unsandboxed", explorer, 1, smalliconsize)
-            Menu, %box%_ST2MenuExplore, Add,  Unsandboxed`, restricted, URExploreMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Unsandboxed, restricted", explorer, 1, smalliconsize)
-            Menu, %box%_ST2MenuExplore, Add,  Sandboxed,   SExploreMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Sandboxed",   explorer, 1, smalliconsize)
+            Menu, %box%_ST2MenuExplore, Add, Unsandboxed, UExploreMenuHandler
+            setMenuIcon(box "_ST2MenuExplore", "Unsandboxed", explorerRes, 1, smalliconsize)
+            Menu, %box%_ST2MenuExplore, Add, Unsandboxed`, restricted, URExploreMenuHandler
+            setMenuIcon(box "_ST2MenuExplore", "Unsandboxed, restricted", explorerRes, 1, smalliconsize)
+            Menu, %box%_ST2MenuExplore, Add, Sandboxed, SExploreMenuHandler
+            setMenuIcon(box "_ST2MenuExplore", "Sandboxed", explorerRes, 1, smalliconsize)
             Menu, %box%_ST2MenuExplore, Add
             Menu, %box%_ST2MenuExplore, Add, Files List and Export, ListFilesMenuHandler
             setMenuIcon(box "_ST2MenuExplore", "Files List and Export", shell32, 172, smalliconsize)
             Menu, %box%_ST2MenuExplore, Add, Watch Files Changes, WatchFilesMenuHandler
             setMenuIcon(box "_ST2MenuExplore", "Watch Files Changes", shell32, 172, smalliconsize)
             Menu, %box%_ST2MenuBox, Add, Explore, :%box%_ST2MenuExplore
-            setMenuIcon(box "_ST2MenuBox", "Explore", explorer, 1, largeiconsize)
+            setMenuIcon(box "_ST2MenuBox", "Explore", explorerRes, 1, largeiconsize)
 
             ; Add the Registry items to the Box menu
-            Menu, %box%_ST2MenuReg, Add,  Registry Editor (unsandboxed), URegEditMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Registry Editor (unsandboxed)", A_WinDir "\system32\regedit.exe", 1, smalliconsize)
+            Menu, %box%_ST2MenuReg, Add, Registry Editor (unsandboxed), URegEditMenuHandler
+            setMenuIcon(box "_ST2MenuReg", "Registry Editor (unsandboxed)", regeditRes, 1, smalliconsize)
             if (NOT dropadminrights) {
-                Menu, %box%_ST2MenuReg, Add,  Registry Editor (sandboxed), SRegEditMenuHandler
-                setMenuIcon(box "_ST2MenuReg", "Registry Editor (sandboxed)", A_WinDir "\system32\regedit.exe", 1, smalliconsize)
+                Menu, %box%_ST2MenuReg, Add, Registry Editor (sandboxed), SRegEditMenuHandler
+                setMenuIcon(box "_ST2MenuReg", "Registry Editor (sandboxed)", regeditRes, 1, smalliconsize)
             }
             Menu, %box%_ST2MenuReg, Add
             Menu, %box%_ST2MenuReg, Add, Registry List and Export, ListRegMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Registry List and Export", systemroot . "\system32\regedit.exe", 3, smalliconsize)
+            setMenuIcon(box "_ST2MenuReg", "Registry List and Export", regeditRes, 3, smalliconsize)
             Menu, %box%_ST2MenuReg, Add, Watch Registry Changes, WatchRegMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Watch Registry Changes", systemroot . "\system32\regedit.exe", 3, smalliconsize)
+            setMenuIcon(box "_ST2MenuReg", "Watch Registry Changes", regeditRes, 3, smalliconsize)
             Menu, %box%_ST2MenuBox, Add, Registry, :%box%_ST2MenuReg
-            setMenuIcon(box "_ST2MenuBox", "Registry", A_WinDir "\system32\regedit.exe", 1, largeiconsize)
+            setMenuIcon(box "_ST2MenuBox", "Registry", regeditRes, 1, largeiconsize)
             Menu, %box%_ST2MenuReg, Add
             Menu, %box%_ST2MenuReg, Add, Autostart programs in registry, ListAutostartsMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Autostart programs in registry", systemroot . "\system32\regedit.exe", 2, smalliconsize)
+            setMenuIcon(box "_ST2MenuReg", "Autostart programs in registry", regeditRes, 2, smalliconsize)
 
             ; Build the Tools menu
-            Menu, %box%_ST2MenuTools, Add,  New Sandboxed Shortcut, NewShortcutMenuHandler
+            Menu, %box%_ST2MenuTools, Add, New Sandboxed Shortcut, NewShortcutMenuHandler
             setMenuIcon(box "_ST2MenuTools", "New Sandboxed Shortcut", imageres, 155, smalliconsize)
             Menu, %box%_ST2MenuTools, Add
             Menu, %box%_ST2MenuTools, Add, Watch Files and Registry Changes, WatchFilesRegMenuHandler
             setMenuIcon(box "_ST2MenuTools", "Watch Files and Registry Changes", shell32, 172, smalliconsize)
             Menu, %box%_ST2MenuTools, Add
-            Menu, %box%_ST2MenuTools, Add,  Command Prompt (unsandboxed), UCmdMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Command Prompt (unsandboxed)", A_WinDir "\system32\cmd.exe", 1, smalliconsize)
-            Menu, %box%_ST2MenuTools, Add,  Command Prompt (sandboxed),   SCmdMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Command Prompt (sandboxed)", A_WinDir "\system32\cmd.exe", 1, smalliconsize)
+            Menu, %box%_ST2MenuTools, Add, Command Prompt (unsandboxed), UCmdMenuHandler
+            setMenuIcon(box "_ST2MenuTools", "Command Prompt (unsandboxed)", cmdRes, 1, smalliconsize)
+            Menu, %box%_ST2MenuTools, Add, Command Prompt (sandboxed), SCmdMenuHandler
+            setMenuIcon(box "_ST2MenuTools", "Command Prompt (sandboxed)", cmdRes, 1, smalliconsize)
             if (NOT dropadminrights) {
                 Menu, %box%_ST2MenuTools, Add
-                Menu, %box%_ST2MenuTools, Add,  Programs and Features, UninstallMenuHandler
+                Menu, %box%_ST2MenuTools, Add, Programs and Features, UninstallMenuHandler
                 setMenuIcon(box "_ST2MenuTools", "Programs and Features", A_WinDir "\system32\appmgr.dll", 1, smalliconsize)
             }
             Menu, %box%_ST2MenuTools, Add
-            Menu, %box%_ST2MenuTools, Add,  Terminate Sandboxed Programs!, TerminateMenuHandler
+            Menu, %box%_ST2MenuTools, Add, Terminate Sandboxed Programs!, TerminateMenuHandler
             setMenuIcon(box "_ST2MenuTools", "Terminate Sandboxed Programs!", shell32, 220, smalliconsize)
-            Menu, %box%_ST2MenuTools, Add,  Delete Sandbox!, DeleteBoxMenuHandler
+            Menu, %box%_ST2MenuTools, Add, Delete Sandbox!, DeleteBoxMenuHandler
             setMenuIcon(box "_ST2MenuTools", "Delete Sandbox!", shell32, 132, smalliconsize)
             Menu, %box%_ST2MenuBox, Add, Tools, :%box%_ST2MenuTools
             setMenuIcon(box "_ST2MenuBox", "Tools", shell32, 36, largeiconsize)
@@ -563,11 +631,11 @@ BuildMainMenu:
 
         ; Build the Main menu
         if (! singleboxmode) {
-            Menu, ST2MainMenu, Add,  %boxlabel%, :%box%_ST2MenuBox
+            Menu, ST2MainMenu, Add, %boxlabel%, :%box%_ST2MenuBox
             if (boxexist) {
-                setMenuIcon("ST2MainMenu", boxlabel, SandMan, 3, largeiconsize)
+                setMenuIcon("ST2MainMenu", boxlabel, SbieAgentResFull, SbieAgentResFullId, largeiconsize)
             } else {
-                setMenuIcon("ST2MainMenu", boxlabel, SandMan, 10, largeiconsize)
+                setMenuIcon("ST2MainMenu", boxlabel, SbieAgentResEmpty, SbieAgentResEmptyId, largeiconsize)
             }
         }
     }
@@ -582,16 +650,29 @@ BuildMainMenu:
     m := buildProgramsMenu1("", "ST2UserTools", usertoolsdir)
     if (m) {
         Menu, %mainmenu%, Add
-        Menu, %mainmenu%, Add,  User Tools, :_%m%
+        Menu, %mainmenu%, Add, User Tools, :_%m%
         setMenuIcon(mainmenu, "User Tools", imageres, 118, largeiconsize)
     }
 
-    ; add Launch Sandboxie Manager if it is not already running
-    process, Exist, SandMan.exe
-    if (ErrorLevel == 0) {
-        Menu, %mainmenu%, Add
-        Menu, %mainmenu%, Add,  Launch Sandboxie Manager, LaunchSandManMenuHandler
-        setMenuIcon(mainmenu, "Launch Sandboxie Manager", SandMan, 1, largeiconsize)
+    ; add Launch Sandboxie Agent if it is not already running
+    if SbieAgent Contains SandMan
+    {
+        process, Exist, SandMan.exe
+        if (ErrorLevel == 0) {
+            Menu, %mainmenu%, Add
+            Menu, %mainmenu%, Add, Launch %SbieAgentResMainText%, LaunchSbieAgentMenuHandler
+            setMenuIcon(mainmenu, "Launch " SbieAgentResMainText, SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        }
+    }
+
+    if SbieAgent Contains SbieCtrl
+    {
+        process, Exist, SbieCtrl.exe
+        if (ErrorLevel == 0) {
+            Menu, %mainmenu%, Add
+            Menu, %mainmenu%, Add, Launch %SbieAgentResMainText%, LaunchSbieAgentMenuHandler
+            setMenuIcon(mainmenu, "Launch " SbieAgentResMainText, SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        }
     }
 
     ; add Help & Options menu
@@ -620,11 +701,9 @@ BuildMainMenu:
 
 Return
 
-
 ; ###################################################################################################
 ; Functions
 ; ###################################################################################################
-
 
 ; get sandbox names, paths and properties from Sandboxie's INI file
 ; and from the current state of the sandboxes.
@@ -651,12 +730,12 @@ getSandboxesArray(array,ini)
     boxes =
     Loop, Read, %ini%
     {
-        if (SubStr(A_LoopReadLine, 1, 1) == "[" && SubStr(A_LoopReadLine, 0) == "]" && A_LoopReadLine != "[GlobalSettings]" && SubStr(A_LoopReadLine, 1, 14) != "[UserSettings_") {
+        if (SubStr(A_LoopReadLine, 1, 1) == "[" && SubStr(A_LoopReadLine, 0) == "]" && A_LoopReadLine != "[GlobalSettings]" && SubStr(A_LoopReadLine, 1, 14) != "[UserSettings_" && SubStr(A_LoopReadLine, 1, 10) != "[Template_" && A_LoopReadLine != "[TemplateSettings]") {
             box := SubStr(A_LoopReadLine, 2, -1)
             boxes = %boxes%%box%,
         }
     }
-    boxes := Trim(boxes, ",")   ; requires AHK_L
+    boxes := Trim(boxes, ",") ; requires AHK_L
     Sort, boxes, CL D`,
 
     ; Requires AHK_Lw
@@ -686,7 +765,7 @@ getSandboxesArray(array,ini)
 ; Returns "" if the user selects cancel or discard the menu.
 getSandboxName(sandboxes_array, title, include_ask=false)
 {
-    global __box__, SandMan, largeiconsize
+    global __box__, SbieAgent, largeiconsize
     numboxes := sandboxes_array[0]
 
     Menu, Menu, Add
@@ -700,17 +779,17 @@ getSandboxName(sandboxes_array, title, include_ask=false)
         box := sandboxes_array[A_Index,"name"]
         if (sandboxes_array[box,"exist"]) {
             Menu, Menu, Add, %box%, getSandboxNameBoxMenuHandler
-            setMenuIcon("Menu", box, SandMan, 3, largeiconsize)
+            setMenuIcon("Menu", box, SbieAgentResFull, SbieAgentResFullId, largeiconsize)
         } else {
             Menu, Menu, Add, %box% (empty), getSandboxNameBoxMenuHandler
-            setMenuIcon("Menu", box " (empty)", SandMan, 10, largeiconsize)
+            setMenuIcon("Menu", box " (empty)", SbieAgentResEmpty, SbieAgentResEmptyId, largeiconsize)
         }
     }
     if (include_ask)
     {
         Menu, Menu, Add
         Menu, Menu, Add, Ask box at run time, getSandboxNameAskMenuHandler
-        setMenuIcon("Menu", "Ask box at run time", SandMan, 1, largeiconsize)
+        setMenuIcon("Menu", "Ask box at run time", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
     }
     Menu, Menu, Add
     Menu, Menu, Add, Cancel, getSandboxNameCancelMenuHandler
@@ -744,9 +823,9 @@ getFilenames(directory, includeFolders)
     {
         ; Excludes the hidden and system files from list
         attributes := A_LoopFileAttrib
-        IfInString, %Attributes%, H
+        IfInString, Attributes, H
             Continue
-        IfInString, %Attributes%, S
+        IfInString, Attributes, S
             Continue
         ; Excludes also the files deleted in the sandbox, but present in the "real world".
         ; They have a "magic" creation date of May 23, 1986, 17:47:02
@@ -781,15 +860,15 @@ buildProgramsMenu1(box, menuname, path)
 
     numfiles = 0
 
-;    path = %path%\*
+    ; path = %path%\*
     menufiles := getFilenames(path, 0)
     if (menufiles) {
         Sort, menufiles, CL D`n Z
         numfiles := addCmdsToMenu(box, thismenuname, menufiles)
     }
-;    else if (numfiles == 0) {
-;        numfiles = 1
-;    }
+    ; else if (numfiles == 0) {
+    ;     numfiles = 1
+    ; }
     ; recurse
     menudirs := getFilenames(path, 2)
 
@@ -798,14 +877,14 @@ buildProgramsMenu1(box, menuname, path)
         Loop, parse, menudirs, `n
         {
             entry = %A_LoopField%
-            idx   := InStr(entry, ":")
+            idx := InStr(entry, ":")
             label := subStr(entry, 1, idx-1)
-            dir   := subStr(entry, idx+1)
+            dir := subStr(entry, idx+1)
             menunum ++
             newmenuname := buildProgramsMenu1(box, menuname, dir)
             if (newmenuname != "") {
                 Menu, %box%_%thismenuname%, Add, %label%, :%box%_%newmenuname%
-                setMenuIcon(box "_" thismenuname, label, A_WinDir "\system32\shell32.dll", 4, smalliconsize)
+                setMenuIcon(box "_" thismenuname, label, shell32, 4, smalliconsize)
                 numfiles ++
             }
         }
@@ -829,8 +908,8 @@ buildProgramsMenu2(box, menuname, path1, path2)
 
     numfiles = 0
 
-;    path1 = %path1%\*
-;    path2 = %path2%\*
+    ; path1 = %path1%\*
+    ; path2 = %path2%\*
 
     ; process files
     menufiles1 := getFilenames(path1, 0)
@@ -841,10 +920,9 @@ buildProgramsMenu2(box, menuname, path1, path2)
         Sort, menufiles, CL D`n
         numfiles := addCmdsToMenu(box, thismenuname, menufiles)
     }
-;    else if (numfiles == 0) {
-;        numfiles = 1
-;    }
-
+    ; else if (numfiles == 0) {
+    ;     numfiles = 1
+    ; }
 
     ; recurse
     menudirs1 := getFilenames(path1, 2)
@@ -857,11 +935,11 @@ buildProgramsMenu2(box, menuname, path1, path2)
         Loop, parse, menudirs, `n
         {
             entry = %A_LoopField%
-            idx   := InStr(entry, ":")
+            idx := InStr(entry, ":")
             label := subStr(entry, 1, idx-1)
-            dir   := subStr(entry, idx+1)
+            dir := subStr(entry, idx+1)
             dir_labels_%A_Index% := label
-            dir_list_%A_Index%   := dir
+            dir_list_%A_Index% := dir
             numdirs := A_Index
         }
         skip = 0
@@ -874,10 +952,10 @@ buildProgramsMenu2(box, menuname, path1, path2)
             }
             menunum ++
             label := dir_labels_%A_Index%
-            dir1  := dir_list_%A_Index%
+            dir1 := dir_list_%A_Index%
             next := A_Index + 1
             nextlabel := dir_labels_%next%
-            if  (nextlabel == label)
+            if (nextlabel == label)
             {
                 skip = 1
                 dir2 := dir_list_%next%
@@ -887,7 +965,7 @@ buildProgramsMenu2(box, menuname, path1, path2)
                 newmenuname := buildProgramsMenu1(box, menuname, dir1)
             if (newmenuname) {
                 Menu, %box%_%thismenuname%, Add, %label%, :%box%_%newmenuname%
-                setMenuIcon(box "_" thismenuname, label, A_WinDir "\system32\shell32.dll", 4, smalliconsize)
+                setMenuIcon(box "_" thismenuname, label, shell32, 4, smalliconsize)
                 numfiles ++
             }
         }
@@ -898,7 +976,6 @@ buildProgramsMenu2(box, menuname, path1, path2)
         return ""
 }
 
-
 ; TODO: rewrite this stuff, too complicated
 setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
 {
@@ -906,7 +983,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
     A_Quotes = "
 
     menuicons[menuname,label,"file"] := ""
-    menuicons[menuname,label,"num"]  := ""
+    menuicons[menuname,label,"num"] := ""
 
     ; get icon file and number in shortcut.
     ; If not specified, assumes it's the file pointed to by the shortcut
@@ -929,7 +1006,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
     if (InStr(FileExist(iconfile), "D")) {
         setMenuIcon(menuname, label, imageres, 4, iconsize)
         menuicons[menuname,label,"file"] := imageres
-        menuicons[menuname,label,"num"]  := 4
+        menuicons[menuname,label,"num"] := 4
         return % imageres "," 4
     }
 
@@ -937,7 +1014,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
     if (InStr(FileExist(boxfile), "D")) {
         setMenuIcon(menuname, label, imageres, 4, iconsize)
         menuicons[menuname,label,"file"] := imageres
-        menuicons[menuname,label,"num"]  := 4
+        menuicons[menuname,label,"num"] := 4
         return % imageres "," 4
     }
     if (FileExist(boxfile)) {
@@ -949,7 +1026,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
     else {
         rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
         menuicons[menuname,label,"file"] := iconfile
-        menuicons[menuname,label,"num"]  := iconnum
+        menuicons[menuname,label,"num"] := iconnum
     }
     if (rc) {
         ; If setMenuIcon failed, it's probably because the file pointed to by
@@ -974,10 +1051,10 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
             comaidx := InStr(defaulticon, ",", false, 0)
             if (comaidx > 0) {
                 iconfile := SubStr(defaulticon, 1, comaidx-1)
-                iconnum  := SubStr(defaulticon, comaidx+1)
+                iconnum := SubStr(defaulticon, comaidx+1)
             } else {
                 iconfile = %defaulticon%
-                iconnum  = 1
+                iconnum = 1
             }
             if (iconnum > 0) {
                 iconfile := Trim(iconfile, A_Quotes)
@@ -985,7 +1062,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                 iconfile := stdPathToBoxPath(box, iconfile)
                 rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
                 menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"]  := iconnum
+                menuicons[menuname,label,"num"] := iconnum
             } else
                 rc = 1
             if (rc == 0)
@@ -997,7 +1074,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
         if (defaulticon == "") {
             RegRead, keyval, HKEY_CLASSES_ROOT, .%extension%,
             if (keyval == "InternetShortcut") {
-                defaulticon = %A_Windir%\system32\url.dll,5
+                defaulticon = %A_WinDir%\system32\url.dll,5
             } else if (keyval != "") {
                 RegRead, defaulticon, HKEY_CLASSES_ROOT, %keyval%\DefaultIcon,
             }
@@ -1035,12 +1112,12 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
         if (defaulticon != "") {
             if (defaulticon == "%1") {
                 iconfile := shortcut
-                iconnum  = 1
+                iconnum = 1
             } else {
                 comaidx := InStr(defaulticon, ",", false, 0)
                 if (comaidx > 0) {
                     iconfile := SubStr(defaulticon, 1, comaidx-1)
-                    iconnum  := SubStr(defaulticon, comaidx+1)
+                    iconnum := SubStr(defaulticon, comaidx+1)
                     if (iconnum < 0) {
                         iconnum := IndexOfIconResource(iconfile, iconnum)
                     } else {
@@ -1051,7 +1128,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
             iconfile := Trim(iconfile, A_Quotes)
             rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
             menuicons[menuname,label,"file"] := iconfile
-            menuicons[menuname,label,"num"]  := iconnum
+            menuicons[menuname,label,"num"] := iconnum
         } else
             rc = 1
         if (rc) {
@@ -1059,31 +1136,31 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                 StringReplace, iconfile, iconfile, `%programfiles`%, %programw6432%
                 rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
                 menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"]  := iconnum
+                menuicons[menuname,label,"num"] := iconnum
             }
             if (rc) {
                 StringReplace, iconfile, iconfile, `%programfiles`%, `%programfiles(x86)`%
                 rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
                 menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"]  := iconnum
+                menuicons[menuname,label,"num"] := iconnum
             }
             if (rc) {
                 iconfile := expandEnvVars(iconfile)
                 rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
                 menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"]  := iconnum
+                menuicons[menuname,label,"num"] := iconnum
             }
         }
         if (rc || iconfile == "") {
-            iconfile = %A_WinDir%\system32\shell32.dll
+            iconfile = %shell32%
             iconfile := expandEnvVars(iconfile)
             if (extension == "exe")
-                iconnum  = 3
+                iconnum = 3
             else
-                iconnum  = 2
+                iconnum = 2
             rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
             menuicons[menuname,label,"file"] := iconfile
-            menuicons[menuname,label,"num"]  := iconnum
+            menuicons[menuname,label,"num"] := iconnum
         }
     }
     return % iconfile "," iconnum
@@ -1121,7 +1198,7 @@ IndexOfIconResource_EnumIconResources(hModule, lpszType, lpszName, lParam)
     if (lpszName = NumGet(lParam+0))
     {
         NumPut(1, lParam+8)
-        return false    ; break
+        return false ; break
     }
     return true
 }
@@ -1219,7 +1296,7 @@ MI_SetMenuItemIcon(MenuNameOrHandle, ItemPos, h_icon, IconSize=0)
         return false
 
     h_icon := DllCall("CopyImage","uint",h_icon,"uint",1
-                        ,"int",IconSize,"int",IconSize,"uint",0)
+        ,"int",IconSize,"int",IconSize,"uint",0)
 
     ; Get the previous bitmap or icon handle.
     VarSetCapacity(mii,48,0), NumPut(48,mii), NumPut(0xA0,mii,4)
@@ -1240,7 +1317,7 @@ MI_SetMenuItemIcon(MenuNameOrHandle, ItemPos, h_icon, IconSize=0)
         return false
 
     NumPut(0x80,mii,4) ; fMask: Set hbmpItem only, not dwItemData.
-    , NumPut(h_bitmap,mii,44) ; hbmpItem = h_bitmap
+        , NumPut(h_bitmap,mii,44) ; hbmpItem = h_bitmap
 
     if DllCall("SetMenuItemInfo","uint",h_menu,"uint",ItemPos-1,"uint",1,"uint",&mii)
     {
@@ -1260,7 +1337,6 @@ MI_ExtractIcon(Filename, IconNumber, IconSize)
     If !ErrorLevel
         Return hIcon
 
-
     If DllCall("shell32.dll\ExtractIconExA", "wStr", Filename, "Int", IconNumber-1, "UInt*", hIcon, "UInt*", hIcon_Small, "UInt", 1)
     {
         SysGet, SmallIconSize, 49
@@ -1278,7 +1354,7 @@ MI_ExtractIcon(Filename, IconNumber, IconSize)
 }
 MI_GetMenuHandle(menu_name)
 {
-    static   h_menuDummy
+    static h_menuDummy
     ; v2.2: Check for !h_menuDummy instead of h_menuDummy="" in case init failed last time.
     If !h_menuDummy
     {
@@ -1311,14 +1387,14 @@ MI_GetBitmapFromIcon32Bit(h_icon, width=0, height=0)
 {
     VarSetCapacity(buf,40) ; used as ICONINFO (20), BITMAP (24), BITMAPINFO (40)
     if DllCall("GetIconInfo","uint",h_icon,"uint",&buf) {
-        hbmColor := NumGet(buf,16)  ; used to measure the icon
-        hbmMask  := NumGet(buf,12)  ; used to generate alpha data (if necessary)
+        hbmColor := NumGet(buf,16) ; used to measure the icon
+        hbmMask := NumGet(buf,12) ; used to generate alpha data (if necessary)
     }
 
     if !(width && height) {
         if !hbmColor or !DllCall("GetObject","uint",hbmColor,"int",24,"uint",&buf)
             return 0
-        width := NumGet(buf,4,"int"),  height := NumGet(buf,8,"int")
+        width := NumGet(buf,4,"int"), height := NumGet(buf,8,"int")
     }
 
     ; Create a device context compatible with the screen.
@@ -1329,14 +1405,14 @@ MI_GetBitmapFromIcon32Bit(h_icon, width=0, height=0)
         NumPut(width,buf,4), NumPut(height,buf,8), NumPut(32,buf,14,"ushort")
 
         if (bm := DllCall("CreateDIBSection","uint",hdcDest,"uint",&buf,"uint",0
-                            ,"uint*",pBits,"uint",0,"uint",0))
+            ,"uint*",pBits,"uint",0,"uint",0))
         {
             ; SelectObject -- use hdcDest to draw onto bm
             if (bmOld := DllCall("SelectObject","uint",hdcDest,"uint",bm))
             {
                 ; Draw the icon onto the 32-bit bitmap.
                 DllCall("DrawIconEx","uint",hdcDest,"int",0,"int",0,"uint",h_icon
-                        ,"uint",width,"uint",height,"uint",0,"uint",0,"uint",3)
+                    ,"uint",width,"uint",height,"uint",0,"uint",0,"uint",3)
 
                 DllCall("SelectObject","uint",hdcDest,"uint",bmOld)
             }
@@ -1352,18 +1428,18 @@ MI_GetBitmapFromIcon32Bit(h_icon, width=0, height=0)
             {
                 ; Ensure the mask is the right size.
                 hbmMask := DllCall("CopyImage","uint",hbmMask,"uint",0
-                                    ,"int",width,"int",height,"uint",4|8)
+                    ,"int",width,"int",height,"uint",4|8)
 
                 VarSetCapacity(mask_bits, width*height*4, 0)
                 if DllCall("GetDIBits","uint",hdcDest,"uint",hbmMask,"uint",0
-                            ,"uint",height,"uint",&mask_bits,"uint",&buf,"uint",0)
-                {   ; Use icon mask to generate alpha data.
+                    ,"uint",height,"uint",&mask_bits,"uint",&buf,"uint",0)
+                { ; Use icon mask to generate alpha data.
                     Loop, % height*width
                         if (NumGet(mask_bits, (A_Index-1)*4))
                             NumPut(0, pBits+(A_Index-1)*4)
                         else
                             NumPut(NumGet(pBits+(A_Index-1)*4) | 0xFF000000, pBits+(A_Index-1)*4)
-                } else {   ; Make the bitmap entirely opaque.
+                } else { ; Make the bitmap entirely opaque.
                     Loop, % height*width
                         NumPut(NumGet(pBits+(A_Index-1)*4) | 0xFF000000, pBits+(A_Index-1)*4)
                 }
@@ -1380,7 +1456,6 @@ MI_GetBitmapFromIcon32Bit(h_icon, width=0, height=0)
         DllCall("DeleteObject","uint",hbmMask)
     return bm
 }
-
 
 ; converts a path to its equivalent in a sandbox
 stdPathToBoxPath(box, path)
@@ -1402,7 +1477,7 @@ stdPathToBoxPath(box, path)
     }
     if (outpath == "") {
         if (subStr(path, 2, 2) == ":\") {
-            drive  := SubStr(path, 1, 1)
+            drive := SubStr(path, 1, 1)
             remain := SubStr(path, 3)
             outpath = %boxpath%\drive\%drive%%remain%
         }
@@ -1497,17 +1572,17 @@ expandEnvVars(str)
     StringReplace, str, str, `%USER`%, %username%, All
 
     if sz:=DllCall("ExpandEnvironmentStrings", "uint", &str
-                    , "uint", 0, "uint", 0)
+        , "uint", 0, "uint", 0)
     {
         VarSetCapacity(dst, A_IsUnicode ? sz*2:sz)
         if DllCall("ExpandEnvironmentStrings", "uint", &str
-                    , "str", dst, "uint", sz)
+            , "str", dst, "uint", sz)
             return dst
     }
     return src
 }
 
-; execute a program under the control of Sandboxie.
+; Execute a program under the control of Sandboxie.
 ; TODO: On an x64 system, AHK cannot launch shortcuts pointing to x64 programs
 executeShortcut(box, shortcut)
 {
@@ -1547,7 +1622,7 @@ executeShortcut(box, shortcut)
     Return
 }
 
-; creates a shortut on the (normal) desktop to run the program under the control of Sandboxie.
+; Creates a shortut on the (normal) desktop to run the program under the control of Sandboxie.
 createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
 {
     global start
@@ -1669,7 +1744,7 @@ writeUnsandboxedShortcutFileToDesktop(target,name,dir,args,description,iconFile,
 ; return the box name of the last selected menu item
 getBoxFromMenu()
 {
-    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2Menu")-1))
+    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2")-1))
 }
 
 ; create a sandboxed shortcut on the desktop
@@ -1693,7 +1768,7 @@ NewShortcut(box, file)
         icon := setIconFromSandboxedShortcut(box, file, "__TEMP__", "__TEMP__", 32)
         idx := InStr(icon, ",", false, 0)
         iconfile := SubStr(icon, 1, idx-1)
-        iconnum  := SubStr(icon, idx+1)
+        iconnum := SubStr(icon, idx+1)
         if (iconnum < 0)
             iconnum := IndexOfIconResource(iconfile, iconnum)
     }
@@ -1746,7 +1821,6 @@ ReleaseBox(run_pid)
 ; "Find" and associated ListBox functions and handlers
 ; ###################################################################################################
 
-
 SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 {
     A_nl = `n
@@ -1778,7 +1852,7 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
                 Continue
         }
 
-        FormatTime, timeCreated,  %A_LoopFileTimeCreated%,  yyyy/MM/dd HH:mm:ss
+        FormatTime, timeCreated, %A_LoopFileTimeCreated%, yyyy/MM/dd HH:mm:ss
         FormatTime, timeModified, %A_LoopFileTimeModified%, yyyy/MM/dd HH:mm:ss
         FormatTime, timeAccessed, %A_LoopFileTimeAccessed%, yyyy/MM/dd HH:mm:ss
         if (A_LoopFileTimeCreated == "19860523174702")
@@ -1908,10 +1982,10 @@ ListFiles(box, path, comparefilename="")
     if (LVLastSize == "") {
         SysGet, mon, MonitorWorkArea
         if (monRight == "") {
-            width  := A_ScreenWidth - 300
+            width := A_ScreenWidth - 300
             height := A_ScreenHeight - 300
         } else {
-            width  := monRight - monLeft - 250
+            width := monRight - monLeft - 250
             height := monBottom - monTop - 250
         }
         if (width < 752)
@@ -1952,7 +2026,7 @@ ListFiles(box, path, comparefilename="")
     Menu, EditMenu, Add, &Hide Selected Entries, GuiLVHideSelected
     Menu, EditMenu, Add
     Menu, EditMenu, Add, Add Selected &Files to Ignore List, GuiLVIgnoreSelectedFiles
-    Menu, EditMenu, Add, Add Selected &Dirs to Ignore List,  GuiLVIgnoreSelectedDirs
+    Menu, EditMenu, Add, Add Selected &Dirs to Ignore List, GuiLVIgnoreSelectedDirs
 
     Menu, LVMenuBar, Add
     Menu, LVMenuBar, DeleteAll
@@ -1979,7 +2053,6 @@ ListFiles(box, path, comparefilename="")
     Menu, PopupMenu, Add, Add File to Ignore List, GuiLVIgnoreCurrentFile
     Menu, PopupMenu, Add, Add Folder to Ignore List, GuiLVIgnoreCurrentDir
     Menu, PopupMenu, Add, Add Sub-Folder to Ignore List..., GuiLVIgnoreCurrentSubDir
-
 
     Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVFileMouseEventHandler vMyListView AltSubmit, Status|File|Path|Size|Attribs|Created|Modified|Accessed|Extension|Sandbox path
 
@@ -2066,7 +2139,7 @@ ListFiles(box, path, comparefilename="")
     msg = %msg% , - %numdeleted% deleted file
     if (numdeleted != 1)
         msg = %msg%s
-    msg = %msg%.  Double-click an entry to copy the file to the desktop.
+    msg = %msg%. Double-click an entry to copy the file to the desktop.
     GuiControl, , MainLabel, %msg%
 
     Progress, OFF
@@ -2082,7 +2155,7 @@ ListFiles(box, path, comparefilename="")
 }
 
 GuiSize:
-    if A_EventInfo = 1  ; The window has been minimized.  No action needed.
+    if A_EventInfo = 1 ; The window has been minimized.  No action needed.
         return
     LVLastSize := "W" . (A_GuiWidth - 20) . " H" . (A_GuiHeight - 40)
     GuiControl, Move, MyListView, %LVLastSize%
@@ -2103,9 +2176,9 @@ Return
 
 ; Copy To...
 GuiLVCurrentFileSaveTo:
-    LV_GetText(LVFileName,  row, 2)
+    LV_GetText(LVFileName, row, 2)
     LV_GetText(LVExtension, row, 9)
-    LV_GetText(LVFilePath,  row, 10)
+    LV_GetText(LVFilePath, row, 10)
     boxpath := sandboxes_array[box,"path"]
     Gui, +OwnDialogs
     if (! InStr(FileExist(DefaultFolder . "\"), "D"))
@@ -2124,7 +2197,7 @@ Return
 LVCurrentFileRun(row, box, boxpath)
 {
     global start, title
-    LV_GetText(LVFileName,   row, 2)
+    LV_GetText(LVFileName, row, 2)
     LV_GetText(LVPath, row, 10)
     Filename = %boxpath%\%LVPath%\%LVFileName%
     old_pwd = %A_WorkingDir%
@@ -2172,7 +2245,7 @@ GuiLVCurrentFileToDesktop:
 Return
 GuiLVCurrentFileToStartMenuOrDesktop(row, box, boxpath, where)
 {
-    LV_GetText(LVFileName,   row, 2)
+    LV_GetText(LVFileName, row, 2)
     LV_GetText(LVPath, row, 3)
     SplitPath, LVFileName, , , , LVFileNameNoExt
     Target = %LVPath%\%LVFileName%
@@ -2194,7 +2267,7 @@ Return
 GuiLVCurrentFileShortcut(row, box, boxpath)
 {
     global start
-    LV_GetText(LVFileName,   row, 2)
+    LV_GetText(LVFileName, row, 2)
     LV_GetText(LVPath, row, 3)
     LV_GetText(LVBoxPath, row, 10)
     file = %LVPath%\%LVFileName%
@@ -2219,7 +2292,7 @@ GuiLVCurrentFileShortcut(row, box, boxpath)
         icon := setIconFromSandboxedShortcut(box, file, "__TEMP__", "__TEMP__", 32)
         idx := InStr(icon, ",", false, 0)
         iconfile := SubStr(icon, 1, idx-1)
-        iconnum  := SubStr(icon, idx+1)
+        iconnum := SubStr(icon, idx+1)
         if (iconnum < 0)
             iconnum := IndexOfIconResource(iconfile, iconnum)
         Menu, __TEMP__, DeleteAll
@@ -2278,13 +2351,13 @@ LVIgnoreEntry(row, mode)
     else if (mode == "values")
     {
         LV_GetText(item, row, pathcol)
-        LV_GetText(val,  row, 4)
+        LV_GetText(val, row, 4)
         item = %item%\%val%
     }
     else
     {
         LV_GetText(item, row, pathcol)
-        LV_GetText(val,  row, 2)
+        LV_GetText(val, row, 2)
         item = %item%\%val%
     }
     AddIgnoreItem(mode, item)
@@ -2332,7 +2405,7 @@ GuiLVRegMouseEventHandler:
 Return
 
 GuiLVCurrentCopyToClipboard:
-    LV_GetText(LVRegPath,  row, 2)
+    LV_GetText(LVRegPath, row, 2)
     clipboard := LVRegPath
 Return
 
@@ -2432,8 +2505,8 @@ GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
     global title
     A_Quotes = "
 
-    LV_GetText(LVProgram,  row, 2)
-    LV_GetText(LVCommand,  row, 3)
+    LV_GetText(LVProgram, row, 2)
+    LV_GetText(LVCommand, row, 3)
     LV_GetText(LVLocation, row, 4)
     if (LVCommand == "")
     {
@@ -2713,14 +2786,14 @@ LVFilesSaveTo(boxpath)
         row := LV_GetNext(row, "Checked")
         if not row
             break
-        LV_GetText(LVFileName,   row, 2)
+        LV_GetText(LVFileName, row, 2)
         LV_GetText(LVSBFilePath, row, 10)
         outfile = %dirname%\%LVFileName%
         exist := FileExist(outfile)
         if (exist && overwrite == -1) {
             Progress, OFF
             MsgBox, 291, %title%, Warning: Some files exist already in the destination folder.`nOverwrite them?
-            prog := 
+            prog :=
             Progress, % round(100 * (filenum / numfiles))
             Sleep, 100
             Progress, 100
@@ -2731,8 +2804,8 @@ LVFilesSaveTo(boxpath)
             }
             IfMsgBox, Yes
                 Overwrite = 1
-            else
-                Overwrite = 0
+else
+    Overwrite = 0
         }
         if (NOT exist || Overwrite == 1)
             FileCopy, %boxpath%\%LVSBFilePath%\%LVFileName%, %outfile%, 1
@@ -2867,10 +2940,9 @@ GuiLVRegistrySaveAsReg(box)
         out = %out%%line%
     }
 
-
     FileAppend, %out%, %filename%
     if (failed != "") {
-        MsgBox, 48, %title%, Warning!  Some key values cannot be saved due to unsupported key type:`n`n%failed%
+        MsgBox, 48, %title%, Warning! Some key values cannot be saved due to unsupported key type:`n`n%failed%
     }
 
     ReleaseBox(run_pid)
@@ -2903,12 +2975,12 @@ WrapRegString(str)
     {
         if (StrLen(str) < 78)
         {
-            out = %out%  %str%
+            out = %out% %str%
             break
         }
         idx := InStr(str, ",", 0, 75)
         sub := subStr(str, 1, idx)
-        out = %out%  %sub%\`n
+        out = %out% %sub%\`n
         str := subStr(str, idx+1)
     }
     return %out%
@@ -2940,7 +3012,6 @@ numOfCheckedFiles()
 ; Rarely used undocumented value types: REG_QWORD, REG_LINK, REG_RESOURCE_LIST, REG_FULL_RESOURCE_DESCRIPTOR,
 ; REG_RESOURCE_REQUIREMENTS_LIST, REG_DWORD_BIG_ENDIAN
 
-
 GetReg(inrootkey, insubkey, outrootkey, outsubkey)
 {
     outtxt =
@@ -2960,7 +3031,6 @@ GetReg(inrootkey, insubkey, outrootkey, outsubkey)
     }
     return %outtxt%
 }
-
 
 FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separator, includedate=false)
 {
@@ -2989,7 +3059,7 @@ FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separat
             value := RegRead64("HKEY_USERS", RegSubKey, RegName, false)
             if (ErrorLevel)
             {
-                value  =
+                value =
                 status = -
             }
         }
@@ -3087,7 +3157,6 @@ MakeRegConfig(box, filename="")
     Return
 }
 
-
 SearchReg(box, ignoredKeys, ignoredValues, filename="")
 {
     global regconfig
@@ -3175,7 +3244,7 @@ ListReg(box, path, filename="")
     Progress, A M R0-100, Please wait..., Scanning registry`nof box "%box%"., %title%
     Progress, 50
 
-    StringReplace, ignoredKeys, ignoredKeys, :, ., 1 
+    StringReplace, ignoredKeys, ignoredKeys, :, ., 1
     allregs := SearchReg(box, ignoredKeys, ignoredValues, filename)
 
     Progress, 90, Please wait..., Sorting list of files`nin box "%box%"., %title%
@@ -3198,10 +3267,10 @@ ListReg(box, path, filename="")
     if (LVLastSize == "") {
         SysGet, mon, MonitorWorkArea
         if (monRight == "") {
-            width  := A_ScreenWidth - 300
+            width := A_ScreenWidth - 300
             height := A_ScreenHeight - 300
         } else {
-            width  := monRight - monLeft - 250
+            width := monRight - monLeft - 250
             height := monBottom - monTop - 250
         }
         if (width < 752)
@@ -3236,11 +3305,11 @@ ListReg(box, path, filename="")
     Menu, EditMenu, Add, &Toggle All Checkmarks, GuiLVToggleAllCheckmarks
     Menu, EditMenu, Add, Toggle &Selected Checkmarks, GuiLVToggleSelected
     Menu, EditMenu, Add
-    Menu, EditMenu, Add, &Hide Selected Entries,  GuiLVHideSelected
+    Menu, EditMenu, Add, &Hide Selected Entries, GuiLVHideSelected
     Menu, EditMenu, Add
     Menu, EditMenu, Add, Add Selected &Values to Ignore List, GuiLVIgnoreSelectedValues
-    Menu, EditMenu, Add, Add Selected &Keys to Ignore List,   GuiLVIgnoreSelectedKeys
-;    Menu, EditMenu, Add, Add Specific &Key to Ignore List,    GuiLVIgnoreSpecificKey
+    Menu, EditMenu, Add, Add Selected &Keys to Ignore List, GuiLVIgnoreSelectedKeys
+    ;    Menu, EditMenu, Add, Add Specific &Key to Ignore List,    GuiLVIgnoreSpecificKey
 
     Menu, LVMenuBar, Add
     Menu, LVMenuBar, DeleteAll
@@ -3260,7 +3329,6 @@ ListReg(box, path, filename="")
     Menu, PopupMenu, Add, Add Value to Ignore List, GuiLVIgnoreCurrentValue
     Menu, PopupMenu, Add, Add Key to Ignore List, GuiLVIgnoreCurrentKey
     Menu, PopupMenu, Add, Add Sub-Key to Ignore List..., GuiLVIgnoreCurrentSubKey
-
 
     Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVRegMouseEventHandler vMyListView AltSubmit, Status|Key|Type|Value Name|Value Data|Key modified time|Sandbox Path
 
@@ -3313,7 +3381,7 @@ ListReg(box, path, filename="")
             {
                 idx := InStr(realkeypath, "\")
                 realrootkey := SubStr(realkeypath, 1, idx-1)
-                realsubkey  := SubStr(realkeypath, idx+1)
+                realsubkey := SubStr(realkeypath, idx+1)
                 if (keyvaluename == "@")
                     realkeyvaluename =
                 else
@@ -3352,7 +3420,7 @@ ListReg(box, path, filename="")
     msg = %msg% : # %nummodified% modified
     msg = %msg% , + %numadded% new
     msg = %msg% , - %numdeleted% deleted
-    msg = %msg%.  Double-click a key to open it in RegEdit.
+    msg = %msg%. Double-click a key to open it in RegEdit.
     GuiControl, , MainLabel, %msg%
 
     Progress, OFF
@@ -3401,7 +3469,7 @@ ListAutostarts(box, path)
     key = Sandbox_%username%_%box%\machine\Software\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKLM RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
-    
+
     key = Sandbox_%username%_%box%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKLM RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
@@ -3409,7 +3477,7 @@ ListAutostarts(box, path)
     key = Sandbox_%username%_%box%\user\current\Software\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKCU RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
-    
+
     key = Sandbox_%username%_%box%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKCU RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
@@ -3418,7 +3486,7 @@ ListAutostarts(box, path)
     key = Sandbox_%username%_%box%\machine\Software\Microsoft\Windows\CurrentVersion\Run
     location = HKLM Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
-    
+
     key = Sandbox_%username%_%box%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
     location = HKLM Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
@@ -3426,7 +3494,7 @@ ListAutostarts(box, path)
     key = Sandbox_%username%_%box%\user\current\Software\Microsoft\Windows\CurrentVersion\Run
     location = HKCU Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
-    
+
     key = Sandbox_%username%_%box%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
     location = HKCU Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
@@ -3446,10 +3514,10 @@ ListAutostarts(box, path)
     if (LVLastSize == "") {
         SysGet, mon, MonitorWorkArea
         if (monRight == "") {
-            width  := A_ScreenWidth - 300
+            width := A_ScreenWidth - 300
             height := A_ScreenHeight - 300
         } else {
-            width  := monRight - monLeft - 250
+            width := monRight - monLeft - 250
             height := monBottom - monTop - 250
         }
         if (width < 752)
@@ -3477,9 +3545,9 @@ ListAutostarts(box, path)
     Menu, FileMenu, Add, Copy Checkmarked Entries to Start Menu\Startup of Sandbox, GuiLVRegistryToStartMenuStartup
     Menu, FileMenu, Add
     Menu, FileMenu, Add, Explore Current User's Startup Menu (Unsandboxed), GuiLVRegistryExploreStartMenuCU
-    Menu, FileMenu, Add, Explore Current User's Startup Menu (Sandboxed),   GuiLVRegistryExploreStartMenuCS
-    Menu, FileMenu, Add, Explore All Users Startup Menu (Unsandboxed),      GuiLVRegistryExploreStartMenuAU
-    Menu, FileMenu, Add, Explore All Users Startup Menu (Sandboxed),        GuiLVRegistryExploreStartMenuAS
+    Menu, FileMenu, Add, Explore Current User's Startup Menu (Sandboxed), GuiLVRegistryExploreStartMenuCS
+    Menu, FileMenu, Add, Explore All Users Startup Menu (Unsandboxed), GuiLVRegistryExploreStartMenuAU
+    Menu, FileMenu, Add, Explore All Users Startup Menu (Sandboxed), GuiLVRegistryExploreStartMenuAS
 
     Menu, EditMenu, Add
     Menu, EditMenu, DeleteAll
@@ -3487,7 +3555,7 @@ ListAutostarts(box, path)
     Menu, EditMenu, Add, &Toggle All Checkmarks, GuiLVToggleAllCheckmarks
     Menu, EditMenu, Add, Toggle &Selected Checkmarks, GuiLVToggleSelected
     Menu, EditMenu, Add
-    Menu, EditMenu, Add, &Hide Selected Entries,  GuiLVHideSelected
+    Menu, EditMenu, Add, &Hide Selected Entries, GuiLVHideSelected
 
     Menu, LVMenuBar, Add
     Menu, LVMenuBar, DeleteAll
@@ -3502,8 +3570,7 @@ ListAutostarts(box, path)
     Menu, PopupMenu, Add
     Menu, PopupMenu, Add, Toggle Checkmark, GuiLVToggleCurrent
     Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, &Hide from this list,  GuiLVHideCurrent
-
+    Menu, PopupMenu, Add, &Hide from this list, GuiLVHideCurrent
 
     Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVAutostartMouseEventHandler vMyListView AltSubmit, Status|Program|Command|Location
 
@@ -3562,7 +3629,7 @@ ListAutostarts(box, path)
     else
         msg = %msg%
     msg = %msg% in the sandbox "%box%"
-    msg = %msg%.  Double-click an entry to run it.
+    msg = %msg%. Double-click an entry to run it.
     GuiControl, , MainLabel, %msg%
     Gui, Show, , %title% - Autostart programs in registry of box "%box%"
     GuiControl, +Redraw, MyListView
@@ -3592,34 +3659,34 @@ ListAutostarts(box, path)
 ;
 ; argument to read either in 64bit or 32bit mode added by r0lZ
 RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
-    HKEY_CLASSES_ROOT   := 0x80000000   ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER   := 0x80000001
-    HKEY_LOCAL_MACHINE  := 0x80000002
-    HKEY_USERS          := 0x80000003
+    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
+    HKEY_CURRENT_USER := 0x80000001
+    HKEY_LOCAL_MACHINE := 0x80000002
+    HKEY_USERS := 0x80000003
     HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA       := 0x80000006
+    HKEY_DYN_DATA := 0x80000006
 
     ; http://msdn.microsoft.com/en-us/library/ms724884.aspx
-    REG_NONE             := 0   ; unsupported
-    REG_SZ               := 1   ; supported
-    REG_EXPAND_SZ        := 2   ; supported
-    REG_BINARY           := 3   ; supported
-    REG_DWORD            := 4   ; supported
-    REG_DWORD_BIG_ENDIAN := 5   ; supported, but handled like REG_DWORD
-    REG_LINK             := 6
-    REG_MULTI_SZ         := 7   ; supported
-    REG_RESOURCE_LIST    := 8   ; UNSUPPORTED!
+    REG_NONE := 0 ; unsupported
+    REG_SZ := 1 ; supported
+    REG_EXPAND_SZ := 2 ; supported
+    REG_BINARY := 3 ; supported
+    REG_DWORD := 4 ; supported
+    REG_DWORD_BIG_ENDIAN := 5 ; supported, but handled like REG_DWORD
+    REG_LINK := 6
+    REG_MULTI_SZ := 7 ; supported
+    REG_RESOURCE_LIST := 8 ; UNSUPPORTED!
     ; added by r0lZ
     REG_FULL_RESOURCE_DESCRIPTOR := 9 ; UNSUPPORTED!
     REG_RESOURCE_REQUIREMENTS_LIST := 10 ; UNSUPPORTED!
-    REG_QWORD            := 11  ; supported (but not in unsigned mode)
+    REG_QWORD := 11 ; supported (but not in unsigned mode)
 
-    KEY_QUERY_VALUE := 0x0001   ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100   ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
+    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
+    KEY_WOW64_64KEY := 0x0100 ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
     KEY_WOW64_32KEY := 0x0200
 
-    myhKey := %sRootKey%      ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, {      ; Error - Invalid root key
+    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
+    IfEqual,myhKey,, { ; Error - Invalid root key
         ErrorLevel := 3
         return ""
     }
@@ -3630,25 +3697,25 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
     else
         RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey)   ; open key
+    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey) ; open key
     If (hKey==0) {
         ErrorLevel := 4
         return ""
     }
-    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0)      ; get value type
+    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0) ; get value type
 
     If (sValueType == REG_SZ or sValueType == REG_EXPAND_SZ) {
         VarSetCapacity(sValue, vValueSize:=DataMaxSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sValue, "uint*", vValueSize)   ; get string or string-exp
+        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sValue, "uint*", vValueSize) ; get string or string-exp
     } Else If (sValueType == REG_DWORD or sValueType == REG_DWORD_BIG_ENDIAN) {
         VarSetCapacity(sValue, vValueSize:=4)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint*", sValue, "uint*", vValueSize)   ; get dword
+        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint*", sValue, "uint*", vValueSize) ; get dword
     } Else If (sValueType == REG_QWORD) {
-        VarSetCapacity(sValue, vValueSize:=8)   ; added by r0lZ
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint64*", sValue, "uint*", vValueSize)   ; get qword
+        VarSetCapacity(sValue, vValueSize:=8) ; added by r0lZ
+        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint64*", sValue, "uint*", vValueSize) ; get qword
     } Else If (sValueType == REG_MULTI_SZ) {
         VarSetCapacity(sTmp, vValueSize:=DataMaxSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sTmp, "uint*", vValueSize)   ; get string-mult
+        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sTmp, "uint*", vValueSize) ; get string-mult
         if (as_hex)
         {
             sValue := ""
@@ -3670,7 +3737,7 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
         }
     } Else If (sValueType == REG_BINARY) {
         VarSetCapacity(sTmp, vValueSize:=DataMaxSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sTmp, "uint*", vValueSize)   ; get binary
+        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sTmp, "uint*", vValueSize) ; get binary
         sValue := ""
         SetFormat, integer, H
         Loop %vValueSize% {
@@ -3680,7 +3747,7 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
         SetFormat, integer, d
     } Else If (sValueType == REG_NONE) {
         sValue := ""
-    } Else {            ; value does not exist or unsupported value type
+    } Else { ; value does not exist or unsupported value type
         DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
         ErrorLevel := 1
         return ""
@@ -3690,36 +3757,36 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
 }
 
 RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
-    HKEY_CLASSES_ROOT   := 0x80000000   ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER   := 0x80000001
-    HKEY_LOCAL_MACHINE  := 0x80000002
-    HKEY_USERS          := 0x80000003
+    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
+    HKEY_CURRENT_USER := 0x80000001
+    HKEY_LOCAL_MACHINE := 0x80000002
+    HKEY_USERS := 0x80000003
     HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA       := 0x80000006
+    HKEY_DYN_DATA := 0x80000006
 
-    REG_NONE             := 0   ; http://msdn.microsoft.com/en-us/library/ms724884.aspx
-    REG_SZ               := 1
-    REG_EXPAND_SZ        := 2
-    REG_BINARY           := 3
-    REG_DWORD            := 4
+    REG_NONE := 0 ; http://msdn.microsoft.com/en-us/library/ms724884.aspx
+    REG_SZ := 1
+    REG_EXPAND_SZ := 2
+    REG_BINARY := 3
+    REG_DWORD := 4
     REG_DWORD_BIG_ENDIAN := 5
-    REG_LINK             := 6
-    REG_MULTI_SZ         := 7
-    REG_RESOURCE_LIST    := 8
+    REG_LINK := 6
+    REG_MULTI_SZ := 7
+    REG_RESOURCE_LIST := 8
 
     REG_FULL_RESOURCE_DESCRIPTOR := 9
     REG_RESOURCE_REQUIREMENTS_LIST := 10
-    REG_QWORD            := 11
+    REG_QWORD := 11
 
     ; Unofficial REG type used by Sandboxie to "delete" an existing key in the sandbox registry.
-    REG_SB_DELETED       := 0x6B757A74
+    REG_SB_DELETED := 0x6B757A74
 
-    KEY_QUERY_VALUE := 0x0001   ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100   ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
+    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
+    KEY_WOW64_64KEY := 0x0100 ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
     KEY_WOW64_32KEY := 0x0200
 
-    myhKey := %sRootKey%      ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, {      ; Error - Invalid root key
+    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
+    IfEqual,myhKey,, { ; Error - Invalid root key
         ErrorLevel := 3
         return ""
     }
@@ -3729,12 +3796,12 @@ RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
     else
         RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey)   ; open key
+    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey) ; open key
     If (hKey==0) {
         ErrorLevel := 4
         return ""
     }
-    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0)      ; get value type
+    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0) ; get value type
 
     If (sValueType == REG_NONE)
         keytype := "REG_NONE"
@@ -3762,7 +3829,7 @@ RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
         keytype := "REG_QWORD"
     Else If (sValueType == REG_SB_DELETED)
         keytype := "REG_SB_DELETED"
-    Else            ; value does not exist or unsupported value type
+    Else ; value does not exist or unsupported value type
         keytype := ""
 
     DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
@@ -3770,16 +3837,16 @@ RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
 }
 
 RegEnumKey(sRootKey, sKeyName, x64mode=true) {
-    HKEY_CLASSES_ROOT   := 0x80000000   ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER   := 0x80000001
-    HKEY_LOCAL_MACHINE  := 0x80000002
-    HKEY_USERS          := 0x80000003
+    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
+    HKEY_CURRENT_USER := 0x80000001
+    HKEY_LOCAL_MACHINE := 0x80000002
+    HKEY_USERS := 0x80000003
     HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA       := 0x80000006
+    HKEY_DYN_DATA := 0x80000006
     HKCR := HKEY_CLASSES_ROOT
     HKCU := HKEY_CURRENT_USER
     HKLM := HKEY_LOCAL_MACHINE
-    HKU  := HKEY_USERS
+    HKU := HKEY_USERS
     HKCC := HKEY_CURRENT_CONFIG
 
     KEY_ENUMERATE_SUB_KEYS := 0x0008
@@ -3788,8 +3855,8 @@ RegEnumKey(sRootKey, sKeyName, x64mode=true) {
 
     ERROR_NO_MORE_ITEMS = 259
 
-    myhKey := %sRootKey%      ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, {      ; Error - Invalid root key
+    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
+    IfEqual,myhKey,, { ; Error - Invalid root key
         ErrorLevel := 3
         return ""
     }
@@ -3833,28 +3900,27 @@ RegEnumKey(sRootKey, sKeyName, x64mode=true) {
     return %names%
 }
 
-
 RegEnumValue(sRootKey, sKeyName, x64mode=true) {
-    HKEY_CLASSES_ROOT   := 0x80000000   ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER   := 0x80000001
-    HKEY_LOCAL_MACHINE  := 0x80000002
-    HKEY_USERS          := 0x80000003
+    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
+    HKEY_CURRENT_USER := 0x80000001
+    HKEY_LOCAL_MACHINE := 0x80000002
+    HKEY_USERS := 0x80000003
     HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA       := 0x80000006
+    HKEY_DYN_DATA := 0x80000006
     HKCR := HKEY_CLASSES_ROOT
     HKCU := HKEY_CURRENT_USER
     HKLM := HKEY_LOCAL_MACHINE
-    HKU  := HKEY_USERS
+    HKU := HKEY_USERS
     HKCC := HKEY_CURRENT_CONFIG
 
-    KEY_QUERY_VALUE := 0x0001   ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
+    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
     KEY_WOW64_64KEY := 0x0100
     KEY_WOW64_32KEY := 0x0200
 
     ERROR_NO_MORE_ITEMS = 259
 
-    myhKey := %sRootKey%      ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, {      ; Error - Invalid root key
+    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
+    IfEqual,myhKey,, { ; Error - Invalid root key
         ErrorLevel := 3
         return ""
     }
@@ -3900,7 +3966,7 @@ RegEnumValue(sRootKey, sKeyName, x64mode=true) {
     return %names%
 }
 
-ExtractData(pointer) {  ; http://www.autohotkey.com/forum/viewtopic.php?p=91578#91578 SKAN
+ExtractData(pointer) { ; http://www.autohotkey.com/forum/viewtopic.php?p=91578#91578 SKAN
     Loop {
         errorLevel := ( pointer+(A_Index-1) )
         Asc := *( errorLevel )
@@ -3928,7 +3994,7 @@ hex2dec(hex)
 dec2hex(dec,minlength=2)
 {
     oldformat := A_FormatInteger
-    SetFormat, integer, H   ; H = upper case, h = lower case
+    SetFormat, integer, H ; H = upper case, h = lower case
     dec += 0 ; Convert from decimal to hex.
     SetFormat, integer, %oldformat%
     hex := substr(dec,3)
@@ -4017,7 +4083,7 @@ str2hexstr(str,replacenlwithzero=false)
 {
     out =
     oldformat := A_FormatInteger
-    SetFormat, integer, H   ; H = upper case, h = lower case
+    SetFormat, integer, H ; H = upper case, h = lower case
     ; TODO: convert really to UTF-16
     loop, Parse, str
     {
@@ -4036,7 +4102,6 @@ str2hexstr(str,replacenlwithzero=false)
     SetFormat, integer, %oldformat%
     return %out%
 }
-
 
 ; mode = hide (just temporarly hide entries: do not
 Return
@@ -4078,13 +4143,13 @@ LVIgnoreSelected(mode)
         else if (mode == "values")
         {
             LV_GetText(item, A_LoopField, pathcol)
-            LV_GetText(val,  A_LoopField, 4)
+            LV_GetText(val, A_LoopField, 4)
             item = %item%\%val%
         }
         else
         {
             LV_GetText(item, A_LoopField, pathcol)
-            LV_GetText(val,  A_LoopField, 2)
+            LV_GetText(val, A_LoopField, 2)
             item = %item%\%val%
         }
         AddIgnoreItem(mode, item)
@@ -4292,10 +4357,9 @@ LVIgnoreSpecific(row, mode)
     Return
 }
 
-
 IsIgnored(mode, ignoredList, checkpath, item="")
 {
-    StringReplace, checkpath, checkpath, :, ., 1 
+    StringReplace, checkpath, checkpath, :, ., 1
     if IgnoredList =
         Return 0
 
@@ -4322,7 +4386,6 @@ IsIgnored(mode, ignoredList, checkpath, item="")
     Return 0
 }
 
-
 ; ###################################################################################################
 ; Menu handlers
 ; ###################################################################################################
@@ -4333,7 +4396,7 @@ RunProgramMenuHandler:
     ; TODO: handle shortcuts to .URL files
     if (GetKeyState("Control", "P")) {
         iconfile := menuicons[A_ThisMenu,A_ThisMenuItem,"file"]
-        iconnum  := menuicons[A_ThisMenu,A_ThisMenuItem,"num"]
+        iconnum := menuicons[A_ThisMenu,A_ThisMenuItem,"num"]
         if (iconnum < 0)
             iconnum := IndexOfIconResource(iconfile, iconnum)
         createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
@@ -4371,7 +4434,7 @@ NewShortcutMenuHandler(box)
 RunDialogMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Run dialog","","/box:" box " run_dialog","Launch Sandboxie's Run Dialog in sandbox " box,SandMan,1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Run dialog","","/box:" box " run_dialog","Launch Sandboxie's Run Dialog in sandbox " box,SbieAgentResMain,SbieAgentResMainId,1, box)
     else
         run, %start% /box:%box% run_dialog, , UseErrorLevel
 Return
@@ -4379,7 +4442,7 @@ Return
 StartMenuMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Start Menu","","/box:" box " start_menu","Launch Sandboxie's Start Menu in sandbox " box,SandMan,1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Sandboxie's Start Menu","","/box:" box " start_menu","Launch Sandboxie's Start Menu in sandbox " box,SbieAgentResMain,SbieAgentResMainId,1, box)
     else
         run, %start% /box:%box% start_menu, , UseErrorLevel
 Return
@@ -4389,7 +4452,7 @@ SCmdMenuHandler:
     if (GetKeyState("Control", "P"))
     {
         args = /box:%box% %comspec% /k "cd /d %systemdrive%\"
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxed Command Prompt","",args,"Sandboxed Command Prompt in sandbox " box,A_WinDir "\system32\cmd.exe", 1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Sandboxed Command Prompt","",args,"Sandboxed Command Prompt in sandbox " box,cmdRes, 1,1, box)
     }
     else
     {
@@ -4407,7 +4470,7 @@ UCmdMenuHandler:
     if (GetKeyState("Control", "P"))
     {
         args = /k "cd /d "%path%""
-        writeUnsandboxedShortcutFileToDesktop(comspec,"Unsandboxed Command Prompt in sandbox " box,path,args,"Unsandboxed Command Prompt in sandbox " box,A_WinDir "\system32\cmd.exe",1,1)
+        writeUnsandboxedShortcutFileToDesktop(comspec,"Unsandboxed Command Prompt in sandbox " box,path,args,"Unsandboxed Command Prompt in sandbox " box,cmdRes,1,1)
     }
     else
         run, %comspec% /k "cd /d "%path%"", , UseErrorLevel
@@ -4416,14 +4479,14 @@ Return
 SRegEditMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxed Registry Editor","","/box:" box " regedit.exe","Launch RegEdit in sandbox " box, "regedit.exe",1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Sandboxed Registry Editor","","/box:" box " " regeditImg,"Launch RegEdit in sandbox " box, regeditRes,1,1, box)
     else
-        run, %start% /box:%box% RegEdit.exe, , UseErrorLevel
+        run, %start% /box:%box% %regeditImg%, , UseErrorLevel
 Return
 
 URegEditMenuHandler:
     if (GetKeyState("Control", "P"))
-        MsgBox 48, %title%, Since something must be running in the box to analyse its registry`, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported.  Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported`, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.
+        MsgBox 48, %title%, Since something must be running in the box to analyse its registry`, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported`, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.
     else
     {
         box := getBoxFromMenu()
@@ -4457,45 +4520,52 @@ DeleteBoxMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P")) {
         writeUnsandboxedShortcutFileToDesktop(start,"! Delete sandbox " box " !","","/box:" box " delete_sandbox","Deletes the sandbox " box,shell32,132,1)
-        msgbox, 48, %title%, Warning!  Unlike when Delete Sandbox is run from the SandboxToys menu`, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!
+        msgbox, 48, %title%, Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu`, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!
     } else {
         msgbox, 289, %title%, Are you sure you want to delete the sandbox "%box%"?
         ifMsgbox, Cancel, Return
-        runWait, %start% /box:%box% delete_sandbox, , UseErrorLevel
+            runWait, %start% /box:%box% delete_sandbox, , UseErrorLevel
     }
 Return
 
 SExploreMenuHandler:
     box := getBoxFromMenu()
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Explore sandbox " box " (Sandboxed)","","/box:" box " explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}","Launches Explorer sandboxed in sandbox " box,"explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",1,1, box)
+        writeSandboxedShortcutFileToDesktop(start,"Explore sandbox " box " (Sandboxed)",sbdir,"/box:" box " " explorer,"Launches Explorer sandboxed in sandbox " box,explorerRes,1,1, box)
     else
-        run, %start% /box:%box% explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}, , UseErrorLevel
+        run, %start% /box:%box% %explorer%, , , UseErrorLevel
 Return
 
 UExploreMenuHandler:
     box := getBoxFromMenu()
     path := sandboxes_array[box,"path"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(WinDir "\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}","Explore sandbox " box " (Unsandboxed)",path,A_Quotes path A_Quotes,"Launches Explorer unsandboxed in sandbox " box,"explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",1,1)
+        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed)",path,explorerArgE "\" A_Quotes path A_Quotes,"Launches Explorer unsandboxed in sandbox " box,explorerRes,1,1)
     else
-        run, explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D} "%path%", , UseErrorLevel
+        run, %explorer%\%path%, , , UseErrorLevel
 Return
 
 URExploreMenuHandler:
     box := getBoxFromMenu()
     path := sandboxes_array[box,"path"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(WinDir "\explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}","Explore sandbox " box " (Unsandboxed, restricted)",path,"/root`,"A_Quotes path A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,"explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",1,1)
+        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed, restricted)",path,explorerArgER "\" A_Quotes path A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,explorerRes,1,1)
     else
-        run, explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D} /root`,"%path%", , UseErrorLevel
+        run, %explorerERArg%\%path%, , , UseErrorLevel
 Return
 
-LaunchSandManMenuHandler:
-    if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(SandMan,"Sandboxie Manager","","","Launches Sandboxie Manager","","",1)
-    else
-        run, %SandMan%, , UseErrorLevel
+LaunchSbieAgentMenuHandler:
+    if (GetKeyState("Control", "P")) {
+        if (SbieAgent == SbieMngr) {
+            writeUnsandboxedShortcutFileToDesktop(SbieAgent,SbieAgentResMainText,sbdir,"","Launch " SbieAgentResMainText,"","",1)
+        }
+        if (SbieAgent == SbieCtrl) {
+            writeUnsandboxedShortcutFileToDesktop(SbieAgent,SbieAgentResMainText,sbdir,"","Launch " SbieAgentResMainText,"","",1)
+        }
+    }
+    else {
+        run, %SbieAgent%, , UseErrorLevel
+    }
 Return
 
 ListFilesMenuHandler:
@@ -4521,7 +4591,7 @@ WatchRegMenuHandler:
     path := sandboxes_array[box,"path"]
     comparefile = %temp%\sandbox_%username%_%box%_reg_compare.cfg
     MakeRegConfig(box, comparefile)
-    MsgBox, 38, %title%, The current state of the registry of sandbox "%box%" has been saved.`n`nYou can now work in the box.  When finished`, click Continue, and the new state of the registry will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export them as a REG file if you wish.`n`nNote that the registry keys and the deleted registry values will not be listed.  However, a deleted key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
+    MsgBox, 38, %title%, The current state of the registry of sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the registry will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export them as a REG file if you wish.`n`nNote that the registry keys and the deleted registry values will not be listed. However, a deleted key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
     ifMsgBox Continue
         ListReg(box, path, comparefile)
     ifMsgBox TryAgain
@@ -4533,7 +4603,7 @@ WatchFilesMenuHandler:
     path := sandboxes_array[box,"path"]
     comparefile = %temp%\sandbox_%username%_%box%_files_compare.cfg
     MakeFilesConfig(box, comparefile, path)
-    MsgBox, 38, %title%, The current state of the files in sandbox "%box%" has been saved.`n`nYou can now work in the box.  When finished`, click Continue, and the new state of the files will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export the modified or new files if you wish.`n`nNote that the folders and the deleted files will not be listed.  However, a deleted folder or file will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
+    MsgBox, 38, %title%, The current state of the files in sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the files will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export the modified or new files if you wish.`n`nNote that the folders and the deleted files will not be listed. However, a deleted folder or file will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
     ifMsgBox Continue
         ListFiles(box, path, comparefile)
     ifMsgBox TryAgain
@@ -4547,7 +4617,7 @@ WatchFilesRegMenuHandler:
     MakeFilesConfig(box, comparefile1, path)
     comparefile2 = %temp%\sandbox_%username%_%box%_reg_compare.cfg
     MakeRegConfig(box, comparefile2)
-    MsgBox, 38, %title%, The current state of the files and registry of sandbox "%box%" has been saved.`n`nYou can now work in the box.  When finished`, click Continue, and the new state of the files and registry will be compared with the old state`, and the result displayed so that you can analyse the changes.`n`nNote that the folders, the deleted files, the registry keys and the deleted registry values will not be listed.  However, a deleted folder, file, key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
+    MsgBox, 38, %title%, The current state of the files and registry of sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the files and registry will be compared with the old state`, and the result displayed so that you can analyse the changes.`n`nNote that the folders, the deleted files, the registry keys and the deleted registry values will not be listed. However, a deleted folder, file, key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
     ifMsgBox Continue
     {
         ListFiles(box, path, comparefile1)
@@ -4556,7 +4626,6 @@ WatchFilesRegMenuHandler:
     ifMsgBox TryAgain
         GoSub, WatchFilesRegMenuHandler
 Return
-
 
 SetupMenuMenuHandler1:
     if (largeiconsize > 16) {
@@ -4599,11 +4668,10 @@ SetupMenuMenuHandler4:
     IniWrite, %includeboxnames%, %sbtini%, AutoConfig, IncludeBoxNames
 Return
 
-
 MainHelpMenuHandler:
-    msgbox, 64, %title%, %title%`n`nSandboxToys2 Main Menu usage:`n`nThe main menu displays the shortcuts present in the Start Menu, Desktop and QuickLaunch folders of your sandboxes.  Just select any of these shortcuts to launch the program, sandboxed in the right box.  Of course, there must be programs installed in your sandboxes, or the menus will not be displayed.`n`nNote also that you can create easily a "sandboxed shortcut" on your real destkop to launch any program displayed in the SandboxToys menu even easier!  Just Control-Click on the menu entry, and the shortcut will be created on your desktop.  (Note: This work also with most icons of the Explore, Registry and Tools menu.)`n`nSimilarly, Shift-clicking on a menu icon opens the folder containing the file.  The Windows explorer is run sandboxed.`n`nSandboxToys2 offers also some tools in its Explore, Registry and Tools Menus.  They should be self-explanatory.`nUnlike the method explained above, Tools -> New Sandboxed Shortcut creates a sandboxed shortcut on your desktop to any unsandboxed file located in your real discs.`n`nThe User Tools menu is a configurable menu, that can contain almost anything you want.  To use it, place a (normal or sandboxed) shortcut in the "%usertoolsdir%" folder, and it will be displayed in the User Tools menu.  Note that the tools launched via that menu are run unsandboxed, unless the shortcut itself is sandboxed (ie it uses Sandboxie's Start.exe to launch the command).  You can create sub-menus in the User Tools menu by placing shortcuts in folders within the "%usertoolsdir%" folder.
+    msgbox, 64, %title%, %title%`n`nSandboxToys2 Main Menu usage:`n`nThe main menu displays the shortcuts present in the Start Menu, Desktop and QuickLaunch folders of your sandboxes. Just select any of these shortcuts to launch the program, sandboxed in the right box. Of course, there must be programs installed in your sandboxes, or the menus will not be displayed.`n`nNote also that you can create easily a "sandboxed shortcut" on your real destkop to launch any program displayed in the SandboxToys Menu even easier! Just Control-Click on the menu entry, and the shortcut will be created on your desktop. (Note: This work also with most icons of the Explore, Registry and Tools menu.)`n`nSimilarly, Shift-clicking on a menu icon opens the folder containing the file. The Windows explorer is run sandboxed.`n`nSandboxToys2 offers also some tools in its Explore, Registry and Tools Menus. They should be self-explanatory.`nUnlike the method explained above, Tools -> New Sandboxed Shortcut creates a sandboxed shortcut on your desktop to any unsandboxed file located in your real discs.`n`nThe User Tools menu is a configurable menu, that can contain almost anything you want. To use it, place a (normal or sandboxed) shortcut in the "%usertoolsdir%" folder, and it will be displayed in the User Tools menu. Note that the tools launched via that menu are run unsandboxed, unless the shortcut itself is sandboxed (ie it uses Sandboxie's Start.exe to launch the command). You can create sub-menus in the User Tools menu by placing shortcuts in folders within the "%usertoolsdir%" folder.
 CmdLineHelp:
-    msgbox, 64, %title%, %title%`n`nSandboxToys2 Command Line usage:`n`n> SandboxToys2 [/box:boxname]`nWithout arguments, SandboxToys2 opens its main menu, waits for a selection, execute it and then exits immediately.`nThe optional argument /box:boxname can be used to restrict the menu to a single sandbox.`n`n> SandboxToys2 [/box:boxname] /tray`nSandboxToys2 stays resident in the tray.`nClick the tray icon to launch the main SandboxToys menu.`nRight-click the tray icon to exit SandboxToys.`n`n> SandboxToys2 [/box:boxname] "existing file, folder or shortcut"`nCreates a new sandboxed shortcut on the desktop.  If the /box:boxname argument is not present, you will need to select the target box in a menu.`nIt is recommended to create a shortcut to SandboxToys in your SendTo folder to easily create sandboxed shortcuts to any file or folder.`nYour SendTo folder should be:`n"%appdata%\Microsoft\Windows\SendTo"`n`nNote: The SandboxToys2.ini file holds the settings of SandboxToys.  It should be in "%APPDATA%\SandboxToys2\" or in the same folder than the SandboxToys2 executable.  The name of the INI file is the same than the name of the SandboxToys2 executable file, so if you rename SandboxToys2.exe, you should rename also SandboxToys2.ini.`nSimilarly, the name of the "SandboxToys2_UserTools" folder depends of the name of SandboxToys2.exe, and it should be also in your APPDATA folder or in the SandboxToys2.exe folder.`nThis allows you to run several instances of SandboxToys2 with different configurations and/or user tools.
+    msgbox, 64, %title%, %title%`n`nSandboxToys2 Command Line usage:`n`n> SandboxToys2 [/box:boxname]`nWithout arguments, SandboxToys2 opens its main menu, waits for a selection, execute it and then exits immediately.`nThe optional argument /box:boxname can be used to restrict the menu to a single sandbox.`n`n> SandboxToys2 [/box:boxname] /tray`nSandboxToys2 stays resident in the tray.`nClick the tray icon to launch the main SandboxToys Menu.`nRight-click the tray icon to exit SandboxToys.`n`n> SandboxToys2 [/box:boxname] "existing file, folder or shortcut"`nCreates a new sandboxed shortcut on the desktop. If the /box:boxname argument is not present, you will need to select the target box in a menu.`nIt is recommended to create a shortcut to SandboxToys in your SendTo folder to easily create sandboxed shortcuts to any file or folder.`nYour SendTo folder should be:`n"%appdata%\Microsoft\Windows\SendTo"`n`nNote: The SandboxToys2.ini file holds the settings of SandboxToys. It should be in "%APPDATA%\SandboxToys2\" or in the same folder than the SandboxToys2 executable. The name of the INI file is the same than the name of the SandboxToys2 executable file, so if you rename SandboxToys2.exe, you should rename also SandboxToys2.ini.`nSimilarly, the name of the "SandboxToys2_UserTools" folder depends of the name of SandboxToys2.exe, and it should be also in your APPDATA folder or in the SandboxToys2.exe folder.`nThis allows you to run several instances of SandboxToys2 with different configurations and/or user tools.
 Return
 
 DummyMenuHandler:
