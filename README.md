@@ -1,5 +1,5 @@
 # SandboxToys2
-SandboxToys2 by r0lZ updated by blap
+SandboxToys2 by r0lZ updated by blap and others.
 
 I just updated the original file by r0lZ to be more compatible to recent files of Sandboxie Plus (https://github.com/sandboxie-plus/Sandboxie).
 
