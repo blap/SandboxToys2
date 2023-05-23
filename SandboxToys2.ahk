@@ -1,8 +1,8 @@
-#UseHook off
-#persistent
-#singleinstance on
+#UseHook Off
+#Persistent
+#SingleInstance Ignore
 
-version = 2.5
+version = 2.5.1
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
