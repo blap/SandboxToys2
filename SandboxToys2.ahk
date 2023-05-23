@@ -4,7 +4,7 @@
 
 version = 2.5.1
 ; SandboxToys: Main Menu
-; Author: r0lZ updated by blap
+; Author: r0lZ updated by blap and others
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
 ; Tested under Win10 x64 with Sandboxie-Plus v1.9.3.
 ;
