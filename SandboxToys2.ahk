@@ -2,7 +2,7 @@
 #Persistent
 #SingleInstance Ignore
 
-version = 2.5.1
+version = 2.5.2
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap and others
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
@@ -207,19 +207,27 @@ else {
 }
 
 ; find Sandboxie's INI file in %A_WinDir% and in Sandboxie's install dir
-ini = %A_WinDir%\Sandboxie.ini
-if (! FileExist(ini))
-{
-    ini = %sbdir%\Sandboxie.ini
+RegRead, IniPathO, HKLM\SYSTEM\CurrentControlSet\Services\SbieDrv, IniPath ; check custom config location in registry
+IniPath = %IniPathO%
+if ((IniPath != "") && (SubStr(IniPath, 1, 4) == "\??\") && (SubStr(IniPath, 8) != "") && (!FileExist(SubStr(IniPath, 5)))) {
+    IniPath := (SubStr(IniPath, 5))
+    ini = %IniPath%
+}
+else {
+    IniPath =
+    ini = %A_WinDir%\Sandboxie.ini
     if (! FileExist(ini))
     {
-        MsgBox, 16, %title%, Can't find Sandboxie.ini.
-        ExitApp
+        ini = %sbdir%\Sandboxie.ini
+        if (! FileExist(ini))
+        {
+            MsgBox, 16, %title%, Can't find Sandboxie.ini.
+            ExitApp
+        }
     }
 }
-
-; get current Sandboxes installation path in the INI file.
-; If it is not defined, assumes the default path.
+; get current Sandboxes installation bpath in the INI file.
+; If it is not defined, assumes the default bpath.
 IniRead, sandboxes_path, %ini%, GlobalSettings, FileRootPath, %systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%
 sandboxes_path := expandEnvVars(sandboxes_path)
 
@@ -292,6 +300,15 @@ if (! FileExist(regconfig))
     {
         b := sandboxes_array[A_Index,"name"]
         exist := sandboxes_array[b,"exist"]
+        benabled := sandboxes_array[b,"Enabled"]
+        bneverdelete := sandboxes_array[b,"NeverDelete"]
+        buseimagefile := sandboxes_array[b,"UseImageFile"]
+        buseramdisk := sandboxes_array[b,"UseRamDisk"]
+
+        if (benabled != 1  || bneverdelete != 0 || buseimagefile != 0 || buseramdisk != 0) { ; Skip disabled, neverdelete, useimagefile, or useramdisk boxes
+            Continue
+        }
+
         if (NOT exist)
         {
             emptybox := b
@@ -312,6 +329,7 @@ if (! FileExist(regconfig))
         msg = %msg% to delete a sandbox, and launch SandboxToys again. You should see
         msg = %msg% this dialog again.
         MsgBox, 64, %title%, %msg%
+        runWait, %start% /box:%emptybox% /terminate, , UseErrorLevel
         runWait, %start% /box:%emptybox% delete_sandbox, , UseErrorLevel
     }
 }
@@ -374,14 +392,20 @@ BuildMainMenu:
     loop, %numboxes%
     {
         box := sandboxes_array[A_Index,"name"]
-        boxpath := sandboxes_array[box,"path"]
+        boxpath := sandboxes_array[box,"bpath"]
         boxexist := sandboxes_array[box,"exist"]
         dropadminrights := sandboxes_array[box,"DropAdminRights"]
+        benabled := sandboxes_array[box,"Enabled"]
+        if (!benabled) { ; Hide disabled boxes from box list
+            Continue
+        }
 
-        if (boxexist)
+        if (boxexist) {
             boxlabel = %box%
-        else
+        }
+        else {
             boxlabel = %box% (empty)
+        }
 
         if (singleboxmode && box != singlebox)
             continue
@@ -420,7 +444,7 @@ BuildMainMenu:
 
         added_menus = 0
         if (boxexist) {
-            ; build path to the Public (All Users) directory (and removes the ":")
+            ; build bpath to the Public (All Users) directory (and removes the ":")
             public_dir = %public%
             if (public_dir != "") {
                 idx := InStr(public_dir, ":")
@@ -713,7 +737,7 @@ Return
 ; Fills the object with the array:
 ;  Object[0] = number of sandboxes.
 ;  Object[N,"name"] = sandbox N name.
-;  Object["boxname","path"] = complete, absolute path to the sandbox folder.
+;  Object["boxname","bpath"] = complete, absolute bpath to the sandbox folder.
 ;  Object["boxname","exist"] = flag: true if the sandbox is not empty at the time of the check.
 ;  Object["boxname","DropAdminRights"] = flag: state of the DropAdminRights flag in the INI.
 ; Returns the number of sandboxes.
@@ -721,6 +745,9 @@ getSandboxesArray(array,ini)
 {
     IniRead, sandboxes_path, %ini%, GlobalSettings, FileRootPath, %systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%
     sandboxes_path := expandEnvVars(sandboxes_path)
+
+    IniRead, sandboxeskey_path, %ini%, GlobalSettings, KeyRootPath, \REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%
+    sandboxeskey_path := expandEnvVars(sandboxeskey_path)
 
     ; Requires AHK_Lw
     old_encoding = %A_FileEncoding%
@@ -742,21 +769,89 @@ getSandboxesArray(array,ini)
     FileEncoding, %old_encoding%
 
     ; fills the array
-    Loop, Parse, boxes, CSV
+      Loop, Parse, boxes, CSV
     {
         array[0] := A_Index
         array[A_Index,"name"] := A_LoopField
-        StringReplace, path, sandboxes_path, `%SANDBOX`%, %A_LoopField%, All
-        array[A_LoopField,"path"] := path
-        test = %path%\RegHive
+        IniRead, bfilerootpath, %ini%, %A_LoopField%, FileRootPath, %sandboxes_path%
+        StringReplace, bfilerootpathR, bfilerootpath, %username%, `%USER`%
+        if (bfilerootpath != sandboxes_path) {
+            array[A_LoopField,"FileRootPath"] := bfilerootpath
+            sandboxes_path := expandEnvVars(bfilerootpath)
+        }
+        else {
+            IniRead, sandboxes_path, %ini%, GlobalSettings, FileRootPath, %systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%
+            array[A_LoopField,"FileRootPath"] := sandboxes_path
+            sandboxes_path := expandEnvVars(sandboxes_path)
+        }
+        StringReplace, bpath, sandboxes_path, `%SANDBOX`%, %A_LoopField%
+        array[A_LoopField,"bpath"] := bpath
+
+        IniRead, bkeyrootpath, %ini%, %A_LoopField%, KeyRootPath, %sandboxeskey_path%
+        StringReplace, bkeyrootpathR, bkeyrootpath, %username%, `%USER`%
+        if (bkeyrootpath != sandboxeskey_path) {
+            array[A_LoopField,"KeyRootPath"] := bkeyrootpath
+            sandboxeskey_path := expandEnvVars(bkeyrootpath)
+            regspos := InStr(bkeyrootpathR, "\", false, 0, 1)
+            regepos := InStr(bkeyrootpathR, "%", false, 1, 1)
+            regstr := SubStr(bkeyrootpathR, regspos+1, regepos-regspos-2)
+            array[A_LoopField,"RegStr_"] := regstr
+        }
+        else {
+            IniRead, sandboxeskey_path, %ini%, GlobalSettings, KeyRootPath, \REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%
+            array[A_LoopField,"KeyRootPath"] := sandboxeskey_path
+            regspos := InStr(sandboxeskey_path, "\", false, 0, 1)
+            regepos := InStr(sandboxeskey_path, "%", false, 1, 1)
+            regstr := SubStr(sandboxeskey_path, regspos+1, regepos-regspos-2)
+            array[A_LoopField,"RegStr_"] := regstr
+            sandboxeskey_path := expandEnvVars(sandboxeskey_path)
+        }
+        StringReplace, bkey, sandboxeskey_path, `%SANDBOX`%, %A_LoopField%
+        array[A_LoopField,"bkey"] := bkey
+
+        test = %bpath%\RegHive
         array[A_LoopField,"exist"] := FileExist(test)
         ; since running the registry editor works with elevated privileges,
         ; checks if the box has DropAdminRights=y in the INI
         IniRead, dropadminrights, %ini%, %A_LoopField%, DropAdminRights, n
-        if (dropadminrights == "y")
+        if (dropadminrights == "y") {
             array[A_LoopField,"DropAdminRights"] := 1
-        else
+        }
+        else {
             array[A_LoopField,"DropAdminRights"] := 0
+        }
+        ; checks if the box has Enabled=n in the INI
+        IniRead, benabled, %ini%, %A_LoopField%, Enabled, y
+        if (benabled == "n") {
+            array[A_LoopField,"Enabled"] := 0
+        }
+        else {
+            array[A_LoopField,"Enabled"] := 1
+        }
+        ; checks if the box has NeverDelete=y in the INI
+        IniRead, bneverdelete, %ini%, %A_LoopField%, NeverDelete, n
+        if (bneverdelete == "y") {
+            array[A_LoopField,"NeverDelete"] := 1
+        }
+        else {
+            array[A_LoopField,"NeverDelete"] := 0
+        }
+        ; checks if the box has UseImageFile=y in the INI
+        IniRead, buseimagefile, %ini%, %A_LoopField%, UseImageFile, n
+        if (buseimagefile == "y") {
+            array[A_LoopField,"UseImageFile"] := 1
+        }
+        else {
+            array[A_LoopField,"UseImageFile"] := 0
+        }
+        ; checks if the box has UseRamDisk=y in the INI
+        IniRead, buseramdisk, %ini%, %A_LoopField%, UseRamDisk, n
+        if (buseramdisk == "y") {
+            array[A_LoopField,"UseRamDisk"] := 1
+        }
+        else {
+            array[A_LoopField,"UseRamDisk"] := 0
+        }
     }
     Return % array[0]
 }
@@ -849,7 +944,7 @@ getFilenames(directory, includeFolders)
 }
 
 ; Build a menu with the files from a specific directory
-buildProgramsMenu1(box, menuname, path)
+buildProgramsMenu1(box, menuname, bpath)
 {
     global smalliconsize, menunum
 
@@ -860,8 +955,8 @@ buildProgramsMenu1(box, menuname, path)
 
     numfiles = 0
 
-    ; path = %path%\*
-    menufiles := getFilenames(path, 0)
+    ; bpath = %bpath%\*
+    menufiles := getFilenames(bpath, 0)
     if (menufiles) {
         Sort, menufiles, CL D`n Z
         numfiles := addCmdsToMenu(box, thismenuname, menufiles)
@@ -870,7 +965,7 @@ buildProgramsMenu1(box, menuname, path)
     ;     numfiles = 1
     ; }
     ; recurse
-    menudirs := getFilenames(path, 2)
+    menudirs := getFilenames(bpath, 2)
 
     if (menudirs) {
         Sort, menudirs, CL D`n Z
@@ -982,6 +1077,10 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
     global menuicons, imageres
     A_Quotes = "
 
+    global sandboxes_array
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+
     menuicons[menuname,label,"file"] := ""
     menuicons[menuname,label,"num"] := ""
 
@@ -1040,11 +1139,11 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
         }
         ; try to get the icon from the sandboxed registry first
         ; (will fail is nothing is running in the sandbox)
-        RegRead, defaulticon, HKEY_USERS, Sandbox_%username%_%box%\machine\software\classes\.%extension%\DefaultIcon,
+        RegRead, defaulticon, HKEY_USERS, %bregstr_%\machine\software\classes\.%extension%\DefaultIcon,
         if (defaulticon == "") {
-            RegRead, keyval, HKEY_USERS, Sandbox_%username%_%box%\machine\software\classes\.%extension%,
+            RegRead, keyval, HKEY_USERS, %bregstr_%\machine\software\classes\.%extension%,
             if (keyval != "") {
-                RegRead, defaulticon, HKEY_USERS, Sandbox_%username%_%box%\machine\software\classes\%keyval%\DefaultIcon,
+                RegRead, defaulticon, HKEY_USERS, %bregstr_%\machine\software\classes\%keyval%\DefaultIcon,
             }
         }
         if (defaulticon != "") {
@@ -1252,7 +1351,7 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
 
     ; TODO: verify coherence of variable name, or use Object()
     if (StrLen(ext) <= 4)
-        old := hIcon_%ext%_%hideshortcutoverlay%_%iconsize%
+        old := "hIcon_" ext "_" hideshortcutoverlay "_" iconsize
     else
         old =
     if old =
@@ -1273,7 +1372,7 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
         else
         {
             if (StrLen(ext) <= 4)
-                hicon_%ext%_%hideshortcutoverlay%_%iconsize% := hicon
+                hicon := "hIcon_" ext "_" hideshortcutoverlay "_" iconsize
         }
     } else {
         hicon := old
@@ -1458,65 +1557,65 @@ MI_GetBitmapFromIcon32Bit(h_icon, width=0, height=0)
 }
 
 ; converts a path to its equivalent in a sandbox
-stdPathToBoxPath(box, path)
+stdPathToBoxPath(box, bpath)
 {
     global sandboxes_path
     StringReplace, boxpath, sandboxes_path, `%SANDBOX`%, %box%, All
     outpath =
     userprofile = %userprofile%\
-    if (SubStr(path, 1, strLen(userprofile)) == userprofile) {
-        remain := SubStr(path, strLen(userprofile)+1)
+    if (SubStr(bpath, 1, strLen(userprofile)) == userprofile) {
+        remain := SubStr(bpath, strLen(userprofile)+1)
         outpath = %boxpath%\user\current\%remain%
     }
     if (outpath == "") {
         allusersprofile = %allusersprofile%\
-        if (SubStr(path, 1, strLen(allusersprofile)) == allusersprofile) {
-            remain := SubStr(path, strLen(allusersprofile)+1)
+        if (SubStr(bpath, 1, strLen(allusersprofile)) == allusersprofile) {
+            remain := SubStr(bpath, strLen(allusersprofile)+1)
             outpath = %boxpath%\user\all\%remain%
         }
     }
     if (outpath == "") {
-        if (subStr(path, 2, 2) == ":\") {
-            drive := SubStr(path, 1, 1)
-            remain := SubStr(path, 3)
+        if (subStr(bpath, 2, 2) == ":\") {
+            drive := SubStr(bpath, 1, 1)
+            remain := SubStr(bpath, 3)
             outpath = %boxpath%\drive\%drive%%remain%
         }
     }
     if (outpath == "") {
-        outpath := path
+        outpath := bpath
     }
     return %outpath%
 }
 
 ; converts a sandbox path to its equivalent in "the real world"
-boxPathToStdPath(box, path)
+boxPathToStdPath(box, bpath)
 {
     global sandboxes_path
     StringReplace, boxpath, sandboxes_path, `%SANDBOX`%, %box%, All
-    if (SubStr(path, 1, strLen(boxpath)) == boxpath) {
-        remain := SubStr(path, strLen(boxpath)+2)
+    if (SubStr(bpath, 1, strLen(boxpath)) == boxpath) {
+        remain := SubStr(bpath, strLen(boxpath)+2)
         tmp = user\current\
         if (SubStr(remain, 1, strLen(tmp)) == tmp) {
             remain := SubStr(remain, strLen(tmp))
-            path = %userprofile%%remain%
-            return %path%
+            bpath = %userprofile%%remain%
+            return %bpath%
         }
         tmp = user\all\
         if (SubStr(remain, 1, strLen(tmp)) == tmp) {
             remain := SubStr(remain, strLen(tmp))
-            path = %allusersprofile%%remain%
-            return %path%
+            bpath = %allusersprofile%%remain%
+            return %bpath%
         }
         tmp = drive\
         if (SubStr(remain, 1, strLen(tmp)) == tmp) {
             remain := SubStr(remain, strLen(tmp)+1)
             driveletter = SubStr(remain, 1, 1)
             remain := SubStr(remain, 3)
-            path = %driveletter%:\%remain%
-            return %path%
+            bpath = %driveletter%:\%remain%
+            return %bpath%
         }
     }
-    return %path%
+    return %bpath%
 }
 
 ; Add sandboxed commands in the main menu.
@@ -1788,11 +1887,14 @@ NewShortcut(box, file)
 InitializeBox(box)
 {
     global start
+    global sandboxes_array
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
     ; ensure that the box is in use, or the hive will not be loaded
     Run %start% /box:%box% run_dialog, , HIDE UseErrorLevel, run_pid
 
     ; wait til the registry hive has been loaded in the global registry
-    boxkeypath = Sandbox_%username%_%box%\user\current\software\SandboxieAutoExec
+    boxkeypath = %bregstr_%\user\current\software\SandboxAutoExec
     loop, 100
     {
         sleep, 50
@@ -1804,7 +1906,7 @@ InitializeBox(box)
     Return, %run_pid%
 }
 
-; This function closes the hidden Run dialog, so that Sandboxie can desactivate
+; This function closes the hidden Run dialog, so that Sandboxie can deactivate
 ; the sandbox (unless something else is running in the box, of course.)
 ReleaseBox(run_pid)
 {
@@ -1913,7 +2015,7 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 ; Return
 
 ; List files in sandbox
-ListFiles(box, path, comparefilename="")
+ListFiles(box, bpath, comparefilename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
     global guinotclosed, title, MyListView, LVLastSize
@@ -1936,30 +2038,30 @@ ListFiles(box, path, comparefilename="")
     else
         comparedata =
 
-    bp = %path%\user\current
+    bp = %bpath%\user\current
     rp = %userprofile%
     if (InStr(FileExist(bp),"D"))
     {
-        f := SearchFiles(bp, rp, path, ignoredDirs, ignoredFiles, comparedata)
+        f := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
         allfiles = %allfiles%%f%`n
     }
 
     Progress, 13
-    bp = %path%\user\all
+    bp = %bpath%\user\all
     rp = %allusersprofile%
     if (InStr(FileExist(bp),"D"))
     {
-        f := SearchFiles(bp, rp, path, ignoredDirs, ignoredFiles, comparedata)
+        f := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
         allfiles = %allfiles%%f%`n
     }
 
     Progress, 16
-    Loop, %path%\drive\*, 2, 0
+    Loop, %bpath%\drive\*, 2, 0
     {
         drive := A_LoopFileName
-        bp = %path%\drive\%A_LoopFileName%
+        bp = %bpath%\drive\%A_LoopFileName%
         rp = %A_LoopFileName%:
-        f := SearchFiles(bp, rp, path, ignoredDirs, ignoredFiles, comparedata)
+        f := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
         allfiles = %allfiles%%f%`n
     }
 
@@ -2054,7 +2156,7 @@ ListFiles(box, path, comparefilename="")
     Menu, PopupMenu, Add, Add Folder to Ignore List, GuiLVIgnoreCurrentDir
     Menu, PopupMenu, Add, Add Sub-Folder to Ignore List..., GuiLVIgnoreCurrentSubDir
 
-    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVFileMouseEventHandler vMyListView AltSubmit, Status|File|Path|Size|Attribs|Created|Modified|Accessed|Extension|Sandbox path
+    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVFileMouseEventHandler vMyListView AltSubmit, Status|File|bpath|Size|Attribs|Created|Modified|Accessed|Extension|Sandbox bpath
 
     ; icons array
     ImageListID1 := IL_Create(10)
@@ -2112,7 +2214,7 @@ ListFiles(box, path, comparefilename="")
         }
         if (St == "-")
             Created =
-        iconfile = %path%\%BoxPath%\%OutFileName%
+        iconfile = %bpath%\%BoxPath%\%OutFileName%
         if (! FileExist(iconfile))
             iconfile := boxPathToStdPath(box, iconfile)
 
@@ -2179,7 +2281,7 @@ GuiLVCurrentFileSaveTo:
     LV_GetText(LVFileName, row, 2)
     LV_GetText(LVExtension, row, 9)
     LV_GetText(LVFilePath, row, 10)
-    boxpath := sandboxes_array[box,"path"]
+    boxpath := sandboxes_array[box,"bpath"]
     Gui, +OwnDialogs
     if (! InStr(FileExist(DefaultFolder . "\"), "D"))
         DefaultFolder = %userprofile%\Desktop
@@ -2192,7 +2294,7 @@ Return
 
 ; Open in Sandbox
 GuiLVCurrentFileRun:
-    LVCurrentFileRun(row, box, sandboxes_array[box,"path"])
+    LVCurrentFileRun(row, box, sandboxes_array[box,"bpath"])
 Return
 LVCurrentFileRun(row, box, boxpath)
 {
@@ -2209,11 +2311,11 @@ LVCurrentFileRun(row, box, boxpath)
 }
 ; Open Unsandboxed Container
 GuiLVCurrentFileOpenContainerU:
-    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box,"path"], "u")
+    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box,"bpath"], "u")
 Return
 ; Open Sandboxed Container
 GuiLVCurrentFileOpenContainerS:
-    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box,"path"], "s")
+    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box,"bpath"], "s")
 Return
 GuiLVCurrentFileOpenContainer(row, box, boxpath, mode)
 {
@@ -2237,11 +2339,11 @@ GuiLVCurrentFileOpenContainer(row, box, boxpath, mode)
 
 ; Add Shortcut in Sandbox Start Menu
 GuiLVCurrentFileToStartMenu:
-    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box,"path"], "startmenu")
+    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box,"bpath"], "startmenu")
 Return
 ; Add Shortcut in Sandbox Desktop
 GuiLVCurrentFileToDesktop:
-    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box,"path"], "desktop")
+    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box,"bpath"], "desktop")
 Return
 GuiLVCurrentFileToStartMenuOrDesktop(row, box, boxpath, where)
 {
@@ -2262,7 +2364,7 @@ GuiLVCurrentFileToStartMenuOrDesktop(row, box, boxpath, where)
 
 ; Create Sandboxed Shortcut...
 GuiLVCurrentFileShortcut:
-    GuiLVCurrentFileShortcut(row, box, sandboxes_array[box,"path"])
+    GuiLVCurrentFileShortcut(row, box, sandboxes_array[box,"bpath"])
 Return
 GuiLVCurrentFileShortcut(row, box, boxpath)
 {
@@ -2417,7 +2519,7 @@ GuiLVCurrentOpenRegEdit(row, box)
     run_pid := InitializeBox(box)
     ; pre-select the right registry key
     LV_GetText(LVRegPath, row, 7)
-    key = HKEY_USERS\Sandbox_%username%_%box%\%LVRegPath%
+    key = HKEY_USERS\%bregstr_%\%LVRegPath%
     RegWrite, REG_SZ, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Applets\Regedit, LastKey, %key%
     ; launch regedit
     RunWait, RegEdit.exe, , UseErrorLevel
@@ -2475,7 +2577,7 @@ GuiLVRegistryRun(row, box)
 }
 
 GuiLVRegistryToStartMenuStartup:
-    GuiLVRegistryToStartMenuStartup(box, sandboxes_array[box,"path"])
+    GuiLVRegistryToStartMenuStartup(box, sandboxes_array[box,"bpath"])
 Return
 GuiLVRegistryToStartMenuStartup(box, boxpath)
 {
@@ -2498,7 +2600,7 @@ GuiLVRegistryToStartMenuStartup(box, boxpath)
     Return
 }
 GuiLVRegistryItemToStartMenuStartup:
-    GuiLVRegistryItemToStartMenuStartup(row, box, sandboxes_array[box,"path"])
+    GuiLVRegistryItemToStartMenuStartup(row, box, sandboxes_array[box,"bpath"])
 Return
 GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
 {
@@ -2542,30 +2644,30 @@ GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
 }
 
 GuiLVRegistryExploreStartMenuCS:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"path"], "current", "sandboxed")
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "current", "sandboxed")
 Return
 GuiLVRegistryExploreStartMenuCU:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"path"], "current", "unsandboxed")
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "current", "unsandboxed")
 Return
 GuiLVRegistryExploreStartMenuAS:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"path"], "all", "sandboxed")
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "all", "sandboxed")
 Return
 GuiLVRegistryExploreStartMenuAU:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"path"], "all", "unsandboxed")
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "all", "unsandboxed")
 Return
 GuiLVRegistryExploreStartMenu(box, boxpath, user, mode)
 {
     global title, start
     if (mode == "unsandboxed") {
         if (user == "current") {
-            path = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+            bpath = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
             mowner = Current User's
         } else {
-            path = %boxpath%\user\all\Microsoft\Windows\Start Menu\Programs\Startup
+            bpath = %boxpath%\user\all\Microsoft\Windows\Start Menu\Programs\Startup
             mowner = All Users
         }
-        if (FileExist(path)) {
-            Run, %path%
+        if (FileExist(bpath)) {
+            Run, %bpath%
         } else {
             MsgBox, 48, %title%, The %mowner% Start Menu of box %box% has not been created yet.`n`nCan't explore it unsandboxed.
         }
@@ -2573,10 +2675,10 @@ GuiLVRegistryExploreStartMenu(box, boxpath, user, mode)
     else
     {
         if (user == "current")
-            path = %A_StartMenu%\Programs\Startup
+            bpath = %A_StartMenu%\Programs\Startup
         else
-            path = %A_StartMenuCommon%\Programs\Startup
-        Run, %start% /box:%box% "%path%"
+            bpath = %A_StartMenuCommon%\Programs\Startup
+        Run, %start% /box:%box% "%bpath%"
     }
 }
 
@@ -2707,10 +2809,10 @@ GuiLVSaveAsCSVText(box, defaultfilename)
 }
 
 GuiLVFilesToStartMenu:
-    GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box,"path"], "startmenu")
+    GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box,"bpath"], "startmenu")
 Return
 GuiLVFilesToDesktop:
-    GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box,"path"], "desktop")
+    GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box,"bpath"], "desktop")
 Return
 GuiLVFilesToStartMenuOrDesktop(box, boxpath, where)
 {
@@ -2732,7 +2834,7 @@ GuiLVFilesToStartMenuOrDesktop(box, boxpath, where)
 }
 
 GuiLVFilesShortcut:
-    GuiLVFilesShortcut(box, sandboxes_array[box,"path"])
+    GuiLVFilesShortcut(box, sandboxes_array[box,"bpath"])
 Return
 GuiLVFilesShortcut(box, boxpath)
 {
@@ -2755,7 +2857,7 @@ GuiLVFilesShortcut(box, boxpath)
 }
 
 GuiLVFilesSaveTo:
-    LVFilesSaveTo(sandboxes_array[box,"path"])
+    LVFilesSaveTo(sandboxes_array[box,"bpath"])
 Return
 LVFilesSaveTo(boxpath)
 {
@@ -2826,7 +2928,11 @@ GuiLVRegistrySaveAsReg(box)
     A_Quotes = "
     A_nl = `n
 
-    mainsbkey = Sandbox_%username%_%box%
+    global sandboxes_array
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+
+    mainsbkey = %bregstr_%
 
     numregs := numOfCheckedFiles()
     if (numregs == 0)
@@ -3007,7 +3113,7 @@ numOfCheckedFiles()
 ; A_LoopRegName ; Name of the currently retrieved item, which can be either a value name or the name of a subkey. Value names displayed by Windows RegEdit as "(Default)" will be retrieved if a value has been assigned to them, but A_LoopRegName will be blank for them.
 ; A_LoopRegType ; The type of the currently retrieved item, which is one of the following words: KEY (i.e. the currently retrieved item is a subkey not a value), REG_SZ, REG_EXPAND_SZ, REG_MULTI_SZ, REG_DWORD, REG_QWORD, REG_BINARY, REG_LINK, REG_RESOURCE_LIST, REG_FULL_RESOURCE_DESCRIPTOR, REG_RESOURCE_REQUIREMENTS_LIST, REG_DWORD_BIG_ENDIAN (probably rare on most Windows hardware). It will be empty if the currently retrieved item is of an unknown type.
 ; A_LoopRegKey ; The name of the root key being accessed (HKEY_LOCAL_MACHINE, HKEY_USERS, HKEY_CURRENT_USER, HKEY_CLASSES_ROOT, or HKEY_CURRENT_CONFIG). For remote registry access, this value will not include the computer name.
-; A_LoopRegSubKey ; Name of the current SubKey. This will be the same as the Key parameter unless the Recurse parameter is being used to recursively explore other subkeys. In that case, it will be the full path of the currently retrieved item, not including the root key. For example: Software\SomeApplication\My SubKey
+; A_LoopRegSubKey ; Name of the current SubKey. This will be the same as the Key parameter unless the Recurse parameter is being used to recursively explore other subkeys. In that case, it will be the full bpath of the currently retrieved item, not including the root key. For example: Software\SomeApplication\My SubKey
 ; A_LoopRegTimeModified ; The time the current subkey or any of its values was last modified. Format YYYYMMDDHH24MISS. This variable will be empty if the currently retrieved item is not a subkey (i.e. A_LoopRegType is not the word KEY) or if the operating system is Win9x (since Win9x does not track this info).
 ; Rarely used undocumented value types: REG_QWORD, REG_LINK, REG_RESOURCE_LIST, REG_FULL_RESOURCE_DESCRIPTOR,
 ; REG_RESOURCE_REQUIREMENTS_LIST, REG_DWORD_BIG_ENDIAN
@@ -3129,7 +3235,11 @@ MakeRegConfig(box, filename="")
     global regconfig
     run_pid := InitializeBox(box)
 
-    mainsbkey = Sandbox_%username%_%box%
+    global sandboxes_array
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+
+    mainsbkey = %bregstr_%
     mainsbkeylen := StrLen(mainsbkey) + 2
 
     outtxt =
@@ -3163,7 +3273,11 @@ SearchReg(box, ignoredKeys, ignoredValues, filename="")
 
     run_pid := InitializeBox(box)
 
-    mainsbkey = Sandbox_%username%_%box%
+    global sandboxes_array
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+
+    mainsbkey = %bregstr_%
     mainsbkeylen := StrLen(mainsbkey) + 2
 
     if (filename == "")
@@ -3223,7 +3337,7 @@ SearchReg(box, ignoredKeys, ignoredValues, filename="")
     Return %outtxt%
 }
 
-ListReg(box, path, filename="")
+ListReg(box, bpath, filename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
     global guinotclosed, title, MyListView, LVLastSize
@@ -3330,7 +3444,7 @@ ListReg(box, path, filename="")
     Menu, PopupMenu, Add, Add Key to Ignore List, GuiLVIgnoreCurrentKey
     Menu, PopupMenu, Add, Add Sub-Key to Ignore List..., GuiLVIgnoreCurrentSubKey
 
-    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVRegMouseEventHandler vMyListView AltSubmit, Status|Key|Type|Value Name|Value Data|Key modified time|Sandbox Path
+    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVRegMouseEventHandler vMyListView AltSubmit, Status|Key|Type|Value Name|Value Data|Key modified time|Sandbox bpath
 
     Progress, 100, Please wait..., Building list of keys`nin box "%box%"., %title%
     Sleep, 100
@@ -3452,7 +3566,7 @@ SearchAutostart(box, regpath, location, tick)
     Sort, outtxt, CL D`n
     Return %outtxt%
 }
-ListAutostarts(box, path)
+ListAutostarts(box, bpath)
 {
     global guinotclosed, title, MyListView
     static MainLabel
@@ -3460,42 +3574,46 @@ ListAutostarts(box, path)
     A_Quotes = "
     A_nl = `n
 
+    global sandboxes_array
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+
     run_pid := InitializeBox(box)
     Sleep 1000
 
     autostarts =
 
     ; check RunOnce keys
-    key = Sandbox_%username%_%box%\machine\Software\Microsoft\Windows\CurrentVersion\RunOnce
+    key = %bregstr_%\machine\Software\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKLM RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
 
-    key = Sandbox_%username%_%box%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
+    key = %bregstr_%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKLM RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
 
-    key = Sandbox_%username%_%box%\user\current\Software\Microsoft\Windows\CurrentVersion\RunOnce
+    key = %bregstr_%\user\current\Software\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKCU RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
 
-    key = Sandbox_%username%_%box%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
+    key = %bregstr_%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
     location = HKCU RunOnce
     autostarts := autostarts . SearchAutostart(box, key, location, 0)
 
     ; check Run keys
-    key = Sandbox_%username%_%box%\machine\Software\Microsoft\Windows\CurrentVersion\Run
+    key = %bregstr_%\machine\Software\Microsoft\Windows\CurrentVersion\Run
     location = HKLM Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
 
-    key = Sandbox_%username%_%box%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
+    key = S%bregstr_%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
     location = HKLM Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
 
-    key = Sandbox_%username%_%box%\user\current\Software\Microsoft\Windows\CurrentVersion\Run
+    key = %bregstr_%\user\current\Software\Microsoft\Windows\CurrentVersion\Run
     location = HKCU Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
 
-    key = Sandbox_%username%_%box%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
+    key = %bregstr_%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
     location = HKCU Run
     autostarts := autostarts . SearchAutostart(box, key, location, 1)
 
@@ -3779,7 +3897,8 @@ RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
     REG_QWORD := 11
 
     ; Unofficial REG type used by Sandboxie to "delete" an existing key in the sandbox registry.
-    REG_SB_DELETED := 0x6B757A74
+    ; REG_SB_DELETED := 0x6B757A74
+    REG_SB_DELETED := 0x786F6273
 
     KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
     KEY_WOW64_64KEY := 0x0100 ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
@@ -4328,8 +4447,8 @@ LVIgnoreSpecific(row, mode)
     LV_GetText(tohide, row, pathcol)
 
     prompt = Type the name of the %name% to permanently hide.`n
-    prompt = %prompt%Use the format of the last column (Sandbox path).`n
-    prompt = %prompt%Do not type the leading box path and the tailing backslash.`n
+    prompt = %prompt%Use the format of the last column (Sandbox bpath).`n
+    prompt = %prompt%Do not type the leading box bpath and the tailing backslash.`n
     prompt = %prompt%Note that all sub-%names% will be hidden as well.`n
     prompt = %prompt%Take care: The ignore list is global to all sandboxes!
     InputBox, tohide, Add item to Ignore List, %prompt%, , , , , , , , %tohide%
@@ -4466,14 +4585,14 @@ Return
 
 UCmdMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
+    bpath := sandboxes_array[box,"bpath"]
     if (GetKeyState("Control", "P"))
     {
-        args = /k "cd /d "%path%""
-        writeUnsandboxedShortcutFileToDesktop(comspec,"Unsandboxed Command Prompt in sandbox " box,path,args,"Unsandboxed Command Prompt in sandbox " box,cmdRes,1,1)
+        args = /k "cd /d "%bpath%""
+        writeUnsandboxedShortcutFileToDesktop(comspec,"Unsandboxed Command Prompt in sandbox " box,bpath,args,"Unsandboxed Command Prompt in sandbox " box,cmdRes,1,1)
     }
     else
-        run, %comspec% /k "cd /d "%path%"", , UseErrorLevel
+        run, %comspec% /k "cd /d "%bpath%"", , UseErrorLevel
 Return
 
 SRegEditMenuHandler:
@@ -4493,7 +4612,9 @@ URegEditMenuHandler:
         ; ensure that the box is in use, or the hive will not be loaded
         run_pid := InitializeBox(box)
         ; pre-select the right registry key
-        RegWrite, REG_SZ, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Applets\Regedit, LastKey, HKEY_USERS\Sandbox_%username%_%box%
+        bregstr_ := sandboxes_array[box,"KeyRootPath"]
+        bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+        RegWrite, REG_SZ, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Applets\Regedit, LastKey, HKEY_USERS\%regstr_%
         ; launch regedit
         RunWait, RegEdit.exe, , UseErrorLevel
         ReleaseBox(run_pid)
@@ -4538,20 +4659,20 @@ Return
 
 UExploreMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
+    bpath := sandboxes_array[box,"bpath"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed)",path,explorerArgE "\" A_Quotes path A_Quotes,"Launches Explorer unsandboxed in sandbox " box,explorerRes,1,1)
+        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed)",bpath,explorerArgE "\" A_Quotes bpath A_Quotes,"Launches Explorer unsandboxed in sandbox " box,explorerRes,1,1)
     else
-        run, %explorer%\%path%, , , UseErrorLevel
+        run, %explorer%\%bpath%, , , UseErrorLevel
 Return
 
 URExploreMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
+    bpath := sandboxes_array[box,"bpath"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed, restricted)",path,explorerArgER "\" A_Quotes path A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,explorerRes,1,1)
+        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed, restricted)",bpath,explorerArgER "\" A_Quotes bpath A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,explorerRes,1,1)
     else
-        run, %explorerERArg%\%path%, , , UseErrorLevel
+        run, %explorerERArg%\%bpath%, , , UseErrorLevel
 Return
 
 LaunchSbieAgentMenuHandler:
@@ -4570,58 +4691,64 @@ Return
 
 ListFilesMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
-    ListFiles(box, path)
+    bpath := sandboxes_array[box,"bpath"]
+    ListFiles(box, bpath)
 Return
 
 ListRegMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
-    ListReg(box, path)
+    bpath := sandboxes_array[box,"bpath"]
+    ListReg(box, bpath)
 Return
 
 ListAutostartsMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
-    ListAutostarts(box, path)
+    bpath := sandboxes_array[box,"bpath"]
+    ListAutostarts(box, bpath)
 Return
 
 WatchRegMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
-    comparefile = %temp%\sandbox_%username%_%box%_reg_compare.cfg
+    bpath := sandboxes_array[box,"bpath"]
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    comparefile = %temp%\S%regstr_%_reg_compare.cfg
     MakeRegConfig(box, comparefile)
     MsgBox, 38, %title%, The current state of the registry of sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the registry will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export them as a REG file if you wish.`n`nNote that the registry keys and the deleted registry values will not be listed. However, a deleted key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
     ifMsgBox Continue
-        ListReg(box, path, comparefile)
+        ListReg(box, bpath, comparefile)
     ifMsgBox TryAgain
         GoSub, WatchRegMenuHandler
 Return
 
 WatchFilesMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
-    comparefile = %temp%\sandbox_%username%_%box%_files_compare.cfg
-    MakeFilesConfig(box, comparefile, path)
+    bpath := sandboxes_array[box,"bpath"]
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    comparefile = %temp%\%regstr_%_files_compare.cfg
+    MakeFilesConfig(box, comparefile, bpath)
     MsgBox, 38, %title%, The current state of the files in sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the files will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export the modified or new files if you wish.`n`nNote that the folders and the deleted files will not be listed. However, a deleted folder or file will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
     ifMsgBox Continue
-        ListFiles(box, path, comparefile)
+        ListFiles(box, bpath, comparefile)
     ifMsgBox TryAgain
         GoSub, WatchFilesMenuHandler
 Return
 
 WatchFilesRegMenuHandler:
     box := getBoxFromMenu()
-    path := sandboxes_array[box,"path"]
-    comparefile1 = %temp%\sandbox_%username%_%box%_files_compare.cfg
-    MakeFilesConfig(box, comparefile1, path)
-    comparefile2 = %temp%\sandbox_%username%_%box%_reg_compare.cfg
+    bpath := sandboxes_array[box,"bpath"]
+    bregstr_ := sandboxes_array[box,"KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    comparefile1 = %temp%\%regstr_%_files_compare.cfg
+    MakeFilesConfig(box, comparefile1, bpath)
+    comparefile2 = %temp%\%regstr_%_reg_compare.cfg
     MakeRegConfig(box, comparefile2)
     MsgBox, 38, %title%, The current state of the files and registry of sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the files and registry will be compared with the old state`, and the result displayed so that you can analyse the changes.`n`nNote that the folders, the deleted files, the registry keys and the deleted registry values will not be listed. However, a deleted folder, file, key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
     ifMsgBox Continue
     {
-        ListFiles(box, path, comparefile1)
-        ListReg(box, path, comparefile2)
+        ListFiles(box, bpath, comparefile1)
+        ListReg(box, bpath, comparefile2)
     }
     ifMsgBox TryAgain
         GoSub, WatchFilesRegMenuHandler
