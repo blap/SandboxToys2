@@ -2,7 +2,7 @@
 #Persistent
 #SingleInstance Ignore
 
-version = 2.5.2
+version = 2.5.3
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap and others
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
@@ -209,16 +209,17 @@ else {
 ; find Sandboxie's INI file in %A_WinDir% and in Sandboxie's install dir
 RegRead, IniPathO, HKLM\SYSTEM\CurrentControlSet\Services\SbieDrv, IniPath ; check custom config location in registry
 IniPath = %IniPathO%
-if ((IniPath != "") && (SubStr(IniPath, 1, 4) == "\??\") && (SubStr(IniPath, 8) != "") && (!FileExist(SubStr(IniPath, 5)))) {
+ini =
+if ((IniPath != "") && (SubStr(IniPath, 1, 4) == "\??\") && (SubStr(IniPath, 8) != "") && (FileExist(SubStr(IniPath, 5)))) {
     IniPath := (SubStr(IniPath, 5))
     ini = %IniPath%
 }
 else {
     IniPath =
-    ini = %A_WinDir%\Sandboxie.ini
+    ini = %sbdir%\Sandboxie.ini
     if (! FileExist(ini))
     {
-        ini = %sbdir%\Sandboxie.ini
+        ini = %A_WinDir%\Sandboxie.ini
         if (! FileExist(ini))
         {
             MsgBox, 16, %title%, Can't find Sandboxie.ini.
@@ -302,10 +303,10 @@ if (! FileExist(regconfig))
         exist := sandboxes_array[b,"exist"]
         benabled := sandboxes_array[b,"Enabled"]
         bneverdelete := sandboxes_array[b,"NeverDelete"]
-        buseimagefile := sandboxes_array[b,"UseImageFile"]
+        busefileimage := sandboxes_array[b,"UseFileImage"]
         buseramdisk := sandboxes_array[b,"UseRamDisk"]
 
-        if (benabled != 1  || bneverdelete != 0 || buseimagefile != 0 || buseramdisk != 0) { ; Skip disabled, neverdelete, useimagefile, or useramdisk boxes
+        if (benabled != 1  || bneverdelete != 0 || busefileimage != 0 || buseramdisk != 0) { ; Skip disabled, neverdelete, usefileimage, or useramdisk boxes
             Continue
         }
 
@@ -769,7 +770,7 @@ getSandboxesArray(array,ini)
     FileEncoding, %old_encoding%
 
     ; fills the array
-      Loop, Parse, boxes, CSV
+    Loop, Parse, boxes, CSV
     {
         array[0] := A_Index
         array[A_Index,"name"] := A_LoopField
@@ -836,13 +837,13 @@ getSandboxesArray(array,ini)
         else {
             array[A_LoopField,"NeverDelete"] := 0
         }
-        ; checks if the box has UseImageFile=y in the INI
-        IniRead, buseimagefile, %ini%, %A_LoopField%, UseImageFile, n
-        if (buseimagefile == "y") {
-            array[A_LoopField,"UseImageFile"] := 1
+        ; checks if the box has UseFileImage=y in the INI
+        IniRead, busefileimage, %ini%, %A_LoopField%, UseFileImage, n
+        if (busefileimage == "y") {
+            array[A_LoopField,"UseFileImage"] := 1
         }
         else {
-            array[A_LoopField,"UseImageFile"] := 0
+            array[A_LoopField,"UseFileImage"] := 0
         }
         ; checks if the box has UseRamDisk=y in the INI
         IniRead, buseramdisk, %ini%, %A_LoopField%, UseRamDisk, n
