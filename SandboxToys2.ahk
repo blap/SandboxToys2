@@ -743,7 +743,7 @@ getSandboxesArray(ini)
     A_FileEncoding := old_encoding
     boxes_str := Trim(boxes_str, ",")
     boxlist := StrSplit(boxes_str, ",")
-    Sort(boxlist, "CL D")
+    boxlist.Sort("CL")
 
     for _, boxname in boxlist
     {
@@ -879,8 +879,11 @@ getFilenames(directory, includeFolders)
         }
     }
     files := Trim(files, "`n")
-    if (files)
-        Sort(files, "CL D`n Z")
+    if (files) {
+        local file_array := StrSplit(files, "`n")
+        file_array.Sort("CL")
+        files := file_array.Join("`n")
+    }
     Return files
 }
 
@@ -902,13 +905,11 @@ buildProgramsMenu1(box, menuname, bpath)
 
     menufiles := getFilenames(bpath, 0)
     if (menufiles) {
-        Sort(menufiles, "CL D`n Z")
         numfiles += addCmdsToMenu(box, thismenu, menufiles)
     }
 
     menudirs := getFilenames(bpath, 2)
     if (menudirs) {
-        Sort(menudirs, "CL D`n Z")
         Loop, parse, menudirs, "`n"
         {
             entry := A_LoopField
@@ -953,7 +954,9 @@ buildProgramsMenu2(box, menuname, path1, path2)
     menufiles := menufiles1 . "`n" . menufiles2
     menufiles := Trim(menufiles, A_Return)
     if (menufiles) {
-        Sort(menufiles, "CL D`n")
+        local file_array := StrSplit(menufiles, "`n")
+        file_array.Sort("CL")
+        menufiles := file_array.Join("`n")
         numfiles += addCmdsToMenu(box, thismenu, menufiles)
     }
 
@@ -1931,12 +1934,25 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 ;     GuiControl, +Report, MyListView
 ; Return
 
+SortByPath(a, b, sep)
+{
+    local a_fields := StrSplit(a, sep)
+    local b_fields := StrSplit(b, sep)
+    local path_a := a_fields[2]
+    local path_b := b_fields[2]
+    if (path_a > path_b)
+        return 1
+    if (path_a < path_b)
+        return -1
+    return 0
+}
+
 ; List files in sandbox
 ListFiles(box, bpath, comparefilename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
     global guinotclosed, title, MyListView, LVLastSize
-    global newIgnored_dirs, newIgnored_files
+    global newIgnored, guinotclosed, title, MyListView, LVLastSize
 
     static MainLabel
 
@@ -1944,8 +1960,7 @@ ListFiles(box, bpath, comparefilename="")
     local allfiles := ""
 
     ReadIgnoredConfig("files")
-    newIgnored_dirs := ""
-    newIgnored_files := ""
+    newIgnored := Map("dirs", "", "files", "")
 
     Progress(1, "Please wait...", "Searching for files in box """ . box . """...", title)
 
@@ -1981,9 +1996,10 @@ ListFiles(box, bpath, comparefilename="")
     }
 
     Progress(19, "Please wait...", "Sorting list of files in box """ . box . """...", title)
-    ; Sort(allfiles, "CL P3") ; TODO: This needs a v2 equivalent for sorting a string list.
     allfiles := Trim(allfiles, A_nl)
-    local fileArray := StrSplit(allfiles, A_nl)
+    local fileArray := allfiles ? StrSplit(allfiles, A_nl) : []
+    if (fileArray.Length > 0)
+        fileArray.Sort(SortByPath.Bind(A_Tab))
     local numfiles := fileArray.Length
     if (numfiles = 0)
     {
@@ -2948,33 +2964,48 @@ GuiLVRegistrySaveAsReg(box)
 
 WrapRegString(str)
 {
-    if (strLen(str) <= 80)
-        return %str%
+    if (StrLen(str) <= 80)
+        return str
 
-    A_Quotes = "
-    idx := InStr(str, A_Quotes . "=")
-    if (idx < 76)
-        idx = 76
-    idx := InStr(str, ",", 0, idx)
-    if (idx == 0)
-        return %str%
+    local out := ""
+    local line_len := 78
+    local first_line := true
 
-    out := SubStr(str, 1, idx)
-    out = %out%\`n
-    str := subStr(str, idx+1)
-    loop
+    while (StrLen(str) > 0)
     {
-        if (StrLen(str) < 78)
+        local prefix := ""
+        if (!first_line)
+            prefix := "  "
+
+        local current_line_len := line_len - StrLen(prefix)
+        local chunk
+        if (StrLen(str) > current_line_len)
         {
-            out = %out% %str%
-            break
+            local break_pos := 0
+            loop current_line_len {
+                local pos := current_line_len - A_Index + 1
+                if (SubStr(str, pos, 1) == ",") {
+                    break_pos := pos
+                    break
+                }
+            }
+
+            if (break_pos == 0)
+                break_pos := current_line_len
+
+            chunk := SubStr(str, 1, break_pos)
+            str := SubStr(str, break_pos + 1)
+            out .= prefix . chunk . "\`n"
         }
-        idx := InStr(str, ",", 0, 75)
-        sub := subStr(str, 1, idx)
-        out = %out% %sub%\`n
-        str := subStr(str, idx+1)
+        else
+        {
+            chunk := str
+            str := ""
+            out .= prefix . chunk
+        }
+        first_line := false
     }
-    return %out%
+    return out
 }
 
 numOfCheckedFiles()
@@ -3006,228 +3037,220 @@ numOfCheckedFiles()
 
 GetReg(inrootkey, insubkey, outrootkey, outsubkey)
 {
-    outtxt =
-    insubkeylen := StrLen(insubkey)+1
-    outfullkey = %outrootkey%
+    local outtxt := ""
+    local insubkeylen := StrLen(insubkey) + 1
+    local outfullkey := outrootkey
     if (outsubkey != "")
-        outfullkey = %outfullkey%\%outsubkey%
+        outfullkey .= "\" . outsubkey
 
-    Loop, %inrootkey%, %insubkey%, 1, 1
+    Loop Reg, inrootkey . "\" . insubkey, "KVR"
     {
-        subkey := outfullkey . SubStr(A_LoopRegSubKey, insubkeylen)
+        local subkey := outfullkey . SubStr(A_LoopRegSubKey, insubkeylen)
+        local value := ""
         if (A_LoopRegType != "KEY")
-            RegRead, value
-        else
-            value =
-        outtxt = %outtxt%%A_LoopRegTimeModified% %A_LoopRegType% %A_LoopRegName% %subkey% %value%`n
+        {
+            try value := RegRead(A_LoopRegFullPath, A_LoopRegName)
+        }
+        outtxt .= A_LoopRegTimeModified . " " . A_LoopRegType . " " . A_LoopRegName . " " . subkey . " " . value . "`n"
     }
-    return %outtxt%
+    return outtxt
 }
 
-FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separator, includedate=false)
+FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separator, includedate := false)
 {
-    type := RegType
+    local type := RegType
     if (type == "")
         type := RegRead64KeyType("HKEY_USERS", RegSubKey, RegName, false)
     if (type == "")
-        type = UNKNOWN
+        type := "UNKNOWN"
 
+    local status
     if (RegTimeModified == "19860523174702")
-        status = -
+        status := "-"
     else
-        status = +
-    if (type == "REG_SB_DELETED")
-    {
-        status = -
-        type = -DELETED_VALUE
+        status := "+"
+    if (type == "REG_SB_DELETED") {
+        status := "-"
+        type := "-DELETED_VALUE"
     }
 
-    RegRead, value
-    if (ErrorLevel)
+    local value := ""
+    try
+        value := RegRead("HKEY_USERS", RegSubKey, RegName)
+    catch
     {
-        value := RegRead64("HKEY_USERS", RegSubKey, RegName)
-        if (ErrorLevel)
+        try
+            value := RegRead64("HKEY_USERS", RegSubKey, RegName)
+        catch
         {
-            value := RegRead64("HKEY_USERS", RegSubKey, RegName, false)
-            if (ErrorLevel)
+            try
+                value := RegRead64("HKEY_USERS", RegSubKey, RegName, false)
+            catch
             {
-                value =
-                status = -
+                value := ""
+                status := "-"
             }
         }
     }
-    if (InStr(type, "_SZ"))
-    {
-        StringReplace, value, value, `n, %A_Space%, 1
+
+    if (InStr(type, "_SZ")) {
+        value := StrReplace(value, "`n", " ")
         if (type == "REG_MULTI_SZ")
-            StringTrimRight, value, value, 1
+            value := RTrim(value, "`n")
     }
     if (StrLen(value) > 80)
         value := SubStr(value, 1, 80) . "..."
 
-    name = %RegName%
+    local name := RegName
     if (name == "")
-        name = @
+        name := "@"
 
-    if (type == "KEY")
-    {
+    local outtxt := ""
+    if (type == "KEY") {
         if (status == "-")
-            type = -DELETED_KEY
-        outtxt = %status%%separator%%subkey%\%name%%separator%%type%%separator%%separator%
+            type := "-DELETED_KEY"
+        outtxt := status . separator . subkey . "\" . name . separator . type . separator . separator
     }
-    else
-        outtxt = %status%%separator%%subkey%%separator%%type%%separator%%name%%separator%%value%
+    else {
+        outtxt := status . separator . subkey . separator . type . separator . name . separator . value
+    }
     if (includedate)
-        outtxt = %outtxt%%separator%%RegTimeModified%
-    return %outtxt%
+        outtxt .= separator . RegTimeModified
+    return outtxt
 }
 
 MakeFilesConfig(box, filename, mainsbpath)
 {
-    mainsbpathlen := StrLen(mainsbpath) + 2
+    local mainsbpathlen := StrLen(mainsbpath) + 2
+    local outtxt := ""
 
-    outtxt =
-
-    Loop, %mainsbpath%\drive\*, 1, 1
+    Loop Files, mainsbpath . "\drive\*", "FDR"
     {
+        local status
         if (A_LoopFileTimeCreated == "19860523174702")
-            status = -
+            status := "-"
         else
-            status = +
+            status := "+"
         if (InStr(A_LoopFileAttrib, "D") && status == "+")
             Continue
-        name := SubStr(A_LoopFileFullPath, mainsbpathlen)
-        outtxt = %outtxt%%status% %A_LoopFileTimeModified% %name%:*:`n
+        local name := SubStr(A_LoopFileFullPath, mainsbpathlen)
+        outtxt .= status . " " . A_LoopFileTimeModified . " " . name . ":*:`n"
     }
-    Loop, %mainsbpath%\user\*, 1, 1
+    Loop Files, mainsbpath . "\user\*", "FDR"
     {
+        local status
         if (A_LoopFileTimeCreated == "19860523174702")
-            status = -
+            status := "-"
         else
-            status = +
+            status := "+"
         if (InStr(A_LoopFileAttrib, "D") && status == "+")
             Continue
-        name := SubStr(A_LoopFileFullPath, mainsbpathlen)
-        outtxt = %outtxt%%status% %A_LoopFileTimeModified% %name%:*:`n
+        local name := SubStr(A_LoopFileFullPath, mainsbpathlen)
+        outtxt .= status . " " . A_LoopFileTimeModified . " " . name . ":*:`n"
     }
 
-    FileDelete, %filename%
-    FileAppend, `n%outtxt%, %filename%
+    FileDelete(filename)
+    FileAppend("`n" . outtxt, filename)
     Return
 }
 
-MakeRegConfig(box, filename="")
+MakeRegConfig(box, filename := "")
 {
-    global regconfig
+    global regconfig, sandboxes_array, username
     run_pid := InitializeBox(box)
 
-    global sandboxes_array
-    bregstr_ := sandboxes_array[box].KeyRootPath
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    local bregstr_ := sandboxes_array[box].KeyRootPath
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
-    mainsbkey = %bregstr_%
-    mainsbkeylen := StrLen(mainsbkey) + 2
+    local mainsbkey := bregstr_
+    local mainsbkeylen := StrLen(mainsbkey) + 2
+    local outtxt := ""
 
-    outtxt =
-
-    Loop, HKEY_USERS, %mainsbkey%, 1, 1
+    Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
     {
-        if (A_LoopRegTimeModified != "")
-            RegTimeModified = %A_LoopRegTimeModified%
+        local RegTimeModified := A_LoopRegTimeModified
 
-        if (A_LoopRegType == "KEY" && A_LoopRegTimeModified != "19860523174702")
+        if (A_LoopRegType == "KEY" && RegTimeModified != "19860523174702")
             Continue
 
-        subkey := SubStr(A_LoopRegSubKey, mainsbkeylen)
-        out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
-        outtxt = %outtxt%%out%`n
+        local subkey := SubStr(A_LoopRegSubKey, mainsbkeylen)
+        local out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
+        outtxt .= out . "`n"
     }
 
     if (filename == "")
-        filename = %regconfig%
-    FileDelete, %filename%
-    FileAppend, `n%outtxt%, %filename%
+        filename := regconfig
+    FileDelete(filename)
+    FileAppend("`n" . outtxt, filename)
 
     ReleaseBox(run_pid)
-
     Return
 }
 
-SearchReg(box, ignoredKeys, ignoredValues, filename="")
+SearchReg(box, ignoredKeys, ignoredValues, filename := "")
 {
-    global regconfig
-
+    global regconfig, sandboxes_array, username
     run_pid := InitializeBox(box)
 
-    global sandboxes_array
-    bregstr_ := sandboxes_array[box].KeyRootPath
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    local bregstr_ := sandboxes_array[box].KeyRootPath
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
-    mainsbkey = %bregstr_%
-    mainsbkeylen := StrLen(mainsbkey) + 2
+    local mainsbkey := bregstr_
+    local mainsbkeylen := StrLen(mainsbkey) + 2
 
     if (filename == "")
-        filename = %regconfig%
-    FileRead, regconfigdata, %filename%
-    outtxt =
+        filename := regconfig
+    local regconfigdata := FileRead(filename)
+    local outtxt := ""
+    local LastIgnoredKey := "!xxx!:\"
 
-    LastIgnoredKey = !xxx!:\
-    Loop, HKEY_USERS, %mainsbkey%, 1, 1
+    Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
     {
-        if (A_LoopRegTimeModified != "")
-            RegTimeModified := A_LoopRegTimeModified
+        local RegTimeModified := A_LoopRegTimeModified
+        local subkey := SubStr(A_LoopRegSubKey, mainsbkeylen)
 
-        subkey := SubStr(A_LoopRegSubKey, mainsbkeylen)
         if (InStr(subkey, LastIgnoredKey) == 1)
             Continue
 
-        if (A_LoopRegType == "KEY")
-        {
-            if (A_LoopRegTimeModified != "19860523174702")
+        if (A_LoopRegType == "KEY") {
+            if (RegTimeModified != "19860523174702")
                 Continue
-            if (IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName))
-            {
-                LastIgnoredKey = %subkey%\%A_LoopRegName%
+            if (IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName)) {
+                LastIgnoredKey := subkey . "\" . A_LoopRegName
                 Continue
             }
         }
-        else
-        {
-            if A_LoopRegName =
-            {
+        else {
+            if (A_LoopRegName == "") {
                 if (IsIgnored("values", ignoredValues, subkey, "@"))
                     Continue
             }
-            else
-            {
+            else {
                 if (IsIgnored("values", ignoredValues, subkey, A_LoopRegName))
                     Continue
             }
         }
-        if (IsIgnored("keys", ignoredKeys, subkey))
-        {
-            LastIgnoredKey = %subkey%
+        if (IsIgnored("keys", ignoredKeys, subkey)) {
+            LastIgnoredKey := subkey
             Continue
         }
 
-        out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
-        if (NOT InStr(regconfigdata, out))
-        {
-            out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, chr(1), true)
-            outtxt = %outtxt%%out%`n
+        local out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
+        if (!InStr(regconfigdata, out)) {
+            out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, Chr(1), true)
+            outtxt .= out . "`n"
         }
     }
 
     ReleaseBox(run_pid)
-
-    Return %outtxt%
+    return outtxt
 }
 
 ListReg(box, bpath, filename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
     global guinotclosed, title, MyListView, LVLastSize
-    global newIgnored_keys, newIgnored_values
+    global newIgnored, guinotclosed, title, MyListView, LVLastSize
     static MainLabel
 
     local comparemode
@@ -3238,8 +3261,7 @@ ListReg(box, bpath, filename="")
     A_Quotes := '"'
 
     ReadIgnoredConfig("reg")
-    newIgnored_keys := ""
-    newIgnored_values := ""
+    newIgnored := Map("keys", "", "values", "")
 
     A_nl := "`n"
     Progress(1,"Please wait...", "Scanning registry of box """ . box . """...", title)
@@ -3249,11 +3271,11 @@ ListReg(box, bpath, filename="")
 
     Progress(90,"Please wait...", "Sorting list of keys in box """ . box . """...", title)
     Sleep(150)
-    Sort(allregs, "P3")
     allregs := Trim(allregs, A_nl)
-    local numregs := 0
-    Loop, Parse, allregs, "`n"
-        numregs++
+    local allregs_array := allregs ? StrSplit(allregs, "`n") : []
+    if (allregs_array.Length > 0)
+        allregs_array.Sort("CL")
+    local numregs := allregs_array.Length
     if (numregs = 0)
     {
         Progress(0)
@@ -3342,32 +3364,25 @@ ListReg(box, bpath, filename="")
     local nummodified := 0, numadded := 0, numdeleted := 0
     MyListView.Redraw := false
     local sep := Chr(1)
-    Loop, Parse, allregs, "`n"
+    for _, entry in allregs_array
     {
-        local entry := A_LoopField
-        local St, keypath, realkeypath, keytype, keyvaluename, keyvalueval, modtime
-        Loop, Parse, entry, sep
-        {
-            if (A_Index == 1) {
-                St := A_LoopField
-            } else if (A_Index == 2) {
-                keypath := A_LoopField
-                if (SubStr(keypath, 1, 8) == "machine\")
-                    realkeypath := "HKEY_LOCAL_MACHINE" . SubStr(keypath, 8)
-                else if (SubStr(keypath, 1, 13) == "user\current\")
-                    realkeypath := "HKEY_CURRENT_USER" . SubStr(keypath, 13)
-                else if (SubStr(keypath, 1, 21) == "user\current_classes\")
-                    realkeypath := "HKEY_CLASSES_ROOT" . SubStr(keypath, 21)
-            } else if (A_Index == 3) {
-                keytype := A_LoopField
-            } else if (A_Index == 4) {
-                keyvaluename := A_LoopField
-            } else if (A_Index == 5) {
-                keyvalueval := A_LoopField
-            } else if (A_Index == 6) {
-                modtime := FormatTime(A_LoopField, "yyyy/MM/dd HH:mm:ss")
-            }
-        }
+        local fields := StrSplit(entry, sep)
+        local St := fields[1]
+        local keypath := fields[2]
+        local realkeypath := ""
+        if (SubStr(keypath, 1, 8) == "machine\")
+            realkeypath := "HKEY_LOCAL_MACHINE" . SubStr(keypath, 8)
+        else if (SubStr(keypath, 1, 13) == "user\current\")
+            realkeypath := "HKEY_CURRENT_USER" . SubStr(keypath, 13)
+        else if (SubStr(keypath, 1, 21) == "user\current_classes\")
+            realkeypath := "HKEY_CLASSES_ROOT" . SubStr(keypath, 21)
+
+        local keytype := fields[3]
+        local keyvaluename := fields[4]
+        local keyvalueval := fields[5]
+        local modtime := ""
+        if fields.Length >= 6
+            modtime := FormatTime(fields[6], "yyyy/MM/dd HH:mm:ss")
         if (St == "+") {
             if (keytype != "KEY")
             {
@@ -3438,8 +3453,10 @@ SearchAutostart(box, regpath, location, tick)
             Continue
         outtxt .= A_LoopRegName . A_Tab . A_LoopRegValue . A_Tab . location . A_Tab . tick . A_nl
     }
-    Sort(outtxt, "CL D`n")
-    Return outtxt
+    outtxt := Trim(outtxt, "`n")
+    local out_array := outtxt ? StrSplit(outtxt, "`n") : []
+    out_array.Sort("CL")
+    Return out_array.Length ? out_array.Join("`n") . "`n" : ""
 }
 ListAutostarts(box, bpath)
 {
@@ -3490,10 +3507,9 @@ ListAutostarts(box, bpath)
 
     ReleaseBox(run_pid)
 
-    local numregs := 0
     autostarts := Trim(autostarts, A_nl)
-    Loop, Parse, autostarts, "`n"
-        numregs++
+    local autostarts_array := autostarts ? StrSplit(autostarts, "`n") : []
+    local numregs := autostarts_array.Length
     if (numregs = 0)
     {
         MsgBox("No autostart programs found in the registry of box """ . box . """.", title, 64)
@@ -3573,21 +3589,13 @@ ListAutostarts(box, bpath)
     MyListView.Redraw := false
     local sep := Chr(1)
     local row := 1
-    Loop, Parse, autostarts, "`n"
+    for _, entry in autostarts_array
     {
-        local entry := A_LoopField
-        local valuename, valuedata, location, ticked
-        Loop, Parse, entry, A_Tab
-        {
-            if (A_Index == 1)
-                valuename := A_LoopField
-            else if (A_Index == 2)
-                valuedata := A_LoopField
-            else if (A_Index == 3)
-                location := A_LoopField
-            else if (A_Index == 4)
-                ticked := A_LoopField
-        }
+        local fields := StrSplit(entry, A_Tab)
+        local valuename := fields[1]
+        local valuedata := fields[2]
+        local location := fields[3]
+        local ticked := fields[4]
         if (valuedata != "")
         {
             local program := valuedata
@@ -3728,212 +3736,136 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
 }
 
 RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
+    static keyMap := Map(
+        "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002,
+        "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006
+    )
+    static typeMap := Map(
+        0, "REG_NONE", 1, "REG_SZ", 2, "REG_EXPAND_SZ", 3, "REG_BINARY", 4, "REG_DWORD",
+        5, "REG_DWORD_BIG_ENDIAN", 6, "REG_LINK", 7, "REG_MULTI_SZ", 8, "REG_RESOURCE_LIST",
+        9, "REG_FULL_RESOURCE_DESCRIPTOR", 10, "REG_RESOURCE_REQUIREMENTS_LIST", 11, "REG_QWORD",
+        0x786F6273, "REG_SB_DELETED"
+    )
+    static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
 
-    REG_NONE := 0 ; http://msdn.microsoft.com/en-us/library/ms724884.aspx
-    REG_SZ := 1
-    REG_EXPAND_SZ := 2
-    REG_BINARY := 3
-    REG_DWORD := 4
-    REG_DWORD_BIG_ENDIAN := 5
-    REG_LINK := 6
-    REG_MULTI_SZ := 7
-    REG_RESOURCE_LIST := 8
-
-    REG_FULL_RESOURCE_DESCRIPTOR := 9
-    REG_RESOURCE_REQUIREMENTS_LIST := 10
-    REG_QWORD := 11
-
-    ; Unofficial REG type used by Sandboxie to "delete" an existing key in the sandbox registry.
-    ; REG_SB_DELETED := 0x6B757A74
-    REG_SB_DELETED := 0x786F6273
-
-    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100 ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
-    KEY_WOW64_32KEY := 0x0200
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
+    if !keyMap.Has(sRootKey) {
         ErrorLevel := 3
         return ""
     }
+    local myhKey := keyMap[sRootKey]
 
-    if (mode64)
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
+    local RegAccessRight := mode64bit ? (KEY_QUERY_VALUE | KEY_WOW64_64KEY) : (KEY_QUERY_VALUE | KEY_WOW64_32KEY)
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey) ; open key
-    If (hKey==0) {
-        ErrorLevel := 4
-        return ""
-    }
-    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0) ; get value type
-
-    If (sValueType == REG_NONE)
-        keytype := "REG_NONE"
-    Else If (sValueType == REG_SZ)
-        keytype := "REG_SZ"
-    Else If (sValueType == REG_EXPAND_SZ)
-        keytype := "REG_EXPAND_SZ"
-    Else If (sValueType == REG_BINARY)
-        keytype := "REG_BINARY"
-    Else If (sValueType == REG_DWORD)
-        keytype := "REG_DWORD"
-    Else If (sValueType == REG_DWORD_BIG_ENDIAN)
-        keytype := "REG_DWORD_BIG_ENDIAN"
-    Else If (sValueType == REG_LINK)
-        keytype := "REG_LINK"
-    Else If (sValueType == REG_MULTI_SZ)
-        keytype := "REG_MULTI_SZ"
-    Else If (sValueType == REG_RESOURCE_LIST)
-        keytype := "REG_RESOURCE_LIST"
-    Else If (sValueType == REG_FULL_RESOURCE_DESCRIPTOR)
-        keytype := "REG_FULL_RESOURCE_DESCRIPTOR"
-    Else If (sValueType == REG_RESOURCE_REQUIREMENTS_LIST)
-        keytype := "REG_RESOURCE_REQUIREMENTS_LIST"
-    Else If (sValueType == REG_QWORD)
-        keytype := "REG_QWORD"
-    Else If (sValueType == REG_SB_DELETED)
-        keytype := "REG_SB_DELETED"
-    Else ; value does not exist or unsupported value type
-        keytype := ""
-
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
-    return keytype
-}
-
-RegEnumKey(sRootKey, sKeyName, x64mode=true) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
-    HKCR := HKEY_CLASSES_ROOT
-    HKCU := HKEY_CURRENT_USER
-    HKLM := HKEY_LOCAL_MACHINE
-    HKU := HKEY_USERS
-    HKCC := HKEY_CURRENT_CONFIG
-
-    KEY_ENUMERATE_SUB_KEYS := 0x0008
-    KEY_WOW64_64KEY := 0x0100
-    KEY_WOW64_32KEY := 0x0200
-
-    ERROR_NO_MORE_ITEMS = 259
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
-        ErrorLevel := 3
-        return ""
-    }
-
-    if (x64mode)
-        RegAccessRight := KEY_ENUMERATE_SUB_KEYS + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_ENUMERATE_SUB_KEYS + KEY_WOW64_32KEY
-
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey)
+    local hKey := 0
+    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
     if (hKey == 0) {
         ErrorLevel := 4
         return ""
     }
 
-    lpcName := 512
-    VarSetCapacity(lpName, lpcName)
-    names =
+    local sValueType := 0
+    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint*", &sValueType, "ptr", 0, "ptr", 0)
 
-    dwIndex = 0
+    local keytype := typeMap.Has(sValueType) ? typeMap[sValueType] : ""
+
+    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    return keytype
+}
+
+RegEnumKey(sRootKey, sKeyName, x64mode=true) {
+    static keyMap := Map(
+        "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002,
+        "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006
+    )
+    static KEY_ENUMERATE_SUB_KEYS := 0x0008, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
+    static ERROR_NO_MORE_ITEMS := 259
+
+    if !keyMap.Has(sRootKey) {
+        ErrorLevel := 3
+        return ""
+    }
+    local myhKey := keyMap[sRootKey]
+
+    local RegAccessRight := x64mode ? (KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_64KEY) : (KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_32KEY)
+
+    local hKey := 0
+    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
+    if (hKey == 0) {
+        ErrorLevel := 4
+        return ""
+    }
+
+    local lpcName := 512
+    local lpName := Buffer(lpcName)
+    local names := ""
+    local dwIndex := 0
+
     loop
     {
         lpcName := 512
-        rc := DllCall("Advapi32.dll\RegEnumKeyEx", "uint", hKey, "uint", dwIndex, "str", lpName, "uint*", lpcName, "uint", 0, "uint", 0, "uint", 0, "uint", 0)
+        local rc := DllCall("Advapi32.dll\RegEnumKeyEx", "ptr", hKey, "uint", dwIndex, "str", lpName, "uint*", &lpcName, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0)
         if (rc == 0) {
-            names = %names%%lpName%`n
-            dwIndex ++
+            names .= StrGet(lpName) . "`n"
+            dwIndex++
         } else {
-            if (rc == ERROR_NO_MORE_ITEMS)
-                ErrorLevel = 0
-            else
-                ErrorLevel := rc
-            Break
+            ErrorLevel := (rc == ERROR_NO_MORE_ITEMS) ? 0 : rc
+            break
         }
     }
 
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
+    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
 
-    StringTrimRight, names, names, 1
+    names := Trim(names, "`n")
     Sort(names, "CL")
     return names
 }
 
 RegEnumValue(sRootKey, sKeyName, x64mode=true) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
-    HKCR := HKEY_CLASSES_ROOT
-    HKCU := HKEY_CURRENT_USER
-    HKLM := HKEY_LOCAL_MACHINE
-    HKU := HKEY_USERS
-    HKCC := HKEY_CURRENT_CONFIG
+    static keyMap := Map(
+        "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002,
+        "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006
+    )
+    static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
+    static ERROR_NO_MORE_ITEMS := 259
 
-    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100
-    KEY_WOW64_32KEY := 0x0200
-
-    ERROR_NO_MORE_ITEMS = 259
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
+    if !keyMap.Has(sRootKey) {
         ErrorLevel := 3
         return ""
     }
+    local myhKey := keyMap[sRootKey]
 
-    if (x64mode)
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
+    local RegAccessRight := x64mode ? (KEY_QUERY_VALUE | KEY_WOW64_64KEY) : (KEY_QUERY_VALUE | KEY_WOW64_32KEY)
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey)
+    local hKey := 0
+    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
     if (hKey == 0) {
         ErrorLevel := 4
         return ""
     }
 
-    rc := DllCall("Advapi32.dll\RegQueryInfoKey", "uint", hKey, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint *", lpcMaxValueNameLen, "uint", 0, "uint", 0, "uint", 0)
-    lpcMaxValueNameLen := lpcMaxValueNameLen * 2 + 2
-    lpcName := lpcMaxValueNameLen
-    VarSetCapacity(lpName, lpcName)
-    names =
+    local lpcMaxValueNameLen := 0
+    DllCall("Advapi32.dll\RegQueryInfoKey", "ptr", hKey, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "uint*", &lpcMaxValueNameLen, "ptr", 0, "ptr", 0, "ptr", 0)
+    lpcMaxValueNameLen := lpcMaxValueNameLen * (A_IsUnicode ? 1 : 2) + 1
+    local lpName := Buffer(lpcMaxValueNameLen)
+    local names := ""
+    local dwIndex := 0
 
-    dwIndex = 0
     loop
     {
-        lpcName := lpcMaxValueNameLen
-        rc := DllCall("Advapi32.dll\RegEnumValue", "uint", hKey, "uint", dwIndex, "Wstr", lpName, "uint*", lpcName, "uint", 0, "uint", 0, "uint", 0, "uint", 0)
+        local lpcName := lpcMaxValueNameLen
+        local rc := DllCall("Advapi32.dll\RegEnumValue", "ptr", hKey, "uint", dwIndex, "wstr", lpName, "uint*", &lpcName, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0)
         if (rc == 0) {
-            names = %names%%lpName%`n
-            dwIndex ++
+            names .= StrGet(lpName) . "`n"
+            dwIndex++
         } else {
-            if (rc == ERROR_NO_MORE_ITEMS)
-                ErrorLevel = 0
-            else
-                ErrorLevel := rc
-            Break
+            ErrorLevel := (rc == ERROR_NO_MORE_ITEMS) ? 0 : rc
+            break
         }
     }
 
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
+    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
 
-    StringTrimRight, names, names, 1
+    names := Trim(names, "`n")
     Sort(names, "CL")
     return names
 }
@@ -4027,15 +3959,16 @@ Return
 LVIgnoreSelected(mode)
 {
     global MyListView
-    A_nl := "`n"
+    local A_nl := "`n"
+    local pathcol
 
     if (mode == "dirs" || mode == "files")
         pathcol := 10
     else
         pathcol := 7
 
-    Srows := ""
-    RowNumber := 0
+    local Srows := ""
+    local RowNumber := 0
     Loop
     {
         RowNumber := MyListView.GetNext(RowNumber)
@@ -4044,47 +3977,45 @@ LVIgnoreSelected(mode)
         Srows .= RowNumber . ","
     }
     Srows := Trim(Srows, ",")
-    removedpaths := ""
-    Loop, Parse, Srows, "CSV"
+    local removedpaths := ""
+    local Srows_arr := StrSplit(Srows, ",")
+    for _, row in Srows_arr
     {
-        if (mode == "keys")
-        {
-            item := MyListView.GetText(A_LoopField, pathcol)
-            removedpaths .= item . "`n"
+        local item
+        if (mode == "keys") {
+            item := MyListView.GetText(row, pathcol)
+            removedpaths .= item . A_nl
         }
-        else if (mode == "dirs")
-        {
-            item := MyListView.GetText(A_LoopField, pathcol)
-            removedpaths .= item . "`n"
+        else if (mode == "dirs") {
+            item := MyListView.GetText(row, pathcol)
+            removedpaths .= item . A_nl
         }
-        else if (mode == "values")
-        {
-            item := MyListView.GetText(A_LoopField, pathcol)
-            val := MyListView.GetText(A_LoopField, 4)
+        else if (mode == "values") {
+            item := MyListView.GetText(row, pathcol)
+            local val := MyListView.GetText(row, 4)
             item .= "\" . val
         }
-        else
-        {
-            item := MyListView.GetText(A_LoopField, pathcol)
-            val := MyListView.GetText(A_LoopField, 2)
+        else {
+            item := MyListView.GetText(row, pathcol)
+            local val := MyListView.GetText(row, 2)
             item .= "\" . val
         }
         AddIgnoreItem(mode, item)
     }
 
-    Sort(Srows, "N R D,")
-    Loop, Parse, Srows, "CSV"
-        MyListView.Delete(A_LoopField)
+    Srows_arr.Sort("NR")
+    for _, row in Srows_arr
+        MyListView.Delete(row)
 
     if (mode == "dirs" || mode == "keys") {
         removedpaths := Trim(removedpaths, A_nl)
-        Loop, Parse, removedpaths, "`n"
+        local removedpaths_arr := StrSplit(removedpaths, "`n")
+        for _, p in removedpaths_arr
         {
-            p := A_LoopField
-            row := MyListView.GetCount()
+            local row := MyListView.GetCount()
             loop
             {
-                item := MyListView.GetText(row, pathcol)
+                local item := MyListView.GetText(row, pathcol)
                 if (InStr(item, p, 1) == 1)
                     MyListView.Delete(row)
                 row -= 1
@@ -4093,7 +4024,6 @@ LVIgnoreSelected(mode)
             }
         }
     }
-
     Return
 }
 
@@ -4101,128 +4031,105 @@ ReadIgnoredConfig(type)
 {
     Global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist
 
-    if (type == "files")
-    {
-        ignoredDirs = `n
-        Loop, Read, %ignorelist%dirs.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredDirs = %ignoredDirs%%A_LoopReadLine%`n
-        }
-        ignoredFiles = `n
-        Loop, Read, %ignorelist%files.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredFiles = %ignoredFiles%%A_LoopReadLine%`n
-        }
+    if (type == "files") {
+        ignoredDirs := "`n"
+        try ignoredDirs .= FileRead(ignorelist . "dirs.cfg") . "`n"
+        ignoredFiles := "`n"
+        try ignoredFiles .= FileRead(ignorelist . "files.cfg") . "`n"
     }
-    else
-    {
-        ignoredKeys = `n
-        Loop, Read, %ignorelist%keys.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredKeys = %ignoredKeys%%A_LoopReadLine%`n
-        }
-        ignoredValues = `n
-        Loop, Read, %ignorelist%values.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredValues = %ignoredValues%%A_LoopReadLine%`n
-        }
+    else {
+        ignoredKeys := "`n"
+        try ignoredKeys .= FileRead(ignorelist . "keys.cfg") . "`n"
+        ignoredValues := "`n"
+        try ignoredValues .= FileRead(ignorelist . "values.cfg") . "`n"
     }
     Return
 }
 
 AddIgnoreItem(mode, item)
 {
-    global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
-    data := newIgnored_%mode%
-    data = %data%`n%item%
-    newIgnored_%mode% = %data%
+    global newIgnored
+    newIgnored[mode] .= "`n" . item
     Return
 }
 
 SaveNewIgnoredItems(mode)
 {
-    Global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist
-    Global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
-    A_nl = `n
-
-    if (mode == "files")
-    {
-        if (newIgnored_dirs == "" && newIgnored_files == "")
-            Return
-        pathdata = %ignoredDirs%`n%newIgnored_dirs%
-        itemdata = %ignoredFiles%`n%newIgnored_files%
-        pathfilename = %ignorelist%dirs.cfg
-        itemfilename = %ignorelist%files.cfg
-    }
-    else
-    {
-        if (newIgnored_keys == "" && newIgnored_values == "")
-            Return
-        pathdata = %ignoredKeys%`n%newIgnored_keys%
-        itemdata = %ignoredValues%`n%newIgnored_values%
-        pathfilename = %ignorelist%keys.cfg
-        itemfilename = %ignorelist%values.cfg
-    }
-    Sort(pathdata, "U")
-    Sort(itemdata, "U")
-
-    outpathdata = `n
-    loop, parse, pathdata, `n
-    {
-        if (A_LoopField == "")
-            Continue
-        sub = %A_LoopField%
-        found = 0
-        Loop
-        {
-            SplitPath, sub, , sub
-            if (sub = "")
-                break
-            if (InStr(outpathdata, A_nl . sub . A_nl))
-            {
-                found = 1
-                break
-            }
-        }
-        if (! found)
-            outpathdata = %outpathdata%%A_LoopField%`n
+    Global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist, newIgnored
+    local A_nl := "`n"
+    local path_type, item_type
+    if (mode == "files") {
+        path_type := "dirs"
+        item_type := "files"
+    } else {
+        path_type := "keys"
+        item_type := "values"
     }
 
-    outitemdata = `n
-    loop, parse, itemdata, `n
+    if (newIgnored.Has(path_type) && newIgnored[path_type] == "" && newIgnored.Has(item_type) && newIgnored[item_type] == "")
+        Return
+
+    local pathdata := (mode == "files" ? ignoredDirs : ignoredKeys) . (newIgnored.Has(path_type) ? newIgnored[path_type] : "")
+    local itemdata := (mode == "files" ? ignoredFiles : ignoredValues) . (newIgnored.Has(item_type) ? newIgnored[item_type] : "")
+
+    local pathfilename := ignorelist . path_type . ".cfg"
+    local itemfilename := ignorelist . item_type . ".cfg"
+
+    local path_arr := StrSplit(pathdata, A_nl, A_nl . " `t`r")
+    path_arr.Sort("U")
+    pathdata := path_arr.Join(A_nl)
+
+    local item_arr := StrSplit(itemdata, A_nl, A_nl . " `t`r")
+    item_arr.Sort("U")
+    itemdata := item_arr.Join(A_nl)
+
+    local outpathdata := A_nl
+    loop, parse, pathdata, A_nl
     {
         if (A_LoopField == "")
             Continue
-        sub = %A_LoopField%
-        found = 0
+        local sub := A_LoopField
+        local found := false
         Loop
         {
-            SplitPath, sub, , sub
-            if (sub = "")
+            SplitPath(sub, , &sub)
+            if (sub == "")
                 break
-            if (InStr(outpathdata, A_nl . sub . A_nl))
-            {
-                found = 1
+            if (InStr(outpathdata, A_nl . sub . A_nl)) {
+                found := true
                 break
             }
         }
-        if (! found)
-            outitemdata = %outitemdata%%A_LoopField%`n
+        if (!found)
+            outpathdata .= A_LoopField . A_nl
     }
 
-    FileDelete, %pathfilename%
-    FileAppend, %outpathdata%, %pathfilename%
+    local outitemdata := A_nl
+    loop, parse, itemdata, A_nl
+    {
+        if (A_LoopField == "")
+            Continue
+        local sub := A_LoopField
+        local found := false
+        Loop
+        {
+            SplitPath(sub, , &sub)
+            if (sub == "")
+                break
+            if (InStr(outpathdata, A_nl . sub . A_nl)) {
+                found := true
+                break
+            }
+        }
+        if (!found)
+            outitemdata .= A_LoopField . A_nl
+    }
 
-    FileDelete, %itemfilename%
-    FileAppend, %outitemdata%, %itemfilename%
+    FileDelete(pathfilename)
+    FileAppend(outpathdata, pathfilename)
+
+    FileDelete(itemfilename)
+    FileAppend(outitemdata, itemfilename)
 
     Return
 }
