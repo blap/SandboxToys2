@@ -1,8 +1,8 @@
-#UseHook Off
 #Persistent
-#SingleInstance Ignore
+#SingleInstance Off
 
-version = 2.5.4
+A_UseHook := false
+version := 2.5.4
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap and others
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
@@ -30,139 +30,134 @@ version = 2.5.4
 ;   QuickLaunch menus (like in the standard Sandboxie Start Menu).
 ; - Add _ask_ box name in the list of boxes for the Create Shortcut option.
 
-SplitPath, A_ScriptName, , , , nameNoExt
+SplitPath(A_ScriptName,,,, &nameNoExt)
 
 ; Settings
 ; Note: these values are overwritten if SandboxToys.ini exists in the directrory
 ; containing the script, in %appdata% or in %appdata%\SandboxToys2\
-smalliconsize = 16 ; other icons
-largeiconsize = 32 ; sandbox icons
-seperatedstartmenus = 0
-includeboxnames = 1
-trayiconfile =
-trayiconnumber = 1
-sbcommandpromptdir = `%userprofile`%
+smalliconsize := 16 ; other icons
+largeiconsize := 32 ; sandbox icons
+seperatedstartmenus := 0
+includeboxnames := 1
+trayiconfile := ""
+trayiconnumber := 1
+sbcommandpromptdir := "%userprofile%"
 
-inidir = %A_ScriptDir%
-sbtini = %A_ScriptDir%\%nameNoExt%.ini
-regconfig = %A_ScriptDir%\%nameNoExt%_RegConfig.cfg
-ignorelist = %A_ScriptDir%\%nameNoExt%_Ignore_
-usertoolsdir = %A_ScriptDir%\%nameNoExt%_UserTools
-if (NOT FileExist(sbtini))
+inidir := A_ScriptDir
+sbtini := A_ScriptDir . "\" . nameNoExt . ".ini"
+regconfig := A_ScriptDir . "\" . nameNoExt . "_RegConfig.cfg"
+ignorelist := A_ScriptDir . "\" . nameNoExt . "_Ignore_"
+usertoolsdir := A_ScriptDir . "\" . nameNoExt . "_UserTools"
+if (!FileExist(sbtini))
 {
-    inidir = %appdata%\SandboxToys2
-    sbtini = %inidir%\%nameNoExt%.ini
-    regconfig = %inidir%\%nameNoExt%_RegConfig.cfg
-    ignorelist = %inidir%\%nameNoExt%_Ignore_
-    usertoolsdir = %inidir%\%nameNoExt%_UserTools
-    if (NOT FileExist(inidir))
-        FileCreateDir, %inidir%
+    inidir := A_AppData . "\SandboxToys2"
+    sbtini := inidir . "\" . nameNoExt . ".ini"
+    regconfig := inidir . "\" . nameNoExt . "_RegConfig.cfg"
+    ignorelist := inidir . "\" . nameNoExt . "_Ignore_"
+    usertoolsdir := inidir . "\" . nameNoExt . "_UserTools"
+    if (!DirExist(inidir))
+        DirCreate(inidir)
 }
-if (NOT FileExist(usertoolsdir))
-    FileCreateDir, %usertoolsdir%
+if (!DirExist(usertoolsdir))
+    DirCreate(usertoolsdir)
 
 if (FileExist(sbtini)) {
-    IniRead, largeiconsize, %sbtini%, AutoConfig, LargeIconSize, %largeiconsize%
-    IniRead, smalliconsize, %sbtini%, AutoConfig, SmallIconSize, %smalliconsize%
-    IniRead, seperatedstartmenus, %sbtini%, AutoConfig, SeperatedStartMenus, %seperatedstartmenus%
-    IniRead, includeboxnames, %sbtini%, AutoConfig, IncludeBoxNames, %includeboxnames%
-    IniRead, trayiconfile, %sbtini%, UserConfig, TrayIconFile, %trayiconfile%
-    IniRead, trayiconnumber, %sbtini%, UserConfig, TrayIconNumber, %trayiconnumber%
-    IniRead, sbcommandpromptdir, %sbtini%, UserConfig, SandboxedCommandPromptDir, %sbcommandpromptdir%
+    largeiconsize := IniRead(sbtini, "AutoConfig", "LargeIconSize", largeiconsize)
+    smalliconsize := IniRead(sbtini, "AutoConfig", "SmallIconSize", smalliconsize)
+    seperatedstartmenus := IniRead(sbtini, "AutoConfig", "SeperatedStartMenus", seperatedstartmenus)
+    includeboxnames := IniRead(sbtini, "AutoConfig", "IncludeBoxNames", includeboxnames)
+    trayiconfile := IniRead(sbtini, "UserConfig", "TrayIconFile", trayiconfile)
+    trayiconnumber := IniRead(sbtini, "UserConfig", "TrayIconNumber", trayiconnumber)
+    sbcommandpromptdir := IniRead(sbtini, "UserConfig", "SandboxedCommandPromptDir", sbcommandpromptdir)
 }
 else
 {
-    IniWrite, %largeiconsize%, %sbtini%, AutoConfig, LargeIconSize
-    IniWrite, %smalliconsize%, %sbtini%, AutoConfig, SmallIconSize
-    IniWrite, %seperatedstartmenus%, %sbtini%, AutoConfig, SeperatedStartMenus
-    IniWrite, %includeboxnames%, %sbtini%, AutoConfig, IncludeBoxNames
-    IniWrite, %trayiconfile%, %sbtini%, UserConfig, TrayIconFile
-    IniWrite, %trayiconnumber%, %sbtini%, UserConfig, TrayIconNumber
-    IniWrite, %sbcommandpromptdir%, %sbtini%, UserConfig, SandboxedCommandPromptDir
+    IniWrite(largeiconsize, sbtini, "AutoConfig", "LargeIconSize")
+    IniWrite(smalliconsize, sbtini, "AutoConfig", "SmallIconSize")
+    IniWrite(seperatedstartmenus, sbtini, "AutoConfig", "SeperatedStartMenus")
+    IniWrite(includeboxnames, sbtini, "AutoConfig", "IncludeBoxNames")
+    IniWrite(trayiconfile, sbtini, "UserConfig", "TrayIconFile")
+    IniWrite(trayiconnumber, sbtini, "UserConfig", "TrayIconNumber")
+    IniWrite(sbcommandpromptdir, sbtini, "UserConfig", "SandboxedCommandPromptDir")
 }
 if (trayiconfile == "ERROR")
-    trayiconfile =
+    trayiconfile := ""
 
-if (NOT A_IsCompiled && trayiconfile == "") {
-    tmp = %A_ScriptDir%\SandboxToys2.ico
+if (!A_IsCompiled and trayiconfile == "") {
+    tmp := A_ScriptDir . "\SandboxToys2.ico"
     if (FileExist(tmp))
         trayiconfile := tmp
-    tmp = %A_ScriptDir%\%nameNoExt%.ico
+    tmp := A_ScriptDir . "\" . nameNoExt . ".ico"
     if (FileExist(tmp))
         trayiconfile := tmp
 }
 
 ; some useful constants
-setWorkingDir %A_ScriptDir%
-title = SandboxToys v%version% by r0lZ updated by blap
+SetWorkingDir(A_ScriptDir)
+title := "SandboxToys v" . version . " by r0lZ updated by blap"
 if (nameNoExt != "SandboxToys")
-    title = %title% (%nameNoExt%)
+    title := title . " (" . nameNoExt . ")"
 
-A_nl = `n
-A_Quotes = "
-shell32 = %A_WinDir%\system32\shell32.dll
-imageres = %A_WinDir%\system32\imageres.dll
+A_nl := "\n"
+A_Quotes := """"
+shell32 := A_WinDir . "\system32\shell32.dll"
+imageres := A_WinDir . "\system32\imageres.dll"
 
-cmdRes = %A_WinDir%\system32\cmd.exe
+cmdRes := A_WinDir . "\system32\cmd.exe"
 
-explorerImg = %A_WinDir%\system32\explorer.exe
-if (! FileExist(explorerImg)) {
-    explorerImg = %A_WinDir%\explorer.exe
+explorerImg := A_WinDir . "\system32\explorer.exe"
+if (!FileExist(explorerImg)) {
+    explorerImg := A_WinDir . "\explorer.exe"
 }
-explorerRes = %A_WinDir%\system32\explorer.exe
-if (! FileExist(explorerRes)) {
-    explorerRes = %A_WinDir%\explorer.exe
+explorerRes := A_WinDir . "\system32\explorer.exe"
+if (!FileExist(explorerRes)) {
+    explorerRes := A_WinDir . "\explorer.exe"
 }
-explorer = %explorerImg% /e`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
-explorerE = %explorerImg% /e
-explorerER = %explorerImg% /e /root
-explorerERArg = %explorerImg% /e /root`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
-explorerArg = `,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
-explorerArgE = /e`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
-explorerArgER = /e /root`,::`{20D04FE0-3AEA-1069-A2D8-08002B30309D`}
+explorer := explorerImg . " /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+explorerE := explorerImg . " /e"
+explorerER := explorerImg . " /e /root"
+explorerERArg := explorerImg . " /e /root,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+explorerArg := ",::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+explorerArgE := "/e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+explorerArgER := "/e /root,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
 
-regeditImg = %A_WinDir%\system32\regedit.exe
-if (! FileExist(regeditImg)) {
-    regeditImg = %A_WinDir%\regedit.exe
+regeditImg := A_WinDir . "\system32\regedit.exe"
+if (!FileExist(regeditImg)) {
+    regeditImg := A_WinDir . "\regedit.exe"
 }
-regeditRes = %A_WinDir%\system32\regedit.exe
-if (! FileExist(regeditRes)) {
-    regeditRes = %A_WinDir%\regedit.exe
+regeditRes := A_WinDir . "\system32\regedit.exe"
+if (!FileExist(regeditRes)) {
+    regeditRes := A_WinDir . "\regedit.exe"
 }
 
 ; we need the %SID% and %SESSION% variables, supported by Sandboxie,
 ; but not directly available as Windows environment variables.
 ; Get them from the registry.
 ; %SID%:
-Loop, HKEY_CURRENT_USER, Software\Microsoft\Protected Storage System Provider, 1, 0
+Loop Reg, "HKEY_CURRENT_USER\Software\Microsoft\Protected Storage System Provider", "K"
 {
     if (A_LoopRegType == "KEY") {
-        SID = %A_LoopRegName%
+        SID := A_LoopRegName
         break
     }
 }
 ; %SESSION%:
-RegRead, SESSION, HKEY_CURRENT_USER, Volatile Environment, SESSION
+SESSION := RegRead("HKEY_CURRENT_USER\Volatile Environment", "SESSION")
 if (SESSION == "" || SESSION == "Console")
-    SESSION = 0
-
-if (NOT A_IsUnicode) {
-    msgBox, 16, %title%, This program must be run under the AutoHotkey_L (AHK_Lw) build of AutoHotkey.
-    ExitApp
-}
+    SESSION := 0
 
 ; find Sandboxie's installation dir
-RegRead, imagepath, HKEY_LOCAL_MACHINE, SYSTEM\CurrentControlSet\services\SbieSvc, ImagePath
+imagepath := RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SbieSvc", "ImagePath")
 imagepath := Trim(imagepath,A_Quotes)
-splitpath, imagepath, , sbdir
-start = %sbdir%\Start.exe
-SbieCtrl = %sbdir%\SbieCtrl.exe
-SbieMngr = %sbdir%\SandMan.exe
-SbieAgent = %SbieMngr%
+SplitPath(imagepath, , &sbdir)
+start := sbdir . "\Start.exe"
+SbieCtrl := sbdir . "\SbieCtrl.exe"
+SbieMngr := sbdir . "\SandMan.exe"
+SbieAgent := SbieMngr
 if (! FileExist(SbieAgent)) {
-    SbieAgent = %sbdir%\SbieCtrl.exe
+    SbieAgent := sbdir . "\SbieCtrl.exe"
     if (! FileExist(SbieAgent)) {
-        MsgBox 16, %title%, Can't find Sandboxie installation folder. Sorry.
+        MsgBox(16, title, "Can't find Sandboxie installation folder. Sorry.")
         ExitApp
     }
 }
@@ -170,66 +165,66 @@ if (! FileExist(SbieAgent)) {
 ;@Ahk2Exe-AddResource Resources\IconFull.ico ; Id=6
 ;@Ahk2Exe-AddResource Resources\IconEmpty.ico ; Id=7
 if (SbieAgent == SbieCtrl) {
-    SbieAgentResMain = %SbieAgent%
+    SbieAgentResMain := SbieAgent
     SbieAgentResMainId := 1
-    SbieAgentResMainText = Sandboxie Control
-    SbieAgentResFull = %SbieCtrl%
+    SbieAgentResMainText := "Sandboxie Control"
+    SbieAgentResFull := SbieCtrl
     SbieAgentResFullId := 3
-    SbieAgentResEmpty = %SbieCtrl%
-    SbieAgentResEmptyId = 10
+    SbieAgentResEmpty := SbieCtrl
+    SbieAgentResEmptyId := 10
     if (A_IsCompiled) {
-        SbieAgentResMain = %SbieCtrl%
+        SbieAgentResMain := SbieCtrl
         SbieAgentResMainId := 1
-        SbieAgentResMainText = Sandboxie Control
-        SbieAgentResFull = %SbieCtrl%
+        SbieAgentResMainText := "Sandboxie Control"
+        SbieAgentResFull := SbieCtrl
         SbieAgentResFullId := 3
-        SbieAgentResEmpty = %SbieCtrl%
+        SbieAgentResEmpty := SbieCtrl
         SbieAgentResEmptyId := 10
     }
 }
 else {
-    SbieAgentResMain = %SbieAgent%
+    SbieAgentResMain := SbieAgent
     SbieAgentResMainId := 1
-    SbieAgentResMainText = Sandboxie-Plus Manager
-    SbieAgentResFull = Resources\IconFull.ico
+    SbieAgentResMainText := "Sandboxie-Plus Manager"
+    SbieAgentResFull := "Resources\IconFull.ico"
     SbieAgentResFullId := 1
-    SbieAgentResEmpty = Resources\IconEmpty.ico
+    SbieAgentResEmpty := "Resources\IconEmpty.ico"
     SbieAgentResEmptyId := 1
     if (A_IsCompiled) {
-        SbieAgentResMain = %SbieMngr%
+        SbieAgentResMain := SbieMngr
         SbieAgentResMainId := 1
-        SbieAgentResMainText = Sandboxie-Plus Manager
-        SbieAgentResFull = %A_ScriptFullPath%
+        SbieAgentResMainText := "Sandboxie-Plus Manager"
+        SbieAgentResFull := A_ScriptFullPath
         SbieAgentResFullId := 6
-        SbieAgentResEmpty = %A_ScriptFullPath%
+        SbieAgentResEmpty := A_ScriptFullPath
         SbieAgentResEmptyId := 7
     }
 }
 
 ; find Sandboxie's INI file in %A_WinDir% and in Sandboxie's install dir
-RegRead, IniPathO, HKLM\SYSTEM\CurrentControlSet\Services\SbieDrv, IniPath ; check custom config location in registry
-IniPath = %IniPathO%
-ini =
+IniPathO := RegRead("HKLM\SYSTEM\CurrentControlSet\Services\SbieDrv", "IniPath") ; check custom config location in registry
+IniPath := IniPathO
+ini := ""
 if ((IniPath != "") && (SubStr(IniPath, 1, 4) == "\??\") && (SubStr(IniPath, 8) != "") && (FileExist(SubStr(IniPath, 5)))) {
-    IniPath := (SubStr(IniPath, 5))
-    ini = %IniPath%
+    IniPath := SubStr(IniPath, 5)
+    ini := IniPath
 }
 else {
-    IniPath =
-    ini = %sbdir%\Sandboxie.ini
-    if (! FileExist(ini))
+    IniPath := ""
+    ini := sbdir . "\Sandboxie.ini"
+    if (!FileExist(ini))
     {
-        ini = %A_WinDir%\Sandboxie.ini
-        if (! FileExist(ini))
+        ini := A_WinDir . "\Sandboxie.ini"
+        if (!FileExist(ini))
         {
-            MsgBox, 16, %title%, Can't find Sandboxie.ini.
+            MsgBox(16, title, "Can't find Sandboxie.ini.")
             ExitApp
         }
     }
 }
 ; get current Sandboxes installation bpath in the INI file.
 ; If it is not defined, assumes the default bpath.
-IniRead, sandboxes_path, %ini%, GlobalSettings, FileRootPath, %systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%
+sandboxes_path := IniRead(ini, "GlobalSettings", "FileRootPath", "%systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%")
 sandboxes_path := expandEnvVars(sandboxes_path)
 
 ; Get the array of sandboxes (requires AHK_L)
@@ -239,47 +234,46 @@ getSandboxesArray(sandboxes_array,ini)
 ; parse command line
 ; If one argument is passed and it's a file or folder,
 ; creates a sandboxed shortcut to it on the desktop and exit
-traymode = 0
-singlebox = ""
-singleboxmode = 0
+traymode := 0
+singlebox := ""
+singleboxmode := 0
 startupfile := ""
-if 0 >= 1
+if (A_Args.Length >= 1)
 {
-    mainarg = %1%
+    mainarg := A_Args[1]
     if (SubStr(mainarg, 1, 5) == "/box:") {
         singlebox := SubStr(mainarg, 6)
-        singleboxmode = 1
-        if 0 >= 2
-            mainarg = %2%
+        singleboxmode := 1
+        if (A_Args.Length >= 2)
+            mainarg := A_Args[2]
         else
-            mainarg =
+            mainarg := ""
     }
     if (mainarg == "/tray") {
-        traymode = 1
+        traymode := 1
     } else if (mainarg == "/makeregconfig") {
-        err = 0
+        err := 0
         if (singleboxmode == 0)
-            err = 1
+            err := 1
         if (err)
-            MsgBox, 16, %title%, Required box argument missing.`nUsage to recreate the registry config file:`n%nameNoExt% /box:boxname /makeregconfig`nThe box MUST be empty!
+            MsgBox(16, title, "Required box argument missing.`nUsage to recreate the registry config file:`n" . nameNoExt . " /box:boxname /makeregconfig`nThe box MUST be empty!")
         else
             MakeRegConfig(singlebox)
         ExitApp
     } else {
-        Menu, Tray, NoIcon
+        ;Menu, Tray, NoIcon ; TODO v2
         startupfile := mainarg
     }
 }
 if (startupfile != "")
 {
-    startupfile = %1%
+    startupfile := A_Args[1]
     startupfile := Trim(startupfile, A_Quotes)
-    If (NOT FileExist(startupfile))
+    if (!FileExist(startupfile))
     {
-        GoSub, CmdLineHelp
+        CmdLineHelp()
         ExitApp
     }
-    numboxes := sandboxes_array[0]
     if (singleboxmode) {
         NewShortcut(singlebox, startupfile)
         ExitApp
@@ -295,22 +289,14 @@ if (startupfile != "")
 ; generate it using that empty box.
 if (! FileExist(regconfig))
 {
-    numboxes := sandboxes_array[0]
-    emptybox =
-    Loop, %numboxes%
+    emptybox := ""
+    for b, boxdata in sandboxes_array
     {
-        b := sandboxes_array[A_Index,"name"]
-        exist := sandboxes_array[b,"exist"]
-        benabled := sandboxes_array[b,"Enabled"]
-        bneverdelete := sandboxes_array[b,"NeverDelete"]
-        busefileimage := sandboxes_array[b,"UseFileImage"]
-        buseramdisk := sandboxes_array[b,"UseRamDisk"]
-
-        if (benabled != 1  || bneverdelete != 0 || busefileimage != 0 || buseramdisk != 0) { ; Skip disabled, neverdelete, usefileimage, or useramdisk boxes
+        if (!boxdata.Enabled || boxdata.NeverDelete || boxdata.UseFileImage || boxdata.UseRamDisk) { ; Skip disabled, neverdelete, usefileimage, or useramdisk boxes
             Continue
         }
 
-        if (NOT exist)
+        if (!boxdata.exist)
         {
             emptybox := b
             break
@@ -319,46 +305,44 @@ if (! FileExist(regconfig))
     if (emptybox != "")
     {
         MakeRegConfig(emptybox)
-        msg = SandboxToys has generated the registry configuration file`n"%regconfig%"`n`n
-        msg = %msg%That file is necessary to exclude the registry keys and values
-        msg = %msg% that Sandboxie needs to create in the sandbox for its own use
-        msg = %msg% from the output of the "Registry List and Export" and "Watch
-        msg = %msg% Registry Changes" functions.`n`n
-        msg = %msg%SandboxToys needs an EMPTY sandbox to create that file. The box
-        msg = %msg% "%emptybox%" is empty, and has been used to generate the file.`n`n
-        msg = %msg%If you need to recreate that file, just delete the file, be sure
-        msg = %msg% to delete a sandbox, and launch SandboxToys again. You should see
-        msg = %msg% this dialog again.
-        MsgBox, 64, %title%, %msg%
-        runWait, %start% /box:%emptybox% /terminate, , UseErrorLevel
-        runWait, %start% /box:%emptybox% delete_sandbox, , UseErrorLevel
+        msg := "SandboxToys has generated the registry configuration file`n""" . regconfig . """`n`n"
+        msg .= "That file is necessary to exclude the registry keys and values "
+        msg .= "that Sandboxie needs to create in the sandbox for its own use "
+        msg .= "from the output of the ""Registry List and Export"" and ""Watch "
+        msg .= "Registry Changes"" functions.`n`n"
+        msg .= "SandboxToys needs an EMPTY sandbox to create that file. The box "
+        msg .= """" . emptybox . """ is empty, and has been used to generate the file.`n`n"
+        msg .= "If you need to recreate that file, just delete the file, be sure "
+        msg .= "to delete a sandbox, and launch SandboxToys again. You should see "
+        msg .= "this dialog again."
+        MsgBox(64, title, msg)
+        RunWait(start . " /box:" . emptybox . " /terminate",, "UseErrorLevel")
+        RunWait(start . " /box:" . emptybox . " delete_sandbox",, "UseErrorLevel")
     }
 }
 
 if (traymode) {
-    Menu, Tray, Nostandard
-    Menu, Tray, Add, About and Help, MainHelpMenuHandler
-    setMenuIcon("Tray", "About and Help", shell32, 24, smalliconsize)
-    Menu, Tray, Add, Exit, ExitMenuHandler
-    setMenuIcon("Tray", "Exit", shell32, 28, smalliconsize)
-    Menu, Tray, Add
-    Menu, Tray, Add, SandboxToys Menu, BuildMainMenu
-    setMenuIcon("Tray", "SandboxToys Menu", SbieAgentResMain, SbieAgentResMainId, smalliconsize)
+    A_TrayMenu.Delete()
+    A_TrayMenu.Add("About and Help", MainHelpMenuHandler)
+    setMenuIcon(A_TrayMenu, "About and Help", shell32, 24, smalliconsize)
+    A_TrayMenu.Add("Exit", ExitMenuHandler)
+    setMenuIcon(A_TrayMenu, "Exit", shell32, 28, smalliconsize)
+    A_TrayMenu.Add()
+    A_TrayMenu.Add("SandboxToys Menu", BuildMainMenu)
+    setMenuIcon(A_TrayMenu, "SandboxToys Menu", SbieAgentResMain, SbieAgentResMainId, smalliconsize)
     if (trayiconfile != "") {
         if (trayiconnum == "")
-            trayiconnum = 1
-        menu, %menu%, UseErrorLevel, on
-        Menu, Tray, Icon, %trayiconfile%, %trayiconnum%, 1
-        menu, %menu%, UseErrorLevel, off
+            trayiconnum := 1
+        try A_TrayMenu.SetIcon(trayiconfile, trayiconnum)
     }
-    Menu, Tray, Default, SandboxToys Menu
-    Menu, Tray, Click, 1
+    A_TrayMenu.Default := "SandboxToys Menu"
+    A_TrayMenu.ClickCount := 1
     if (singleboxmode)
-        Menu, Tray, Tip, %title%`nBox : %singlebox%
+        A_TrayMenu.Tip := title . "`nBox : " . singlebox
     else
-        Menu, Tray, Tip, %title%
+        A_TrayMenu.Tip := title
 } else {
-    GoSub, BuildMainMenu
+    BuildMainMenu()
     ExitApp
 }
 
@@ -368,7 +352,13 @@ Return
 ; No arguments, or called from tray: build the main menu
 ; ######################################################
 
-BuildMainMenu:
+BuildMainMenu(ItemName, ItemPos, MyMenu)
+{
+    global traymode, sandboxes_array, ini, menucommands, menuicons, numboxes, singleboxmode, singlebox, box, boxpath, boxexist, dropadminrights, benabled, boxlabel
+    global SbieAgentResFull, SbieAgentResFullId, SbieAgentResEmpty, SbieAgentResEmptyId, seperatedstartmenus, public, shell32, largeiconsize, smalliconsize
+    global added_menus, public_dir, idx, tmp1, topicons, numtopicons, files1, menunum, numicons, m, files2, explorerRes, imageres, regeditRes
+    global A_WinDir, cmdRes, SbieAgentResMain, SbieAgentResMainId, usertoolsdir, mainmenu, SbieAgent, SbieAgentResMainText, title, includeboxnames
+    global SBMenuSetup
     if (traymode)
     {
         sandboxes_array := Object()
@@ -376,77 +366,81 @@ BuildMainMenu:
     }
 
     ; Init the arrays of menu commands and icons (requires AHK_L)
-    menucommands := Object()
-    menuicons := Object()
+    menucommands := Map()
+    menuicons := Map()
+    menus := Map()
 
-    Menu, ST2MainMenu, Add
-    Menu, ST2MainMenu, DeleteAll
+    menus["ST2MainMenu"] := Menu()
+    menus["ST2MainMenu"].Name := "ST2MainMenu"
 
     ; Main loop: process all sandboxes
-    numboxes := sandboxes_array[0]
+    numboxes := sandboxes_array.Count
     if (numboxes == 1) {
-        singleboxmode = 1
-        singlebox := sandboxes_array[1,"name"]
+        singleboxmode := 1
+        for boxname, boxdata in sandboxes_array
+        {
+            singlebox := boxname
+            break
+        }
     }
 
     ; Build the Main menu
-    loop, %numboxes%
+    for box, boxdata in sandboxes_array
     {
-        box := sandboxes_array[A_Index,"name"]
-        boxpath := sandboxes_array[box,"bpath"]
-        boxexist := sandboxes_array[box,"exist"]
-        dropadminrights := sandboxes_array[box,"DropAdminRights"]
-        benabled := sandboxes_array[box,"Enabled"]
+        boxpath := boxdata.bpath
+        boxexist := boxdata.exist
+        dropadminrights := boxdata.DropAdminRights
+        benabled := boxdata.Enabled
         if (!benabled) { ; Hide disabled boxes from box list
             Continue
         }
 
         if (boxexist) {
-            boxlabel = %box%
+            boxlabel := box
         }
         else {
-            boxlabel = %box% (empty)
+            boxlabel := box . " (empty)"
         }
 
         if (singleboxmode && box != singlebox)
             continue
 
-        Menu, %box%_ST2MenuBox, Add
-        Menu, %box%_ST2MenuBox, DeleteAll
-        Menu, %box%_ST2StartMenu, Add
-        Menu, %box%_ST2StartMenu, DeleteAll
-        Menu, %box%_ST2StartMenuAU, Add
-        Menu, %box%_ST2StartMenuAU, DeleteAll
-        Menu, %box%_ST2StartMenuCU, Add
-        Menu, %box%_ST2StartMenuCU, DeleteAll
-        Menu, %box%_ST2Desktop, Add
-        Menu, %box%_ST2Desktop, DeleteAll
-        Menu, %box%_ST2QuickLaunch, Add
-        Menu, %box%_ST2QuickLaunch, DeleteAll
-        Menu, %box%_ST2MenuExplore, Add
-        Menu, %box%_ST2MenuExplore, DeleteAll
-        Menu, %box%_ST2MenuReg, Add
-        Menu, %box%_ST2MenuReg, DeleteAll
-        Menu, %box%_ST2MenuTools, Add
-        Menu, %box%_ST2MenuTools, DeleteAll
-        Menu, SBMenuSetup, Add
-        Menu, SBMenuSetup, DeleteAll
+        menus[box . "_ST2MenuBox"] := Menu()
+        menus[box . "_ST2MenuBox"].Name := box . "_ST2MenuBox"
+        menus[box . "_ST2StartMenu"] := Menu()
+        menus[box . "_ST2StartMenu"].Name := box . "_ST2StartMenu"
+        menus[box . "_ST2StartMenuAU"] := Menu()
+        menus[box . "_ST2StartMenuAU"].Name := box . "_ST2StartMenuAU"
+        menus[box . "_ST2StartMenuCU"] := Menu()
+        menus[box . "_ST2StartMenuCU"].Name := box . "_ST2StartMenuCU"
+        menus[box . "_ST2Desktop"] := Menu()
+        menus[box . "_ST2Desktop"].Name := box . "_ST2Desktop"
+        menus[box . "_ST2QuickLaunch"] := Menu()
+        menus[box . "_ST2QuickLaunch"].Name := box . "_ST2QuickLaunch"
+        menus[box . "_ST2MenuExplore"] := Menu()
+        menus[box . "_ST2MenuExplore"].Name := box . "_ST2MenuExplore"
+        menus[box . "_ST2MenuReg"] := Menu()
+        menus[box . "_ST2MenuReg"].Name := box . "_ST2MenuReg"
+        menus[box . "_ST2MenuTools"] := Menu()
+        menus[box . "_ST2MenuTools"].Name := box . "_ST2MenuTools"
+        SBMenuSetup := Menu()
+        SBMenuSetup.Name := "SBMenuSetup"
 
         if (singleboxmode) {
-            Menu, %singlebox%_ST2MenuBox, Add, Box %boxlabel%, DummyMenuHandler
-            Menu, %singlebox%_ST2MenuBox, Disable, Box %boxlabel%
+            menus[singlebox . "_ST2MenuBox"].Add("Box " . boxlabel, DummyMenuHandler)
+            menus[singlebox . "_ST2MenuBox"].Disable("Box " . boxlabel)
             if (boxexist) {
-                setMenuIcon(singlebox "_ST2MenuBox", "Box " boxlabel, SbieAgentResFull, SbieAgentResFullId, smalliconsize)
+                setMenuIcon(menus[singlebox . "_ST2MenuBox"], "Box " . boxlabel, SbieAgentResFull, SbieAgentResFullId, smalliconsize)
             } else {
-                setMenuIcon(singlebox "_ST2MenuBox", "Box " boxlabel, SbieAgentResEmpty, SbieAgentResEmptyId, smalliconsize)
+                setMenuIcon(menus[singlebox . "_ST2MenuBox"], "Box " . boxlabel, SbieAgentResEmpty, SbieAgentResEmptyId, smalliconsize)
             }
-            Menu, %singlebox%_ST2MenuBox, Add
+            menus[singlebox . "_ST2MenuBox"].Add()
         }
 
-        added_menus = 0
+        added_menus := 0
         if (boxexist) {
             ; build bpath to the Public (All Users) directory (and removes the ":")
-            public_dir = %public%
+            public_dir := public
             if (public_dir != "") {
                 idx := InStr(public_dir, ":")
                 if (idx) {
@@ -456,273 +450,271 @@ BuildMainMenu:
             ; Build the Box / Start Menu(s)
             if (seperatedstartmenus) {
                 ; get shortcut files from the All Users StartMenu (top section)
-                tmp1 = %boxpath%\user\all\Microsoft\Windows\Start Menu
+                tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu"
                 topicons := getFilenames(tmp1, 0)
                 topicons := Trim(topicons, A_nl)
-                Sort, topicons, CL D`n
+                Sort topicons, "CL D`n"
                 if (topicons) {
                     numtopicons := addCmdsToMenu(box, "ST2StartMenuAU", topicons)
-                    Menu, %box%_ST2MenuBox, Add, Start Menu (all users), :%box%_ST2StartMenuAU
-                    setMenuIcon(box "_ST2MenuBox", "Start Menu (all users)", shell32, 20, largeiconsize)
-                    added_menus = 1
+                    menus[box . "_ST2MenuBox"].Add("Start Menu (all users)", menus[box . "_ST2StartMenuAU"])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (all users)", shell32, 20, largeiconsize)
+                    added_menus := 1
                 }
                 ; and from the Programs section
-                tmp1 = %boxpath%\user\all\Microsoft\Windows\Start Menu\Programs
+                tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs"
                 files1 := getFilenames(tmp1, 1)
                 if (files1 && topicons)
-                    Menu, %box%_ST2StartMenuAU, Add
-                menunum = 0
+                    menus[box . "_ST2StartMenuAU"].Add()
+                menunum := 0
                 numicons := buildProgramsMenu1(box, "ST2StartMenuAU", tmp1)
                 if (numicons)
-                    added_menus = 1
+                    added_menus := 1
                 if (topicons == "" && numicons > 0) {
-                    Menu, %box%_ST2MenuBox, Add, Start Menu (all users), :%box%_ST2StartMenuAU
-                    setMenuIcon(box "_ST2MenuBox", "Start Menu (all users)", shell32, 20, largeiconsize)
+                    menus[box . "_ST2MenuBox"].Add("Start Menu (all users)", menus[box . "_ST2StartMenuAU"])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (all users)", shell32, 20, largeiconsize)
                 }
 
                 ; get shortcut files from the Current User StartMenu (top section)
-                tmp1 = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu
+                tmp1 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
                 topicons := getFilenames(tmp1, 0)
                 topicons := Trim(topicons, A_nl)
-                Sort, topicons, CL D`n
+                Sort topicons, "CL D`n"
                 if (topicons) {
                     numtopicons := addCmdsToMenu(box, "ST2StartMenuCU", topicons)
-                    Menu, %box%_ST2MenuBox, Add, Start Menu (current user), :%box%_ST2StartMenuCU
-                    setMenuIcon(box "_ST2MenuBox", "Start Menu (current user)", shell32, 20, largeiconsize)
-                    added_menus = 1
+                    menus[box . "_ST2MenuBox"].Add("Start Menu (current user)", menus[box . "_ST2StartMenuCU"])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (current user)", shell32, 20, largeiconsize)
+                    added_menus := 1
                 }
                 ; and from the Programs section
-                tmp1 = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs
+                tmp1 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
                 files1 := getFilenames(tmp1, 1)
                 if (files1 && topicons)
-                    Menu, %box%_ST2StartMenuCU, Add
-                menunum = 0
+                    menus[box . "_ST2StartMenuCU"].Add()
+                menunum := 0
                 numicons := buildProgramsMenu1(box, "ST2StartMenuCU", tmp1)
                 if (numicons)
-                    added_menus = 1
+                    added_menus := 1
                 if (topicons == "" && numicons > 0) {
-                    Menu, %box%_ST2MenuBox, Add, Start Menu (current user), :%box%_ST2StartMenuCU
-                    setMenuIcon(box "_ST2MenuBox", "Start Menu (current user)", shell32, 20, largeiconsize)
+                    menus[box . "_ST2MenuBox"].Add("Start Menu (current user)", menus[box . "_ST2StartMenuCU"])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (current user)", shell32, 20, largeiconsize)
                 }
 
                 ; process Public Desktop
-                tmp1 = %boxpath%\drive\%public_dir%\Desktop
-                menunum = 0
+                tmp1 := boxpath . "\drive\" . public_dir . "\Desktop"
+                menunum := 0
                 m := buildProgramsMenu1(box, "ST2DesktopAU", tmp1)
                 if (m) {
-                    added_menus = 1
-                    Menu, %box%_ST2MenuBox, Add, Desktop (all users), :%box%_%m%
-                    setMenuIcon(box "_ST2MenuBox", "Desktop (all users)", shell32, 35, largeiconsize)
+                    added_menus := 1
+                    menus[box . "_ST2MenuBox"].Add("Desktop (all users)", menus[box . "_" . m])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Desktop (all users)", shell32, 35, largeiconsize)
                 }
                 ; process User's Desktop
-                tmp1 = %boxpath%\user\current\Desktop
-                menunum = 0
+                tmp1 := boxpath . "\user\current\Desktop"
+                menunum := 0
                 m := buildProgramsMenu1(box, "ST2DesktopCU", tmp1)
                 if (m) {
-                    added_menus = 1
-                    Menu, %box%_ST2MenuBox, Add, Desktop (current user), :%box%_%m%
-                    setMenuIcon(box "_ST2MenuBox", "Desktop (current user)", shell32, 35, largeiconsize)
+                    added_menus := 1
+                    menus[box . "_ST2MenuBox"].Add("Desktop (current user)", menus[box . "_" . m])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Desktop (current user)", shell32, 35, largeiconsize)
                 }
             } else {
                 ; get shortcut files from the StartMenu (top section)
-                tmp1 = %boxpath%\user\all\Microsoft\Windows\Start Menu
+                tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu"
                 files1 := getFilenames(tmp1, 0)
-                tmp2 = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu
+                tmp2 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
                 files2 := getFilenames(tmp2, 0)
-                topicons = %files1%`n%files2%
+                topicons := files1 . "`n" . files2
                 topicons := Trim(topicons, A_nl)
-                Sort, topicons, CL D`n
+                Sort topicons, "CL D`n"
                 if (topicons) {
                     numtopicons := addCmdsToMenu(box, "ST2StartMenu", topicons)
-                    Menu, %box%_ST2MenuBox, Add, Start Menu, :%box%_ST2StartMenu
-                    setMenuIcon(box "_ST2MenuBox", "Start Menu", shell32, 20, largeiconsize)
-                    added_menus = 1
+                    menus[box . "_ST2MenuBox"].Add("Start Menu", menus[box . "_ST2StartMenu"])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu", shell32, 20, largeiconsize)
+                    added_menus := 1
                 }
                 ; and from the Programs section
-                tmp1 = %boxpath%\user\all\Microsoft\Windows\Start Menu\Programs
+                tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs"
                 files1 := getFilenames(tmp1, 1)
-                tmp2 = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs
+                tmp2 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
                 files2 := getFilenames(tmp2, 1)
                 if ((files1 || files2) && topicons)
-                    Menu, %box%_ST2StartMenu, Add
-                menunum = 0
+                    menus[box . "_ST2StartMenu"].Add()
+                menunum := 0
                 numicons := buildProgramsMenu2(box, "ST2StartMenu", tmp1, tmp2)
                 if (numicons)
-                    added_menus = 1
+                    added_menus := 1
                 if (topicons == "" && numicons > 0) {
-                    Menu, %box%_ST2MenuBox, Add, Start Menu, :%box%_ST2StartMenu
-                    setMenuIcon(box "_ST2MenuBox", "Start Menu", shell32, 20, largeiconsize)
+                    menus[box . "_ST2MenuBox"].Add("Start Menu", menus[box . "_ST2StartMenu"])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu", shell32, 20, largeiconsize)
                 }
 
                 ; process Desktop
-                tmp1 = %boxpath%\drive\%public_dir%\Desktop
+                tmp1 := boxpath . "\drive\" . public_dir . "\Desktop"
                 files1 := getFilenames(tmp1, 1)
-                tmp2 = %boxpath%\user\current\Desktop
+                tmp2 := boxpath . "\user\current\Desktop"
                 files2 := getFilenames(tmp2, 1)
                 if ((files1 || files2) && topicons)
-                    Menu, %box%_ST2MenuBox, Add
-                menunum = 0
+                    menus[box . "_ST2MenuBox"].Add()
+                menunum := 0
                 m := buildProgramsMenu2(box, "ST2Desktop", tmp1, tmp2)
                 if (m) {
-                    added_menus = 1
-                    Menu, %box%_ST2MenuBox, Add, Desktop, :%box%_%m%
-                    setMenuIcon(box "_ST2MenuBox", "Desktop", shell32, 35, largeiconsize)
+                    added_menus := 1
+                    menus[box . "_ST2MenuBox"].Add("Desktop", menus[box . "_" . m])
+                    setMenuIcon(menus[box . "_ST2MenuBox"], "Desktop", shell32, 35, largeiconsize)
                 }
             }
 
             ; process QuickLaunch
-            tmp1 = %boxpath%\user\current\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch
-            menunum = 0
+            tmp1 := boxpath . "\user\current\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch"
+            menunum := 0
             m := buildProgramsMenu1(box, "ST2QuickLaunch", tmp1)
             if (m) {
-                added_menus = 1
-                Menu, %box%_ST2MenuBox, Add, QuickLaunch, :%box%_%m%
-                setMenuIcon(box "_ST2MenuBox", "QuickLaunch", shell32, 215, largeiconsize)
+                added_menus := 1
+                menus[box . "_ST2MenuBox"].Add("QuickLaunch", menus[box . "_" . m])
+                setMenuIcon(menus[box . "_ST2MenuBox"], "QuickLaunch", shell32, 215, largeiconsize)
             }
             if (added_menus)
-                Menu, %box%_ST2MenuBox, Add
+                menus[box . "_ST2MenuBox"].Add()
         }
 
         ; add Sandboxie's start menu and run dialog in all boxes
-        Menu, %box%_ST2MenuBox, Add, Sandboxie's Start Menu, StartMenuMenuHandler
-        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Start Menu", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
-        Menu, %box%_ST2MenuBox, Add, Sandboxie's Run Dialog, RunDialogMenuHandler
-        setMenuIcon(box "_ST2MenuBox", "Sandboxie's Run Dialog", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
-        Menu, %box%_ST2MenuBox, Add
+        menus[box . "_ST2MenuBox"].Add("Sandboxie's Start Menu", StartMenuMenuHandler)
+        setMenuIcon(menus[box . "_ST2MenuBox"], "Sandboxie's Start Menu", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        menus[box . "_ST2MenuBox"].Add("Sandboxie's Run Dialog", RunDialogMenuHandler)
+        setMenuIcon(menus[box . "_ST2MenuBox"], "Sandboxie's Run Dialog", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        menus[box . "_ST2MenuBox"].Add()
         if (NOT boxexist) {
-            Menu, %box%_ST2MenuBox, Add, Explore (Sandboxed), SExploreMenuHandler
-            setMenuIcon(box "_ST2MenuBox", "Explore (Sandboxed)", explorerRes, 1, largeiconsize)
-            Menu, %box%_ST2MenuBox, Add, New Sandboxed Shortcut, NewShortcutMenuHandler
-            setMenuIcon(box "_ST2MenuBox", "New Sandboxed Shortcut", imageres, 155, largeiconsize)
+            menus[box . "_ST2MenuBox"].Add("Explore (Sandboxed)", SExploreMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuBox"], "Explore (Sandboxed)", explorerRes, 1, largeiconsize)
+            menus[box . "_ST2MenuBox"].Add("New Sandboxed Shortcut", NewShortcutMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuBox"], "New Sandboxed Shortcut", imageres, 155, largeiconsize)
         }
         if (boxexist) {
             ; Add the Explore items to the Box menu
-            Menu, %box%_ST2MenuExplore, Add, Unsandboxed, UExploreMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Unsandboxed", explorerRes, 1, smalliconsize)
-            Menu, %box%_ST2MenuExplore, Add, Unsandboxed`, restricted, URExploreMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Unsandboxed, restricted", explorerRes, 1, smalliconsize)
-            Menu, %box%_ST2MenuExplore, Add, Sandboxed, SExploreMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Sandboxed", explorerRes, 1, smalliconsize)
-            Menu, %box%_ST2MenuExplore, Add
-            Menu, %box%_ST2MenuExplore, Add, Files List and Export, ListFilesMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Files List and Export", shell32, 172, smalliconsize)
-            Menu, %box%_ST2MenuExplore, Add, Watch Files Changes, WatchFilesMenuHandler
-            setMenuIcon(box "_ST2MenuExplore", "Watch Files Changes", shell32, 172, smalliconsize)
-            Menu, %box%_ST2MenuBox, Add, Explore, :%box%_ST2MenuExplore
-            setMenuIcon(box "_ST2MenuBox", "Explore", explorerRes, 1, largeiconsize)
+            menus[box . "_ST2MenuExplore"].Add("Unsandboxed", UExploreMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuExplore"], "Unsandboxed", explorerRes, 1, smalliconsize)
+            menus[box . "_ST2MenuExplore"].Add("Unsandboxed, restricted", URExploreMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuExplore"], "Unsandboxed, restricted", explorerRes, 1, smalliconsize)
+            menus[box . "_ST2MenuExplore"].Add("Sandboxed", SExploreMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuExplore"], "Sandboxed", explorerRes, 1, smalliconsize)
+            menus[box . "_ST2MenuExplore"].Add()
+            menus[box . "_ST2MenuExplore"].Add("Files List and Export", ListFilesMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuExplore"], "Files List and Export", shell32, 172, smalliconsize)
+            menus[box . "_ST2MenuExplore"].Add("Watch Files Changes", WatchFilesMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuExplore"], "Watch Files Changes", shell32, 172, smalliconsize)
+            menus[box . "_ST2MenuBox"].Add("Explore", menus[box . "_ST2MenuExplore"])
+            setMenuIcon(menus[box . "_ST2MenuBox"], "Explore", explorerRes, 1, largeiconsize)
 
             ; Add the Registry items to the Box menu
-            Menu, %box%_ST2MenuReg, Add, Registry Editor (unsandboxed), URegEditMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Registry Editor (unsandboxed)", regeditRes, 1, smalliconsize)
+            menus[box . "_ST2MenuReg"].Add("Registry Editor (unsandboxed)", URegEditMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuReg"], "Registry Editor (unsandboxed)", regeditRes, 1, smalliconsize)
             if (NOT dropadminrights) {
-                Menu, %box%_ST2MenuReg, Add, Registry Editor (sandboxed), SRegEditMenuHandler
-                setMenuIcon(box "_ST2MenuReg", "Registry Editor (sandboxed)", regeditRes, 1, smalliconsize)
+                menus[box . "_ST2MenuReg"].Add("Registry Editor (sandboxed)", SRegEditMenuHandler)
+                setMenuIcon(menus[box . "_ST2MenuReg"], "Registry Editor (sandboxed)", regeditRes, 1, smalliconsize)
             }
-            Menu, %box%_ST2MenuReg, Add
-            Menu, %box%_ST2MenuReg, Add, Registry List and Export, ListRegMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Registry List and Export", regeditRes, 3, smalliconsize)
-            Menu, %box%_ST2MenuReg, Add, Watch Registry Changes, WatchRegMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Watch Registry Changes", regeditRes, 3, smalliconsize)
-            Menu, %box%_ST2MenuBox, Add, Registry, :%box%_ST2MenuReg
-            setMenuIcon(box "_ST2MenuBox", "Registry", regeditRes, 1, largeiconsize)
-            Menu, %box%_ST2MenuReg, Add
-            Menu, %box%_ST2MenuReg, Add, Autostart programs in registry, ListAutostartsMenuHandler
-            setMenuIcon(box "_ST2MenuReg", "Autostart programs in registry", regeditRes, 2, smalliconsize)
+            menus[box . "_ST2MenuReg"].Add()
+            menus[box . "_ST2MenuReg"].Add("Registry List and Export", ListRegMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuReg"], "Registry List and Export", regeditRes, 3, smalliconsize)
+            menus[box . "_ST2MenuReg"].Add("Watch Registry Changes", WatchRegMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuReg"], "Watch Registry Changes", regeditRes, 3, smalliconsize)
+            menus[box . "_ST2MenuBox"].Add("Registry", menus[box . "_ST2MenuReg"])
+            setMenuIcon(menus[box . "_ST2MenuBox"], "Registry", regeditRes, 1, largeiconsize)
+            menus[box . "_ST2MenuReg"].Add()
+            menus[box . "_ST2MenuReg"].Add("Autostart programs in registry", ListAutostartsMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuReg"], "Autostart programs in registry", regeditRes, 2, smalliconsize)
 
             ; Build the Tools menu
-            Menu, %box%_ST2MenuTools, Add, New Sandboxed Shortcut, NewShortcutMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "New Sandboxed Shortcut", imageres, 155, smalliconsize)
-            Menu, %box%_ST2MenuTools, Add
-            Menu, %box%_ST2MenuTools, Add, Watch Files and Registry Changes, WatchFilesRegMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Watch Files and Registry Changes", shell32, 172, smalliconsize)
-            Menu, %box%_ST2MenuTools, Add
-            Menu, %box%_ST2MenuTools, Add, Command Prompt (unsandboxed), UCmdMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Command Prompt (unsandboxed)", cmdRes, 1, smalliconsize)
-            Menu, %box%_ST2MenuTools, Add, Command Prompt (sandboxed), SCmdMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Command Prompt (sandboxed)", cmdRes, 1, smalliconsize)
+            menus[box . "_ST2MenuTools"].Add("New Sandboxed Shortcut", NewShortcutMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuTools"], "New Sandboxed Shortcut", imageres, 155, smalliconsize)
+            menus[box . "_ST2MenuTools"].Add()
+            menus[box . "_ST2MenuTools"].Add("Watch Files and Registry Changes", WatchFilesRegMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuTools"], "Watch Files and Registry Changes", shell32, 172, smalliconsize)
+            menus[box . "_ST2MenuTools"].Add()
+            menus[box . "_ST2MenuTools"].Add("Command Prompt (unsandboxed)", UCmdMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuTools"], "Command Prompt (unsandboxed)", cmdRes, 1, smalliconsize)
+            menus[box . "_ST2MenuTools"].Add("Command Prompt (sandboxed)", SCmdMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuTools"], "Command Prompt (sandboxed)", cmdRes, 1, smalliconsize)
             if (NOT dropadminrights) {
-                Menu, %box%_ST2MenuTools, Add
-                Menu, %box%_ST2MenuTools, Add, Programs and Features, UninstallMenuHandler
-                setMenuIcon(box "_ST2MenuTools", "Programs and Features", A_WinDir "\system32\appmgr.dll", 1, smalliconsize)
+                menus[box . "_ST2MenuTools"].Add()
+                menus[box . "_ST2MenuTools"].Add("Programs and Features", UninstallMenuHandler)
+                setMenuIcon(menus[box . "_ST2MenuTools"], "Programs and Features", A_WinDir . "\system32\appmgr.dll", 1, smalliconsize)
             }
-            Menu, %box%_ST2MenuTools, Add
-            Menu, %box%_ST2MenuTools, Add, Terminate Sandboxed Programs!, TerminateMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Terminate Sandboxed Programs!", shell32, 220, smalliconsize)
-            Menu, %box%_ST2MenuTools, Add, Delete Sandbox!, DeleteBoxMenuHandler
-            setMenuIcon(box "_ST2MenuTools", "Delete Sandbox!", shell32, 132, smalliconsize)
-            Menu, %box%_ST2MenuBox, Add, Tools, :%box%_ST2MenuTools
-            setMenuIcon(box "_ST2MenuBox", "Tools", shell32, 36, largeiconsize)
+            menus[box . "_ST2MenuTools"].Add()
+            menus[box . "_ST2MenuTools"].Add("Terminate Sandboxed Programs!", TerminateMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuTools"], "Terminate Sandboxed Programs!", shell32, 220, smalliconsize)
+            menus[box . "_ST2MenuTools"].Add("Delete Sandbox!", DeleteBoxMenuHandler)
+            setMenuIcon(menus[box . "_ST2MenuTools"], "Delete Sandbox!", shell32, 132, smalliconsize)
+            menus[box . "_ST2MenuBox"].Add("Tools", menus[box . "_ST2MenuTools"])
+            setMenuIcon(menus[box . "_ST2MenuBox"], "Tools", shell32, 36, largeiconsize)
         }
 
         ; Build the Main menu
-        if (! singleboxmode) {
-            Menu, ST2MainMenu, Add, %boxlabel%, :%box%_ST2MenuBox
+        if (!singleboxmode) {
+            menus["ST2MainMenu"].Add(boxlabel, menus[box . "_ST2MenuBox"])
             if (boxexist) {
-                setMenuIcon("ST2MainMenu", boxlabel, SbieAgentResFull, SbieAgentResFullId, largeiconsize)
+                setMenuIcon(menus["ST2MainMenu"], boxlabel, SbieAgentResFull, SbieAgentResFullId, largeiconsize)
             } else {
-                setMenuIcon("ST2MainMenu", boxlabel, SbieAgentResEmpty, SbieAgentResEmptyId, largeiconsize)
+                setMenuIcon(menus["ST2MainMenu"], boxlabel, SbieAgentResEmpty, SbieAgentResEmptyId, largeiconsize)
             }
         }
     }
 
     if (singleboxmode)
-        mainmenu = %singlebox%_ST2MenuBox
+        mainmenu_obj := menus[singlebox . "_ST2MenuBox"]
     else
-        mainmenu = ST2MainMenu
+        mainmenu_obj := menus["ST2MainMenu"]
 
     ; process User Tools
-    menunum = 0
+    menunum := 0
     m := buildProgramsMenu1("", "ST2UserTools", usertoolsdir)
     if (m) {
-        Menu, %mainmenu%, Add
-        Menu, %mainmenu%, Add, User Tools, :_%m%
-        setMenuIcon(mainmenu, "User Tools", imageres, 118, largeiconsize)
+        mainmenu_obj.Add()
+        mainmenu_obj.Add("User Tools", menus["_" . m])
+        setMenuIcon(mainmenu_obj, "User Tools", imageres, 118, largeiconsize)
     }
 
     ; add Launch Sandboxie Agent if it is not already running
-    if SbieAgent Contains SandMan
+    if InStr(SbieAgent, "SandMan")
     {
-        process, Exist, SandMan.exe
-        if (ErrorLevel == 0) {
-            Menu, %mainmenu%, Add
-            Menu, %mainmenu%, Add, Launch %SbieAgentResMainText%, LaunchSbieAgentMenuHandler
-            setMenuIcon(mainmenu, "Launch " SbieAgentResMainText, SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        if !ProcessExist("SandMan.exe") {
+            mainmenu_obj.Add()
+            mainmenu_obj.Add("Launch " . SbieAgentResMainText, LaunchSbieAgentMenuHandler)
+            setMenuIcon(mainmenu_obj, "Launch " . SbieAgentResMainText, SbieAgentResMain, SbieAgentResMainId, largeiconsize)
         }
     }
 
-    if SbieAgent Contains SbieCtrl
+    if InStr(SbieAgent, "SbieCtrl")
     {
-        process, Exist, SbieCtrl.exe
-        if (ErrorLevel == 0) {
-            Menu, %mainmenu%, Add
-            Menu, %mainmenu%, Add, Launch %SbieAgentResMainText%, LaunchSbieAgentMenuHandler
-            setMenuIcon(mainmenu, "Launch " SbieAgentResMainText, SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        if !ProcessExist("SbieCtrl.exe") {
+            mainmenu_obj.Add()
+            mainmenu_obj.Add("Launch " . SbieAgentResMainText, LaunchSbieAgentMenuHandler)
+            setMenuIcon(mainmenu_obj, "Launch " . SbieAgentResMainText, SbieAgentResMain, SbieAgentResMainId, largeiconsize)
         }
     }
 
     ; add Help & Options menu
-    Menu, SBMenuSetup, Add, About and Help, MainHelpMenuHandler
-    setMenuIcon("SBMenuSetup", "About and Help", shell32, 24, 16)
-    Menu, SBMenuSetup, Add
-    Menu, SBMenuSetup, Add, Large main-menu and box icons?, SetupMenuMenuHandler1
+    SBMenuSetup.Add("About and Help", MainHelpMenuHandler)
+    setMenuIcon(SBMenuSetup, "About and Help", shell32, 24, 16)
+    SBMenuSetup.Add()
+    SBMenuSetup.Add("Large main-menu and box icons?", SetupMenuMenuHandler1)
     if (largeiconsize > 16)
-        Menu, SBMenuSetup, Check, Large main-menu and box icons?
-    Menu, SBMenuSetup, Add, Large sub-menu icons?, SetupMenuMenuHandler2
+        SBMenuSetup.Check("Large main-menu and box icons?")
+    SBMenuSetup.Add("Large sub-menu icons?", SetupMenuMenuHandler2)
     if (smalliconsize > 16)
-        Menu, SBMenuSetup, Check, Large sub-menu icons?
-    Menu, SBMenuSetup, Add, Seperated All Users menus?, SetupMenuMenuHandler3
+        SBMenuSetup.Check("Large sub-menu icons?")
+    SBMenuSetup.Add("Seperated All Users menus?", SetupMenuMenuHandler3)
     if (seperatedstartmenus)
-        Menu, SBMenuSetup, Check, Seperated All Users menus?
-    Menu, SBMenuSetup, Add
-    Menu, SBMenuSetup, Add, Include [#BoxName] in shortcut names?, SetupMenuMenuHandler4
+        SBMenuSetup.Check("Seperated All Users menus?")
+    SBMenuSetup.Add()
+    SBMenuSetup.Add("Include [#BoxName] in shortcut names?", SetupMenuMenuHandler4)
     if (includeboxnames)
-        Menu, SBMenuSetup, Check, Include [#BoxName] in shortcut names?
-    Menu, %mainmenu%, Add
-    Menu, %mainmenu%, Add, Options, :SBMenuSetup
-    setMenuIcon(mainmenu, "Options", shell32, 24, 16)
+        SBMenuSetup.Check("Include [#BoxName] in shortcut names?")
+    mainmenu_obj.Add()
+    mainmenu_obj.Add("Options", SBMenuSetup)
+    setMenuIcon(mainmenu_obj, "Options", shell32, 24, 16)
 
     ; show the menu and wait for user action
-    Menu, %mainmenu%, Show
+    mainmenu_obj.Show()
 
 Return
 
@@ -742,251 +734,212 @@ Return
 ;  Object["boxname","exist"] = flag: true if the sandbox is not empty at the time of the check.
 ;  Object["boxname","DropAdminRights"] = flag: state of the DropAdminRights flag in the INI.
 ; Returns the number of sandboxes.
-getSandboxesArray(array,ini)
+getSandboxesArray(ByRef sandboxes_array, ini)
 {
-    IniRead, sandboxes_path, %ini%, GlobalSettings, FileRootPath, %systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%
-    sandboxes_path := expandEnvVars(sandboxes_path)
+    global username
+    sandboxes_path_template := IniRead(ini, "GlobalSettings", "FileRootPath", "%systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%")
+    sandboxeskey_path_template := IniRead(ini, "GlobalSettings", "KeyRootPath", "\REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%")
 
-    IniRead, sandboxeskey_path, %ini%, GlobalSettings, KeyRootPath, \REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%
-    sandboxeskey_path := expandEnvVars(sandboxeskey_path)
+    old_encoding := A_FileEncoding
+    A_FileEncoding := "UTF-16"
 
-    ; Requires AHK_Lw
-    old_encoding = %A_FileEncoding%
-    FileEncoding, UTF-16
-
-    ; get the list of boxes in the INI and sort it
-    boxes =
-    Loop, Read, %ini%
+    boxes_str := ""
+    Loop Read, ini
     {
-        if (SubStr(A_LoopReadLine, 1, 1) == "[" && SubStr(A_LoopReadLine, 0) == "]" && A_LoopReadLine != "[GlobalSettings]" && SubStr(A_LoopReadLine, 1, 14) != "[UserSettings_" && SubStr(A_LoopReadLine, 1, 10) != "[Template_" && A_LoopReadLine != "[TemplateSettings]") {
-            box := SubStr(A_LoopReadLine, 2, -1)
-            boxes = %boxes%%box%,
+        line := A_LoopReadLine
+        if (SubStr(line, 1, 1) == "[" && SubStr(line, -1) == "]" && line != "[GlobalSettings]" && SubStr(line, 1, 14) != "[UserSettings_" && SubStr(line, 1, 10) != "[Template_" && line != "[TemplateSettings]") {
+            boxes_str .= SubStr(line, 2, -1) . ","
         }
     }
-    boxes := Trim(boxes, ",") ; requires AHK_L
-    Sort, boxes, CL D`,
+    A_FileEncoding := old_encoding
+    boxes_str := Trim(boxes_str, ",")
+    Sort boxes_str, "CL D,"
 
-    ; Requires AHK_Lw
-    FileEncoding, %old_encoding%
+    sandboxes_array := Map()
+    boxlist := StrSplit(boxes_str, ",")
 
-    ; fills the array
-    Loop, Parse, boxes, CSV
+    for _, boxname in boxlist
     {
-        array[0] := A_Index
-        array[A_Index,"name"] := A_LoopField
-        IniRead, bfilerootpath, %ini%, %A_LoopField%, FileRootPath, %sandboxes_path%
-        StringReplace, bfilerootpathR, bfilerootpath, %username%, `%USER`%
-        if (bfilerootpath != sandboxes_path) {
-            array[A_LoopField,"FileRootPath"] := bfilerootpath
-            sandboxes_path := expandEnvVars(bfilerootpath)
-        }
-        else {
-            IniRead, sandboxes_path, %ini%, GlobalSettings, FileRootPath, %systemdrive%\Sandbox\`%USER`%\`%SANDBOX`%
-            array[A_LoopField,"FileRootPath"] := sandboxes_path
-            sandboxes_path := expandEnvVars(sandboxes_path)
-        }
-        StringReplace, bpath, sandboxes_path, `%SANDBOX`%, %A_LoopField%
-        array[A_LoopField,"bpath"] := bpath
+        box_data := Map()
+        box_data.name := boxname
 
-        IniRead, bkeyrootpath, %ini%, %A_LoopField%, KeyRootPath, %sandboxeskey_path%
-        StringReplace, bkeyrootpathR, bkeyrootpath, %username%, `%USER`%
-        if (bkeyrootpath != sandboxeskey_path) {
-            array[A_LoopField,"KeyRootPath"] := bkeyrootpath
-            sandboxeskey_path := expandEnvVars(bkeyrootpath)
-            regspos := InStr(bkeyrootpathR, "\", false, 0, 1)
-            regepos := InStr(bkeyrootpathR, "%", false, 1, 1)
-            regstr := SubStr(bkeyrootpathR, regspos+1, regepos-regspos-2)
-            array[A_LoopField,"RegStr_"] := regstr
-        }
-        else {
-            IniRead, sandboxeskey_path, %ini%, GlobalSettings, KeyRootPath, \REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%
-            array[A_LoopField,"KeyRootPath"] := sandboxeskey_path
-            regspos := InStr(sandboxeskey_path, "\", false, 0, 1)
-            regepos := InStr(sandboxeskey_path, "%", false, 1, 1)
-            regstr := SubStr(sandboxeskey_path, regspos+1, regepos-regspos-2)
-            array[A_LoopField,"RegStr_"] := regstr
-            sandboxeskey_path := expandEnvVars(sandboxeskey_path)
-        }
-        StringReplace, bkey, sandboxeskey_path, `%SANDBOX`%, %A_LoopField%
-        array[A_LoopField,"bkey"] := bkey
+        current_sandboxes_path := IniRead(ini, boxname, "FileRootPath", sandboxes_path_template)
+        box_data.FileRootPath := current_sandboxes_path
+        expanded_path := expandEnvVars(current_sandboxes_path)
+        box_data.bpath := StrReplace(expanded_path, "`%SANDBOX`%", boxname)
 
-        test = %bpath%\RegHive
-        array[A_LoopField,"exist"] := FileExist(test)
-        ; since running the registry editor works with elevated privileges,
-        ; checks if the box has DropAdminRights=y in the INI
-        IniRead, dropadminrights, %ini%, %A_LoopField%, DropAdminRights, n
-        if (dropadminrights == "y") {
-            array[A_LoopField,"DropAdminRights"] := 1
-        }
-        else {
-            array[A_LoopField,"DropAdminRights"] := 0
-        }
-        ; checks if the box has Enabled=n in the INI
-        IniRead, benabled, %ini%, %A_LoopField%, Enabled, y
-        if (benabled == "n") {
-            array[A_LoopField,"Enabled"] := 0
-        }
-        else {
-            array[A_LoopField,"Enabled"] := 1
-        }
-        ; checks if the box has NeverDelete=y in the INI
-        IniRead, bneverdelete, %ini%, %A_LoopField%, NeverDelete, n
-        if (bneverdelete == "y") {
-            array[A_LoopField,"NeverDelete"] := 1
-        }
-        else {
-            array[A_LoopField,"NeverDelete"] := 0
-        }
-        ; checks if the box has UseFileImage=y in the INI
-        IniRead, busefileimage, %ini%, %A_LoopField%, UseFileImage, n
-        if (busefileimage == "y") {
-            array[A_LoopField,"UseFileImage"] := 1
-        }
-        else {
-            array[A_LoopField,"UseFileImage"] := 0
-        }
-        ; checks if the box has UseRamDisk=y in the INI
-        IniRead, buseramdisk, %ini%, %A_LoopField%, UseRamDisk, n
-        if (buseramdisk == "y") {
-            array[A_LoopField,"UseRamDisk"] := 1
-        }
-        else {
-            array[A_LoopField,"UseRamDisk"] := 0
-        }
+        current_sandboxeskey_path := IniRead(ini, boxname, "KeyRootPath", sandboxeskey_path_template)
+        box_data.KeyRootPath := current_sandboxeskey_path
+        expanded_key_path := expandEnvVars(current_sandboxeskey_path)
+        box_data.bkey := StrReplace(expanded_key_path, "`%SANDBOX`%", boxname)
+
+        bkeyrootpathR := StrReplace(current_sandboxeskey_path, username, "`%USER`%")
+        regspos := InStr(bkeyrootpathR, "\",, 0)
+        regepos := InStr(bkeyrootpathR, "%")
+        box_data.RegStr_ := SubStr(bkeyrootpathR, regspos + 1, regepos - regspos - 2)
+
+        box_data.exist := DirExist(box_data.bpath) && FileExist(box_data.bpath . "\RegHive")
+
+        box_data.DropAdminRights := IniRead(ini, boxname, "DropAdminRights", "n") == "y"
+        box_data.Enabled := IniRead(ini, boxname, "Enabled", "y") != "n"
+        box_data.NeverDelete := IniRead(ini, boxname, "NeverDelete", "n") == "y"
+        box_data.UseFileImage := IniRead(ini, boxname, "UseFileImage", "n") == "y"
+        box_data.UseRamDisk := IniRead(ini, A_LoopField, "UseRamDisk", "n") == "y"
+
+        sandboxes_array[boxname] := box_data
     }
-    Return % array[0]
+    Return sandboxes_array.Count
 }
 
 ; Prompts the user for a sandbox name.
 ; Returns "" if the user selects cancel or discard the menu.
 getSandboxName(sandboxes_array, title, include_ask=false)
 {
-    global __box__, SbieAgent, largeiconsize
-    numboxes := sandboxes_array[0]
+    global __box__, SbieAgentResFull, SbieAgentResFullId, SbieAgentResEmpty, SbieAgentResEmptyId, SbieAgentResMain, SbieAgentResMainId, largeiconsize
 
-    Menu, Menu, Add
-    Menu, Menu, DeleteAll
+    TheMenu := Menu()
 
-    Menu, Menu, Add, %title%, DummyMenuHandler
-    Menu, Menu, Disable, %title%
-    Menu, Menu, Add
-    loop, %numboxes%
+    TheMenu.Add(title, DummyMenuHandler)
+    TheMenu.Disable(title)
+    TheMenu.Add()
+    for box, boxdata in sandboxes_array
     {
-        box := sandboxes_array[A_Index,"name"]
-        if (sandboxes_array[box,"exist"]) {
-            Menu, Menu, Add, %box%, getSandboxNameBoxMenuHandler
-            setMenuIcon("Menu", box, SbieAgentResFull, SbieAgentResFullId, largeiconsize)
+        if (boxdata.exist) {
+            TheMenu.Add(box, getSandboxNameBoxMenuHandler)
+            setMenuIcon(TheMenu, box, SbieAgentResFull, SbieAgentResFullId, largeiconsize)
         } else {
-            Menu, Menu, Add, %box% (empty), getSandboxNameBoxMenuHandler
-            setMenuIcon("Menu", box " (empty)", SbieAgentResEmpty, SbieAgentResEmptyId, largeiconsize)
+            TheMenu.Add(box . " (empty)", getSandboxNameBoxMenuHandler)
+            setMenuIcon(TheMenu, box . " (empty)", SbieAgentResEmpty, SbieAgentResEmptyId, largeiconsize)
         }
     }
     if (include_ask)
     {
-        Menu, Menu, Add
-        Menu, Menu, Add, Ask box at run time, getSandboxNameAskMenuHandler
-        setMenuIcon("Menu", "Ask box at run time", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
+        TheMenu.Add()
+        TheMenu.Add("Ask box at run time", getSandboxNameAskMenuHandler)
+        setMenuIcon(TheMenu, "Ask box at run time", SbieAgentResMain, SbieAgentResMainId, largeiconsize)
     }
-    Menu, Menu, Add
-    Menu, Menu, Add, Cancel, getSandboxNameCancelMenuHandler
-    Menu, Menu, Show
+    TheMenu.Add()
+    TheMenu.Add("Cancel", getSandboxNameCancelMenuHandler)
+    TheMenu.Show()
 
-    return %__box__%
+    return __box__
 }
-getSandboxNameBoxMenuHandler:
-    __box__ := sandboxes_array[A_ThisMenuItemPos -2,"name"]
-Return
-getSandboxNameAskMenuHandler:
-    __box__ = __ask__
-Return
-getSandboxNameCancelMenuHandler:
-    __box__ =
-Return
+
+getSandboxNameBoxMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global __box__
+    __box__ := RTrim(ItemName, " (empty)")
+}
+
+getSandboxNameAskMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global __box__
+    __box__ := "__ask__"
+}
+
+getSandboxNameCancelMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global __box__
+    __box__ := ""
+}
 
 setMenuIcon(menu, item, iconfile, iconindex, largeiconsize)
 {
-    menu, %menu%, UseErrorLevel, on
-    Menu, %menu%, Icon, %item%, %iconfile%, %iconindex%, %largeiconsize%
-    rc := ErrorLevel
-    menu, %menu%, UseErrorLevel, off
-    return %rc%
+    try
+    {
+        menu.SetIcon(item, iconfile, iconindex, largeiconsize)
+        return 0
+    }
+    catch
+    {
+        return 1
+    }
 }
 
 getFilenames(directory, includeFolders)
 {
-    files =
-    Loop, %directory%\*, %includeFolders%, 0
+    files := ""
+    mode := ""
+    if (includeFolders == 0)
+        mode := "FD"
+    else if (includeFolders == 1)
+        mode := "F"
+    else if (includeFolders == 2)
+        mode := "D"
+
+    Loop Files, directory . "\*", mode
     {
         ; Excludes the hidden and system files from list
         attributes := A_LoopFileAttrib
-        IfInString, Attributes, H
+        if InStr(Attributes, "H")
             Continue
-        IfInString, Attributes, S
+        if InStr(Attributes, "S")
             Continue
         ; Excludes also the files deleted in the sandbox, but present in the "real world".
         ; They have a "magic" creation date of May 23, 1986, 17:47:02
-        FileGetTime, creationTime, %A_LoopFileLongPath%, C
+        creationTime := FileGetTime(A_LoopFileLongPath, "C")
         if (creationTime == "19860523174702")
             Continue
         ; and keep regular directories and files
-        IfInString, Attributes, D
+        if InStr(Attributes, "D")
         {
-            SplitPath, A_LoopFileName, OutDirName
-            files = %files%%OutDirName%:%A_LoopFileLongPath%`n
+            SplitPath(A_LoopFileName, &OutDirName)
+            files .= OutDirName . ":" . A_LoopFileLongPath . "`n"
         } else {
-            SplitPath, A_LoopFileName, , , , OutNameNoExt,
-            files = %files%%OutNameNoExt%:%A_LoopFileLongPath%`n
+            SplitPath(A_LoopFileName, , , , &OutNameNoExt)
+            files .= OutNameNoExt . ":" . A_LoopFileLongPath . "`n"
         }
     }
-    StringTrimRight, files, files, 1
+    files := SubStr(files, 1, -1)
     if (files)
-        Sort, files, CL D`n Z
-    Return %files%
+        Sort(files, "CL D`n Z")
+    Return files
 }
 
 ; Build a menu with the files from a specific directory
 buildProgramsMenu1(box, menuname, bpath)
 {
-    global smalliconsize, menunum
+    global smalliconsize, menunum, menus, shell32
 
     if (menunum > 0)
-        thismenuname = %menuname%_%menunum%
+        thismenuName := menuname . "_" . menunum
     else
-        thismenuname = %menuname%
+        thismenuName := menuname
 
-    numfiles = 0
+    if !menus.Has(box . "_" . thismenuName)
+        menus[box . "_" . thismenuName] := Menu()
+    thisMenu := menus[box . "_" . thismenuName]
+    thisMenu.Name := box . "_" . thismenuName
 
-    ; bpath = %bpath%\*
+    numfiles := 0
+
     menufiles := getFilenames(bpath, 0)
     if (menufiles) {
-        Sort, menufiles, CL D`n Z
-        numfiles := addCmdsToMenu(box, thismenuname, menufiles)
+        Sort menufiles, "CL D`n Z"
+        numfiles := addCmdsToMenu(box, thismenuName, menufiles)
     }
-    ; else if (numfiles == 0) {
-    ;     numfiles = 1
-    ; }
-    ; recurse
-    menudirs := getFilenames(bpath, 2)
 
+    menudirs := getFilenames(bpath, 2)
     if (menudirs) {
-        Sort, menudirs, CL D`n Z
-        Loop, parse, menudirs, `n
+        Sort menudirs, "CL D`n Z"
+        for i, entry in StrSplit(menudirs, "`n")
         {
-            entry = %A_LoopField%
+            if (entry == "")
+                continue
             idx := InStr(entry, ":")
             label := subStr(entry, 1, idx-1)
             dir := subStr(entry, idx+1)
-            menunum ++
-            newmenuname := buildProgramsMenu1(box, menuname, dir)
-            if (newmenuname != "") {
-                Menu, %box%_%thismenuname%, Add, %label%, :%box%_%newmenuname%
-                setMenuIcon(box "_" thismenuname, label, shell32, 4, smalliconsize)
-                numfiles ++
+            menunum++
+            submenuName := buildProgramsMenu1(box, menuname, dir)
+            if (submenuName != "") {
+                thisMenu.Add(label, menus[box . "_" . submenuName])
+                setMenuIcon(thisMenu, label, shell32, 4, smalliconsize)
+                numfiles++
             }
         }
     }
     if (numfiles)
-        return %thismenuname%
+        return thismenuName
     else
         return ""
 }
@@ -994,139 +947,136 @@ buildProgramsMenu1(box, menuname, bpath)
 ; Build a menu with the files from two specific directories by merging them together
 buildProgramsMenu2(box, menuname, path1, path2)
 {
-    global smalliconsize, menunum
-    A_Return = `n
+    global smalliconsize, menunum, menus, shell32
+    A_Return := "`n"
 
     if (menunum > 0)
-        thismenuname = %menuname%_%menunum%
+        thismenuName := menuname . "_" . menunum
     else
-        thismenuname = %menuname%
+        thismenuName := menuname
 
-    numfiles = 0
+    if !menus.Has(box . "_" . thismenuName)
+        menus[box . "_" . thismenuName] := Menu()
+    thisMenu := menus[box . "_" . thismenuName]
+    thisMenu.Name := box . "_" . thismenuName
 
-    ; path1 = %path1%\*
-    ; path2 = %path2%\*
+    numfiles := 0
 
-    ; process files
     menufiles1 := getFilenames(path1, 0)
     menufiles2 := getFilenames(path2, 0)
-    menufiles = %menufiles1%`n%menufiles2%
+    menufiles := menufiles1 . "`n" . menufiles2
     menufiles := Trim(menufiles, A_Return)
     if (menufiles) {
-        Sort, menufiles, CL D`n
-        numfiles := addCmdsToMenu(box, thismenuname, menufiles)
+        Sort menufiles, "CL D`n"
+        numfiles := addCmdsToMenu(box, thismenuName, menufiles)
     }
-    ; else if (numfiles == 0) {
-    ;     numfiles = 1
-    ; }
 
-    ; recurse
     menudirs1 := getFilenames(path1, 2)
     menudirs2 := getFilenames(path2, 2)
-    menudirs = %menudirs1%`n%menudirs2%
+    menudirs := menudirs1 . "`n" . menudirs2
     menudirs := Trim(menudirs, A_Return)
     if (menudirs) {
-        Sort, menudirs, CL D`n
+        Sort menudirs, "CL D`n"
 
-        Loop, parse, menudirs, `n
-        {
-            entry = %A_LoopField%
+        dirList := []
+        for i, entry in StrSplit(menudirs, "`n") {
+            if (entry == "")
+                continue
             idx := InStr(entry, ":")
             label := subStr(entry, 1, idx-1)
             dir := subStr(entry, idx+1)
-            dir_labels_%A_Index% := label
-            dir_list_%A_Index% := dir
-            numdirs := A_Index
+            dirList.Push({label: label, path: dir})
         }
-        skip = 0
-        loop, %numdirs%
+
+        i := 1
+        while i <= dirList.Length
         {
-            if (skip)
+            menunum++
+            label := dirList[i].label
+            dir1 := dirList[i].path
+
+            if (i < dirList.Length && dirList[i+1].label == label)
             {
-                skip = 0
-                continue
-            }
-            menunum ++
-            label := dir_labels_%A_Index%
-            dir1 := dir_list_%A_Index%
-            next := A_Index + 1
-            nextlabel := dir_labels_%next%
-            if (nextlabel == label)
-            {
-                skip = 1
-                dir2 := dir_list_%next%
+                dir2 := dirList[i+1].path
                 newmenuname := buildProgramsMenu2(box, menuname, dir1, dir2)
+                i++ ; Increment to skip next item
             }
             else
                 newmenuname := buildProgramsMenu1(box, menuname, dir1)
+
             if (newmenuname) {
-                Menu, %box%_%thismenuname%, Add, %label%, :%box%_%newmenuname%
-                setMenuIcon(box "_" thismenuname, label, shell32, 4, smalliconsize)
-                numfiles ++
+                thisMenu.Add(label, menus[box . "_" . newmenuname])
+                setMenuIcon(thisMenu, label, shell32, 4, smalliconsize)
+                numfiles++
             }
+            i++
         }
     }
     if (numfiles)
-        return %thismenuname%
+        return thismenuName
     else
         return ""
 }
 
 ; TODO: rewrite this stuff, too complicated
-setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
+setIconFromSandboxedShortcut(box, shortcut, menu, label, iconsize)
 {
-    global menuicons, imageres
-    A_Quotes = "
+    global menuicons, imageres, username, A_WinDir, programw6432, shell32
+    A_Quotes := """"
 
     global sandboxes_array
     bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
-    menuicons[menuname,label,"file"] := ""
-    menuicons[menuname,label,"num"] := ""
+    if !menuicons.Has(menu.Name)
+        menuicons[menu.Name] := Map()
+    if !menuicons[menu.Name].Has(label)
+        menuicons[menu.Name][label] := Map()
+    menuicons[menu.Name][label]["file"] := ""
+    menuicons[menu.Name][label]["num"] := ""
 
     ; get icon file and number in shortcut.
     ; If not specified, assumes it's the file pointed to by the shortcut
-    SplitPath, shortcut, , , extension
+    SplitPath(shortcut, , , &extension)
     if (extension == "lnk") {
-        FileGetShortcut, %shortcut%, target, , , , iconfile, iconnum
+        FileGetShortcut(shortcut, &target, , , , &iconfile, &iconnum)
         if (iconnum == "")
-            iconnum = 1
+            iconnum := 1
         if (iconfile == "") {
-            iconfile = %target%
-            iconnum = 1
+            iconfile := target
+            iconnum := 1
         }
     } else {
-        iconfile = %shortcut%
-        iconnum = 1
+        iconfile := shortcut
+        iconnum := 1
     }
     iconfile := Trim(iconfile, A_Quotes)
     iconfile := expandEnvVars(iconfile)
 
     if (InStr(FileExist(iconfile), "D")) {
-        setMenuIcon(menuname, label, imageres, 4, iconsize)
-        menuicons[menuname,label,"file"] := imageres
-        menuicons[menuname,label,"num"] := 4
-        return % imageres "," 4
+        setMenuIcon(menu, label, imageres, 4, iconsize)
+        menuicons[menu.Name][label]["file"] := imageres
+        menuicons[menu.Name][label]["num"] := 4
+        return imageres . "," . 4
     }
 
     boxfile := stdPathToBoxPath(box, iconfile)
     if (InStr(FileExist(boxfile), "D")) {
-        setMenuIcon(menuname, label, imageres, 4, iconsize)
-        menuicons[menuname,label,"file"] := imageres
-        menuicons[menuname,label,"num"] := 4
-        return % imageres "," 4
+        setMenuIcon(menu, label, imageres, 4, iconsize)
+        menuicons[menu.Name][label]["file"] := imageres
+        menuicons[menu.Name][label]["num"] := 4
+        return imageres . "," . 4
     }
     if (FileExist(boxfile)) {
         iconfile := boxfile
     }
 
     if (iconfile == "")
-        rc = 1
+        rc := 1
     else {
-        rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-        menuicons[menuname,label,"file"] := iconfile
-        menuicons[menuname,label,"num"] := iconnum
+        rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+        menuicons[menu.Name][label]["file"] := iconfile
+        menuicons[menu.Name][label]["num"] := iconnum
     }
     if (rc) {
         ; If setMenuIcon failed, it's probably because the file pointed to by
@@ -1134,17 +1084,17 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
         ; Try to get the right icon reference in the registry.
 
         if (extension == "lnk") {
-            SplitPath, target, , , extension
+            SplitPath(target, , , &extension)
         } else {
-            SplitPath, shortcut, , , extension
+            SplitPath(shortcut, , , &extension)
         }
         ; try to get the icon from the sandboxed registry first
         ; (will fail is nothing is running in the sandbox)
-        RegRead, defaulticon, HKEY_USERS, %bregstr_%\machine\software\classes\.%extension%\DefaultIcon,
+        defaulticon := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\." . extension . "\DefaultIcon")
         if (defaulticon == "") {
-            RegRead, keyval, HKEY_USERS, %bregstr_%\machine\software\classes\.%extension%,
+            keyval := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\." . extension)
             if (keyval != "") {
-                RegRead, defaulticon, HKEY_USERS, %bregstr_%\machine\software\classes\%keyval%\DefaultIcon,
+                defaulticon := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\" . keyval . "\DefaultIcon")
             }
         }
         if (defaulticon != "") {
@@ -1153,66 +1103,66 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                 iconfile := SubStr(defaulticon, 1, comaidx-1)
                 iconnum := SubStr(defaulticon, comaidx+1)
             } else {
-                iconfile = %defaulticon%
-                iconnum = 1
+                iconfile := defaulticon
+                iconnum := 1
             }
             if (iconnum > 0) {
                 iconfile := Trim(iconfile, A_Quotes)
                 iconfile := expandEnvVars(iconfile)
                 iconfile := stdPathToBoxPath(box, iconfile)
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+                menuicons[menu.Name][label]["file"] := iconfile
+                menuicons[menu.Name][label]["num"] := iconnum
             } else
-                rc = 1
+                rc := 1
             if (rc == 0)
-                return % iconfile "," iconnum
+                return iconfile . "," . iconnum
         }
 
         ; searches also in the unsandboxed registry
-        RegRead, defaulticon, HKEY_CLASSES_ROOT, .%extension%\DefaultIcon,
+        defaulticon := RegRead("HKEY_CLASSES_ROOT\." . extension . "\DefaultIcon")
         if (defaulticon == "") {
-            RegRead, keyval, HKEY_CLASSES_ROOT, .%extension%,
+            keyval := RegRead("HKEY_CLASSES_ROOT\." . extension)
             if (keyval == "InternetShortcut") {
-                defaulticon = %A_WinDir%\system32\url.dll,5
+                defaulticon := A_WinDir . "\system32\url.dll,5"
             } else if (keyval != "") {
-                RegRead, defaulticon, HKEY_CLASSES_ROOT, %keyval%\DefaultIcon,
+                defaulticon := RegRead("HKEY_CLASSES_ROOT\" . keyval . "\DefaultIcon")
             }
         }
         if (defaulticon == "") {
-            RegRead, percievedtype, HKEY_CLASSES_ROOT, .%extension%, PerceivedType
+            percievedtype := RegRead("HKEY_CLASSES_ROOT\." . extension, "PerceivedType")
             if (percievedtype == "") {
-                RegRead, keyval, HKEY_CLASSES_ROOT, .%extension%,
+                keyval := RegRead("HKEY_CLASSES_ROOT\." . extension)
                 if (keyval != "") {
-                    RegRead, percievedtype, HKEY_CLASSES_ROOT, %keybal%, PerceivedType
+                    percievedtype := RegRead("HKEY_CLASSES_ROOT\" . keyval, "PerceivedType")
                 }
             }
             if (percievedtype == "document") {
-                defaulticon = %imageres%,2
+                defaulticon := imageres . ",2"
             }
             if (percievedtype == "system") {
-                defaulticon = %imageres%,63
+                defaulticon := imageres . ",63"
             }
             if (percievedtype == "text") {
-                defaulticon = %imageres%,97
+                defaulticon := imageres . ",97"
             }
             if (percievedtype == "audio") {
-                defaulticon = %imageres%,125
+                defaulticon := imageres . ",125"
             }
             if (percievedtype == "image") {
-                defaulticon = %imageres%,126
+                defaulticon := imageres . ",126"
             }
             if (percievedtype == "video") {
-                defaulticon = %imageres%,127
+                defaulticon := imageres . ",127"
             }
             if (percievedtype == "compressed") {
-                defaulticon = %imageres%,165
+                defaulticon := imageres . ",165"
             }
         }
         if (defaulticon != "") {
             if (defaulticon == "%1") {
                 iconfile := shortcut
-                iconnum = 1
+                iconnum := 1
             } else {
                 comaidx := InStr(defaulticon, ",", false, 0)
                 if (comaidx > 0) {
@@ -1221,56 +1171,56 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                     if (iconnum < 0) {
                         iconnum := IndexOfIconResource(iconfile, iconnum)
                     } else {
-                        iconnum ++
+                        iconnum++
                     }
                 }
             }
             iconfile := Trim(iconfile, A_Quotes)
-            rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-            menuicons[menuname,label,"file"] := iconfile
-            menuicons[menuname,label,"num"] := iconnum
+            rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+            menuicons[menu.Name][label]["file"] := iconfile
+            menuicons[menu.Name][label]["num"] := iconnum
         } else
-            rc = 1
+            rc := 1
         if (rc) {
             if (InStr(defaulticon, "%programfiles%")) {
-                StringReplace, iconfile, iconfile, `%programfiles`%, %programw6432%
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                iconfile := StrReplace(iconfile, '`%programfiles`%', programw6432)
+                rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+                menuicons[menu.Name][label]["file"] := iconfile
+                menuicons[menu.Name][label]["num"] := iconnum
             }
             if (rc) {
-                StringReplace, iconfile, iconfile, `%programfiles`%, `%programfiles(x86)`%
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                iconfile := StrReplace(iconfile, '`%programfiles`%', '`%programfiles(x86)`%')
+                rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+                menuicons[menu.Name][label]["file"] := iconfile
+                menuicons[menu.Name][label]["num"] := iconnum
             }
             if (rc) {
                 iconfile := expandEnvVars(iconfile)
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+                menuicons[menu.Name][label]["file"] := iconfile
+                menuicons[menu.Name][label]["num"] := iconnum
             }
         }
         if (rc || iconfile == "") {
-            iconfile = %shell32%
+            iconfile := shell32
             iconfile := expandEnvVars(iconfile)
             if (extension == "exe")
-                iconnum = 3
+                iconnum := 3
             else
-                iconnum = 2
-            rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-            menuicons[menuname,label,"file"] := iconfile
-            menuicons[menuname,label,"num"] := iconnum
+                iconnum := 2
+            rc := setMenuIcon(menu, label, iconfile, iconnum, iconsize)
+            menuicons[menu.Name][label]["file"] := iconfile
+            menuicons[menu.Name][label]["num"] := iconnum
         }
     }
-    return % iconfile "," iconnum
+    return iconfile . "," . iconnum
 }
 
 ; Retrieve the icon number from its resource TD (negative index).
 ; Assumes the order of the icon resources defines the icon indices.
 IndexOfIconResource(Filename, ID)
 {
-    A_Quotes = "
+    A_Quotes := """"
     Filename := Trim(Filename, A_Quotes)
     Filename := expandEnvVars(Filename)
     ID := Abs(ID)
@@ -1279,28 +1229,30 @@ IndexOfIconResource(Filename, ID)
     loaded := !hmod
         && hmod := DllCall("LoadLibraryEx", "str", Filename, "uint", 0, "uint", 0x2)
 
-    enumproc := RegisterCallback("IndexOfIconResource_EnumIconResources","F")
-    VarSetCapacity(param,12,0), NumPut(ID,param,0)
+    enumproc := CallbackCreate(IndexOfIconResource_EnumIconResources)
+    param := Buffer(12, 0)
+    NumPut("int", ID, param, 0)
     ; Enumerate the icon group resources. (RT_GROUP_ICON=14)
-    DllCall("EnumResourceNames", "uint", hmod, "uint", 14, "uint", enumproc, "uint", &param)
-    DllCall("GlobalFree", "uint", enumproc)
+    DllCall("EnumResourceNames", "ptr", hmod, "uint", 14, "ptr", enumproc, "ptr", param.Ptr)
+    CallbackFree(enumproc)
 
     ; If we loaded the DLL, free it now.
     if loaded
         DllCall("FreeLibrary", "uint", hmod)
 
-    return NumGet(param,8) ? NumGet(param,4) : 0
+    return NumGet(param, 8, "int") ? NumGet(param, 4, "int") : 0
 }
+
 IndexOfIconResource_EnumIconResources(hModule, lpszType, lpszName, lParam)
 {
-    NumPut(NumGet(lParam+4)+1, lParam+4)
+    NumPut("int", NumGet(lParam+4, "int")+1, lParam, 4)
 
-    if (lpszName = NumGet(lParam+0))
+    if (lpszName == NumGet(lParam, 0, "int"))
     {
-        NumPut(1, lParam+8)
-        return false ; break
+        NumPut("int", 1, lParam, 8)
+        return 0 ; break
     }
-    return true
+    return 1
 }
 
 GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", deleted = 0)
@@ -1308,14 +1260,14 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
     static
     sfi_size:=352
     local hIcon, Ext, Fileto, FileIcon, FileIconNum, old, programsx86
-    EnvGet, programsx86, ProgramFiles(x86)
-    If not sfi
-        VarSetCapacity(sfi, sfi_size)
+    programsx86 := EnvGet("ProgramFiles(x86)")
+    if !IsSet(sfi)
+        sfi := Buffer(sfi_size)
 
-    SplitPath, File,,, Ext
-    If ext=LNK
+    SplitPath(File, , , &Ext)
+    if (ext = "LNK")
     {
-        FileGetShortcut,%File%,Fileto,,,,FileIcon,FileIconNum
+        FileGetShortcut(File, &Fileto, , , , &FileIcon, &FileIconNum)
         if (hideshortcutoverlay) {
             if (FileIcon) {
                 hIcon := MI_ExtractIcon(FileIcon,FileIconNum,iconsize)
@@ -1323,57 +1275,53 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
                     return hIcon
             } else {
                 File := Fileto
-                SplitPath, File,,, Ext
+                SplitPath(File, , , &Ext)
             }
         } else {
-            if (! FileExist(FileTo))
+            if (!FileExist(FileTo))
             {
                 tmpboxfile := stdPathToBoxPath(box,FileTo)
                 if (FileExist(tmpboxfile))
-                    FileTo = %tmpboxfile%
+                    FileTo := tmpboxfile
             }
-            if (! FileExist(FileTo))
-                StringReplace, FileTo, FileTo, %programs86%, %ProgramW6432%
+            if (!FileExist(FileTo))
+                FileTo := StrReplace(FileTo, programsx86, ProgramW6432)
             attrs := 0x8101
             if (deleted)
                 attrs := attrs + 0x10000
-            If (DllCall("Shell32\SHGetFileInfoA", "astr", FileTo, "uint", 0, "str", sfi, "uint", sfi_size, "uint", attrs))
+            if (DllCall("Shell32\SHGetFileInfoA", "astr", FileTo, "uint", 0, "ptr", sfi.Ptr, "uint", sfi_size, "uint", attrs))
             {
-                hIcon = 0
-                Loop 4
-                    hIcon += *(&sfi + A_Index-1) << 8*(A_Index-1)
+                hIcon := NumGet(sfi, 0, "UInt")
                 return hIcon
             }
         }
     }
 
-    if (! FileExist(File))
-        StringReplace, File, File, %Programx86%, %ProgramW6432%
+    if (!FileExist(File))
+        File := StrReplace(File, Programx86, ProgramW6432)
 
     ; TODO: verify coherence of variable name, or use Object()
     if (StrLen(ext) <= 4)
-        old := "hIcon_" ext "_" hideshortcutoverlay "_" iconsize
+        old := "hIcon_" . ext . "_" . hideshortcutoverlay . "_" . iconsize
     else
-        old =
-    if old =
+        old := ""
+    if (old == "")
     {
         attrs := 0x101
         if (deleted)
             attrs := attrs + 0x10000
-        If (DllCall("Shell32\SHGetFileInfoA", "astr", File, "uint", 0, "str", sfi, "uint", sfi_size, "uint", attrs))
+        if (DllCall("Shell32\SHGetFileInfoA", "astr", File, "uint", 0, "ptr", sfi.Ptr, "uint", sfi_size, "uint", attrs))
         {
-            hIcon = 0
-            Loop 4
-                hIcon += *(&sfi + A_Index-1) << 8*(A_Index-1)
+            hIcon := NumGet(sfi, 0, "UInt")
         }
         ; TODO: verify coherence of variable name, or use Object()
-        if Ext in EXE,ICO,ANI,CUR
+        if (ext = "EXE" or ext = "ICO" or ext = "ANI" or ext = "CUR")
         {
         }
         else
         {
             if (StrLen(ext) <= 4)
-                hicon := "hIcon_" ext "_" hideshortcutoverlay "_" iconsize
+                hicon := "hIcon_" . ext . "_" . hideshortcutoverlay . "_" . iconsize
         }
     } else {
         hicon := old
@@ -1623,24 +1571,33 @@ boxPathToStdPath(box, bpath)
 ; filelist is a list of filenames seperated by newline characters.
 addCmdsToMenu(box, menuname, fileslist)
 {
-    global menucommands, smalliconsize
+    global menucommands, smalliconsize, menus
 
-    thismenu = %box%_%menuname%
-    numentries = 0
-    Loop, parse, fileslist, `n
+    thismenuName := box . "_" . menuname
+    if !menus.Has(thismenuName)
+        menus[thismenuName] := Menu()
+    thismenu := menus[thismenuName]
+    thismenu.Name := thismenuName
+
+    if !menucommands.Has(thismenuName)
+        menucommands[thismenuName] := Map()
+
+    numentries := 0
+    for i, entry in StrSplit(fileslist, "`n")
     {
-        entry = %A_LoopField%
+        if (entry == "")
+            continue
         idx := InStr(entry, ":")
         label := subStr(entry, 1, idx-1)
-        if (menucommands[thismenu,label] != "")
-            label = %label% (2)
+        if (menucommands[thismenuName].Has(label))
+            label := label . " (2)"
         exefile := subStr(entry, idx+1)
-        Menu, %thismenu%, Add, %label%, RunProgramMenuHandler
+        thismenu.Add(label, RunProgramMenuHandler)
         setIconFromSandboxedShortcut(box, exefile, thismenu, label, smalliconsize)
-        numentries ++
-        menucommands[thismenu,label] := exefile
+        numentries++
+        menucommands[thismenuName][label] := exefile
     }
-    return %numentries%
+    return numentries
 }
 
 ; determines current directory to run the shortcut
@@ -1737,10 +1694,10 @@ createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
             {
                 ifExist %dest%
                 {
-                    MsgBox, 294, %title%, File "%dest%" already exists on your desktop!`n`nClick Continue to overwrite it.
-                    ifMsgBox Continue
+                    Result := MsgBox(294, title, "File """ . dest . """ already exists on your desktop!`n`nClick Continue to overwrite it.")
+                    if (Result == "Continue")
                         break
-                    ifMsgBox Cancel
+                    if (Result == "Cancel")
                         Return
                 } else
                     break
@@ -1790,29 +1747,29 @@ writeSandboxedShortcutFileToDesktop(target,name,dir,args,description,iconFile,ic
     if (includeboxnames)
     {
         if (box == "__ask__")
-            name = [#ask box] %name%
+            name := "[#ask box] " . name
         else
-            name = [#%box%] %name%
+            name := "[#" . box . "] " . name
     }
     else
-        name = [#] %name%
-    linkFile = %userprofile%\Desktop\%name%.lnk
+        name := "[#] " . name
+    linkFile := A_Desktop . "\" . name . ".lnk"
 
     ; safety check
     loop
     {
-        ifExist %linkFile%
+        if (FileExist(linkFile))
         {
-            MsgBox, 294, %title%, Shortcut "%name%" already exists on your desktop!`n`nClick Continue to overwrite it.
-            ifMsgBox Continue
+            Result := MsgBox(294, title, 'Shortcut "' . name . '" already exists on your desktop!`n`nClick Continue to overwrite it.')
+            if (Result == "Continue")
                 break
-            ifMsgBox Cancel
+            if (Result == "Cancel")
                 Return
         } else
             break
     }
     ; create the shortcut
-    FileCreateShortcut, %Target%, %linkFile%, %Dir%, %Args%, %Description%, %IconFile%, , %IconNum%, %RunState%
+    FileCreateShortcut(Target, linkFile, Dir, Args, Description, IconFile, "", IconNum, RunState)
     Return
 }
 
@@ -1821,30 +1778,30 @@ writeUnsandboxedShortcutFileToDesktop(target,name,dir,args,description,iconFile,
 {
     global title
 
-    linkFile = %userprofile%\Desktop\%name%.lnk
+    linkFile := A_Desktop . "\" . name . ".lnk"
 
     ; safety check
     loop
     {
-        ifExist %linkFile%
+        if (FileExist(linkFile))
         {
-            MsgBox, 294, %title%, Shortcut "%name%" already exists on your desktop!`n`nClick Continue to overwrite it.
-            ifMsgBox Continue
+            Result := MsgBox(294, title, 'Shortcut "' . name . '" already exists on your desktop!`n`nClick Continue to overwrite it.')
+            if (Result == "Continue")
                 break
-            ifMsgBox Cancel
+            if (Result == "Cancel")
                 Return
         } else
             break
     }
     ; create the shortcut
-    FileCreateShortcut, %Target%, %linkFile%, %Dir%, %Args%, %Description%, %IconFile%, , %IconNum%, %RunState%
+    FileCreateShortcut(Target, linkFile, Dir, Args, Description, IconFile, "", IconNum, RunState)
     Return
 }
 
 ; return the box name of the last selected menu item
-getBoxFromMenu()
+getBoxFromMenuObj(menuObj)
 {
-    Return (SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2")-1))
+    Return SubStr(menuObj.Name, 1, InStr(menuObj.Name, "_ST2") - 1)
 }
 
 ; create a sandboxed shortcut on the desktop
@@ -2019,19 +1976,18 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 ListFiles(box, bpath, comparefilename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
-    global guinotclosed, title, MyListView, LVLastSize
-    global newIgnored_dirs, newIgnored_files
+    global title, MyListView, LVLastSize
+    global newIgnored_dirs, newIgnored_files, sandboxes_array
 
     static MainLabel
 
-    A_nl = `n
-    allfiles =
+    allfiles := ""
 
     ReadIgnoredConfig("files")
-    newIgnored_dirs =
-    newIgnored_files =
+    newIgnored_dirs := ""
+    newIgnored_files := ""
 
-    Progress, A M R0-100, Please wait..., Searching for files`nin box "%box%"., %title%
+    Progress("R0-100", "Please wait..., Searching for files`nin box """ . box . """.", title)
     Progress, 10
 
     if (comparefilename != "")
@@ -2107,57 +2063,54 @@ ListFiles(box, bpath, comparefilename="")
         LVLastSize = w%width% %heightarg%
     }
 
-    Gui, Destroy
-    Gui, +Resize
-    Gui, Add, Text, W900 vMainLabel, Find Files...
+    MyGui := Gui("+Resize")
+    MainLabel := MyGui.Add("Text", "w900", "Find Files...")
 
-    Menu, FileMenu, Add
-    Menu, FileMenu, DeleteAll
-    Menu, FileMenu, Add, &Copy Checkmarked Files To..., GuiLVFilesSaveTo
-    Menu, FileMenu, Add, Save Checkmarked Entries as CSV &Text, GuiLVFilesSaveAsText
-    Menu, FileMenu, Add
-    Menu, FileMenu, Add, Add Shortcuts to Checkmarked Files to Sandboxed Start &Menu, GuiLVFilesToStartMenu
-    Menu, FileMenu, Add, Add Shortcuts to Checkmarked Files to Sandboxed &Desktop, GuiLVFilesToDesktop
-    Menu, FileMenu, Add, Create Sandboxed &Shortcuts to Checkmarked Files on your Real Desktop, GuiLVFilesShortcut
+    FileMenu := Menu()
+    FileMenu.Add("&Copy Checkmarked Files To...", GuiLVFilesSaveTo)
+    FileMenu.Add("Save Checkmarked Entries as CSV &Text", GuiLVFilesSaveAsText)
+    FileMenu.Add()
+    FileMenu.Add("Add Shortcuts to Checkmarked Files to Sandboxed Start &Menu", GuiLVFilesToStartMenu)
+    FileMenu.Add("Add Shortcuts to Checkmarked Files to Sandboxed &Desktop", GuiLVFilesToDesktop)
+    FileMenu.Add("Create Sandboxed &Shortcuts to Checkmarked Files on your Real Desktop", GuiLVFilesShortcut)
 
-    Menu, EditMenu, Add
-    Menu, EditMenu, DeleteAll
-    Menu, EditMenu, Add, &Clear All Checkmarks, GuiLVClearAllCheckmarks
-    Menu, EditMenu, Add, &Toggle All Checkmarks, GuiLVToggleAllCheckmarks
-    Menu, EditMenu, Add, Toggle &Selected Checkmarks, GuiLVToggleSelected
-    Menu, EditMenu, Add
-    Menu, EditMenu, Add, &Hide Selected Entries, GuiLVHideSelected
-    Menu, EditMenu, Add
-    Menu, EditMenu, Add, Add Selected &Files to Ignore List, GuiLVIgnoreSelectedFiles
-    Menu, EditMenu, Add, Add Selected &Dirs to Ignore List, GuiLVIgnoreSelectedDirs
+    EditMenu := Menu()
+    EditMenu.Add("&Clear All Checkmarks", GuiLVClearAllCheckmarks)
+    EditMenu.Add("&Toggle All Checkmarks", GuiLVToggleAllCheckmarks)
+    EditMenu.Add("Toggle &Selected Checkmarks", GuiLVToggleSelected)
+    EditMenu.Add()
+    EditMenu.Add("&Hide Selected Entries", GuiLVHideSelected)
+    EditMenu.Add()
+    EditMenu.Add("Add Selected &Files to Ignore List", GuiLVIgnoreSelectedFiles)
+    EditMenu.Add("Add Selected &Dirs to Ignore List", GuiLVIgnoreSelectedDirs)
 
-    Menu, LVMenuBar, Add
-    Menu, LVMenuBar, DeleteAll
-    Menu, LVMenuBar, Add, &File, :FileMenu
-    Menu, LVMenuBar, Add, &Edit, :EditMenu
-    Gui, Menu, LVMenuBar
+    LVMenuBar := Menu()
+    LVMenuBar.Add("&File", FileMenu)
+    LVMenuBar.Add("&Edit", EditMenu)
+    MyGui.SetMenu(LVMenuBar)
 
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, DeleteAll
-    Menu, PopupMenu, Add, Copy To..., GuiLVCurrentFileSaveTo
-    Menu, PopupMenu, Add, Open in Sandbox, GuiLVCurrentFileRun
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Open Unsandboxed Container, GuiLVCurrentFileOpenContainerU
-    Menu, PopupMenu, Add, Open Sandboxed Container, GuiLVCurrentFileOpenContainerS
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Add Shortcut on Sandbox Start Menu, GuiLVCurrentFileToStartMenu
-    Menu, PopupMenu, Add, Add Shortcut on Sandbox Desktop, GuiLVCurrentFileToDesktop
-    Menu, PopupMenu, Add, Create Sandboxed Shortcut on Real Desktop, GuiLVCurrentFileShortcut
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Toggle Checkmark, GuiLVToggleCurrent
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Hide from this list, GuiLVHideCurrent
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Add File to Ignore List, GuiLVIgnoreCurrentFile
-    Menu, PopupMenu, Add, Add Folder to Ignore List, GuiLVIgnoreCurrentDir
-    Menu, PopupMenu, Add, Add Sub-Folder to Ignore List..., GuiLVIgnoreCurrentSubDir
+    PopupMenu := Menu()
+    PopupMenu.Add("Copy To...", GuiLVCurrentFileSaveTo)
+    PopupMenu.Add("Open in Sandbox", GuiLVCurrentFileRun)
+    PopupMenu.Add()
+    PopupMenu.Add("Open Unsandboxed Container", GuiLVCurrentFileOpenContainerU)
+    PopupMenu.Add("Open Sandboxed Container", GuiLVCurrentFileOpenContainerS)
+    PopupMenu.Add()
+    PopupMenu.Add("Add Shortcut on Sandbox Start Menu", GuiLVCurrentFileToStartMenu)
+    PopupMenu.Add("Add Shortcut on Sandbox Desktop", GuiLVCurrentFileToDesktop)
+    PopupMenu.Add("Create Sandboxed Shortcut on Real Desktop", GuiLVCurrentFileShortcut)
+    PopupMenu.Add()
+    PopupMenu.Add("Toggle Checkmark", GuiLVToggleCurrent)
+    PopupMenu.Add()
+    PopupMenu.Add("Hide from this list", GuiLVHideCurrent)
+    PopupMenu.Add()
+    PopupMenu.Add("Add File to Ignore List", GuiLVIgnoreCurrentFile)
+    PopupMenu.Add("Add Folder to Ignore List", GuiLVIgnoreCurrentDir)
+    PopupMenu.Add("Add Sub-Folder to Ignore List...", GuiLVIgnoreCurrentSubDir)
 
-    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVFileMouseEventHandler vMyListView AltSubmit, Status|File|bpath|Size|Attribs|Created|Modified|Accessed|Extension|Sandbox bpath
+    MyListView := MyGui.Add("ListView", "x10 y30 " . LVLastSize . " Checked Count" . numrows . " AltSubmit", ["Status", "File", "bpath", "Size", "Attribs", "Created", "Modified", "Accessed", "Extension", "Sandbox bpath"])
+    MyListView.OnEvent("DoubleClick", GuiLVFileMouseEventHandler)
+    MyListView.OnEvent("RightClick", GuiLVFileMouseEventHandler)
 
     ; icons array
     ImageListID1 := IL_Create(10)
@@ -2166,395 +2119,365 @@ ListFiles(box, bpath, comparefilename="")
     Progress, 20, Please wait..., Building list of files`nin box "%box%"., %title%
 
     ; add entries in listview
-    nummodified = 0
-    numadded = 0
-    numdeleted = 0
+    nummodified := 0
+    numadded := 0
+    numdeleted := 0
     sep := A_Tab
-    GuiControl, -Redraw, MyListView
-    loop, parse, allfiles, `n
+    MyListView.SetRedraw(false)
+    allfiles_arr := StrSplit(allfiles, "`n")
+    for i, entry in allfiles_arr
     {
-        entry := A_LoopField
-        prog := round(80 * A_Index / numfiles) + 20
-        if (prog != old_prog)
-        {
-            Progress, %prog%
-            sleep 1
-            old_prog = %prog%
-        }
+        prog := round(80 * i / allfiles_arr.Length) + 20
+        Progress(prog)
 
-        loop, parse, entry, %sep%
+        entry_parts := StrSplit(entry, sep)
+        St := entry_parts[1]
+        deleted := 0
+        if (St == "#")
+            nummodified++
+        else if (St == "+")
+            numadded++
+        else if (St == "-")
         {
-            if (A_Index == 1)
-            {
-                St = %A_LoopField%
-                deleted = 0
-                if (St == "#")
-                    nummodified ++
-                else if (St == "+")
-                    numadded ++
-                else if (St == "-")
-                {
-                    numdeleted ++
-                    deleted = 1
-                }
-            }
-            else if (A_Index == 2)
-                SplitPath, A_LoopField, OutFileName, OutDir, OutExtension
-            else if (A_Index == 3)
-                Attribs = %A_LoopField%
-            else if (A_Index == 4)
-                Size = %A_LoopField%
-            else if (A_Index == 5)
-                Created = %A_LoopField%
-            else if (A_Index == 6)
-                Modified = %A_LoopField%
-            else if (A_Index == 7)
-                Accessed = %A_LoopField%
-            else if (A_Index == 8)
-                BoxPath = %A_LoopField%
+            numdeleted++
+            deleted := 1
         }
+        SplitPath(entry_parts[2], &OutFileName, &OutDir, &OutExtension)
+        Attribs := entry_parts[3]
+        Size := entry_parts[4]
+        Created := entry_parts[5]
+        Modified := entry_parts[6]
+        Accessed := entry_parts[7]
+        BoxPath := entry_parts[8]
+
         if (St == "-")
-            Created =
-        iconfile = %bpath%\%BoxPath%\%OutFileName%
-        if (! FileExist(iconfile))
+            Created := ""
+        iconfile := bpath . "\" . BoxPath . "\" . OutFileName
+        if (!FileExist(iconfile))
             iconfile := boxPathToStdPath(box, iconfile)
 
         hIcon := GetAssociatedIcon(iconfile, false, 16, box, deleted)
         IconNumber := DllCall("ImageList_ReplaceIcon", "uint", ImageListID1, "int", -1, "uint", hIcon) + 1
-        LV_Add("Icon" . IconNumber, St . A_Space, OutFileName, OutDir, Size, Attribs, Created, Modified, Accessed, OutExtension, BoxPath)
+        MyListView.Add("Icon" . IconNumber, St . A_Space, OutFileName, OutDir, Size, Attribs, Created, Modified, Accessed, OutExtension, BoxPath)
     }
-    Progress, 100
-    Sleep, 50
+    Progress(100)
+    Sleep(50)
 
-    LV_ModifyCol()
-    LV_ModifyCol(4, "Integer")
+    MyListView.ModifyCol()
+    MyListView.ModifyCol(4, "Integer")
 
-    msg = Found %numfiles% file
-    if (numfiles != 1)
-        msg = %msg%s
-    msg = %msg% in the sandbox "%box%"
-    msg = %msg% : # %nummodified% modified file
-    if (nummodified != 1)
-        msg = %msg%s
-    msg = %msg% , + %numadded% new file
-    if (numadded != 1)
-        msg = %msg%s
-    msg = %msg% , - %numdeleted% deleted file
-    if (numdeleted != 1)
-        msg = %msg%s
-    msg = %msg%. Double-click an entry to copy the file to the desktop.
-    GuiControl, , MainLabel, %msg%
+    msg := "Found " . numfiles . " file" . (numfiles!=1 ? "s" : "")
+    msg .= " in the sandbox """ . box . """"
+    msg .= " : # " . nummodified . " modified file" . (nummodified!=1 ? "s" : "")
+    msg .= ", + " . numadded . " new file" . (numadded!=1 ? "s" : "")
+    msg .= ", - " . numdeleted . " deleted file" . (numdeleted!=1 ? "s" : "")
+    msg .= ". Double-click an entry to copy the file to the desktop."
+    MainLabel.Text := msg
 
-    Progress, OFF
-    Gui, Show, , %title%, Files in box "%box%"
-    GuiControl, +Redraw, MyListView
+    Progress(0)
+    MyGui.Show(, "Files in box """ . box . """")
+    MyListView.SetRedraw(true)
 
-    guinotclosed = 1
-    while (guinotclosed)
-        Sleep 1000
-    SaveNewIgnoredItems("files")
-
-    return
+    MyGui.OnEvent("Close", (*) => SaveNewIgnoredItems("files"))
+    MyGui.OnEvent("Size", GuiSize)
 }
 
-GuiSize:
-    if A_EventInfo = 1 ; The window has been minimized.  No action needed.
+GuiSize(GuiObj, EventInfo, Width, Height)
+{
+    if EventInfo = 1 ; The window has been minimized.  No action needed.
         return
-    LVLastSize := "W" . (A_GuiWidth - 20) . " H" . (A_GuiHeight - 40)
-    GuiControl, Move, MyListView, %LVLastSize%
-return
+    LVLastSize := "W" . (Width - 20) . " H" . (Height - 40)
+    MyListView.Move(,, Width - 20, Height - 40)
+}
 
-GuiLVFileMouseEventHandler:
-    row := A_EventInfo
-    if (row == 0)
-        Return
-
-    if (A_GuiEvent == "DoubleClick") {
-        GoSub, GuiLVCurrentFileSaveTo
+GuiLVFileMouseEventHandler(ctl, info)
+{
+    if (info == "DoubleClick") {
+        GuiLVCurrentFileSaveTo(ctl.FocusedRow)
     }
-    if (A_GuiEvent == "RightClick") {
-        Menu, PopupMenu, Show
+    if (info == "RightClick") {
+        PopupMenu.Show()
     }
-Return
+}
 
 ; Copy To...
-GuiLVCurrentFileSaveTo:
-    LV_GetText(LVFileName, row, 2)
-    LV_GetText(LVExtension, row, 9)
-    LV_GetText(LVFilePath, row, 10)
-    boxpath := sandboxes_array[box,"bpath"]
-    Gui, +OwnDialogs
-    if (! InStr(FileExist(DefaultFolder . "\"), "D"))
-        DefaultFolder = %userprofile%\Desktop
-    FileSelectFile, filename, S16, %DefaultFolder%\%LVFileName%, Copy "%LVFileName%" from sandbox to..., %LVExtension% files (*.%LVExtension%)
+GuiLVCurrentFileSaveTo(row)
+{
+    global sandboxes_array, box, DefaultFolder
+    LVFileName := MyListView.GetText(row, 2)
+    LVExtension := MyListView.GetText(row, 9)
+    LVFilePath := MyListView.GetText(row, 10)
+    boxpath := sandboxes_array[box].bpath
+    MyGui.Opt("+OwnDialogs")
+    if (!InStr(FileExist(DefaultFolder . "\"), "D"))
+        DefaultFolder := A_Desktop
+    filename := FileSelect("S16", DefaultFolder . "\" . LVFileName, "Copy """ . LVFileName . """ from sandbox to...", LVExtension . " files (*." . LVExtension . ")")
     if (filename == "")
         Return
-    FileCopy, %boxpath%\%LVFilePath%\%LVFileName%, %filename%, 1
-    SplitPath, filename, , DefaultFolder
-Return
+    FileCopy(boxpath . "\" . LVFilePath . "\" . LVFileName, filename, 1)
+    SplitPath(filename, , &DefaultFolder)
+}
 
 ; Open in Sandbox
-GuiLVCurrentFileRun:
-    LVCurrentFileRun(row, box, sandboxes_array[box,"bpath"])
-Return
+GuiLVCurrentFileRun(row)
+{
+    global sandboxes_array, box
+    LVCurrentFileRun(row, box, sandboxes_array[box].bpath)
+}
 LVCurrentFileRun(row, box, boxpath)
 {
     global start, title
-    LV_GetText(LVFileName, row, 2)
-    LV_GetText(LVPath, row, 10)
-    Filename = %boxpath%\%LVPath%\%LVFileName%
-    old_pwd = %A_WorkingDir%
-    SetWorkingDir, %boxpath%\%LVPath%
-    run, "%start%" /box:%box% "%Filename%", , UseErrorLevel
-    MsgBox, 64, %title%, Running "%FileName%" in box %box%.`n`nPlease wait..., 3
-    SetWorkingDir, %old_pwd%
-    Return
+    LVFileName := MyListView.GetText(row, 2)
+    LVPath := MyListView.GetText(row, 10)
+    Filename := boxpath . "\" . LVPath . "\" . LVFileName
+    old_pwd := A_WorkingDir
+    SetWorkingDir(boxpath . "\" . LVPath)
+    Run('"' . start . '" /box:' . box . ' "' . Filename . '"',, "UseErrorLevel")
+    MsgBox(64, title, "Running """ . FileName . """ in box " . box . ".`n`nPlease wait...", 3)
+    SetWorkingDir(old_pwd)
 }
 ; Open Unsandboxed Container
-GuiLVCurrentFileOpenContainerU:
-    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box,"bpath"], "u")
-Return
+GuiLVCurrentFileOpenContainerU(row)
+{
+    global sandboxes_array, box
+    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box].bpath, "u")
+}
 ; Open Sandboxed Container
-GuiLVCurrentFileOpenContainerS:
-    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box,"bpath"], "s")
-Return
+GuiLVCurrentFileOpenContainerS(row)
+{
+    global sandboxes_array, box
+    GuiLVCurrentFileOpenContainer(row, box, sandboxes_array[box].bpath, "s")
+}
 GuiLVCurrentFileOpenContainer(row, box, boxpath, mode)
 {
     global start, title
-    Gui, +OwnDialogs
+    MyGui.Opt("+OwnDialogs")
     if (mode == "u")
     {
-        LV_GetText(CurPath, row, 10)
-        Curpath = %boxpath%\%CurPath%
-        run, "%Curpath%", , UseErrorLevel
+        CurPath := MyListView.GetText(row, 10)
+        Curpath := boxpath . "\" . CurPath
+        Run('"' . Curpath . '"',, "UseErrorLevel")
     }
     else
     {
-        LV_GetText(LVBoxFile, row, 2)
-        LV_GetText(CurPath, row, 3)
-        run, "%start%" /box:%box% "%Curpath%", , UseErrorLevel
-        MsgBox, 64, %title%, Opening container of "%LVBoxFile%" in box %box%.`n`nPlease wait..., 3
+        LVBoxFile := MyListView.GetText(row, 2)
+        CurPath := MyListView.GetText(row, 3)
+        Run('"' . start . '" /box:' . box . ' "' . Curpath . '"',, "UseErrorLevel")
+        MsgBox(64, title, "Opening container of """ . LVBoxFile . """ in box " . box . ".`n`nPlease wait...", 3)
     }
-    Return
 }
 
 ; Add Shortcut in Sandbox Start Menu
-GuiLVCurrentFileToStartMenu:
-    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box,"bpath"], "startmenu")
-Return
+GuiLVCurrentFileToStartMenu(row)
+{
+    global sandboxes_array, box
+    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box].bpath, "startmenu")
+}
 ; Add Shortcut in Sandbox Desktop
-GuiLVCurrentFileToDesktop:
-    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box,"bpath"], "desktop")
-Return
+GuiLVCurrentFileToDesktop(row)
+{
+    global sandboxes_array, box
+    GuiLVCurrentFileToStartMenuOrDesktop(row, box, sandboxes_array[box].bpath, "desktop")
+}
 GuiLVCurrentFileToStartMenuOrDesktop(row, box, boxpath, where)
 {
-    LV_GetText(LVFileName, row, 2)
-    LV_GetText(LVPath, row, 3)
-    SplitPath, LVFileName, , , , LVFileNameNoExt
-    Target = %LVPath%\%LVFileName%
+    LVFileName := MyListView.GetText(row, 2)
+    LVPath := MyListView.GetText(row, 3)
+    SplitPath(LVFileName, , , , &LVFileNameNoExt)
+    Target := LVPath . "\" . LVFileName
     if (where == "startmenu")
-        ShortcutPath = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu
+        ShortcutPath := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
     else
-        ShortcutPath = %boxpath%\user\current\Desktop
-    ShortcutFile = %ShortcutPath%\%LVFileNameNoExt%.lnk
-    if (! FileExist(ShortcutPath))
-        FileCreateDir, %ShortcutPath%
-    FileCreateShortcut, %Target%, %ShortcutFile%, %LVPath%, , Run "%LVFileName%"`nShortcut created by SandboxToys2
-    Return
+        ShortcutPath := boxpath . "\user\current\Desktop"
+    ShortcutFile := ShortcutPath . "\" . LVFileNameNoExt . ".lnk"
+    if (!DirExist(ShortcutPath))
+        DirCreate(ShortcutPath)
+    FileCreateShortcut(Target, ShortcutFile, LVPath, "", "Run """ . LVFileName . """`nShortcut created by SandboxToys2")
 }
 
 ; Create Sandboxed Shortcut...
-GuiLVCurrentFileShortcut:
-    GuiLVCurrentFileShortcut(row, box, sandboxes_array[box,"bpath"])
-Return
-GuiLVCurrentFileShortcut(row, box, boxpath)
+GuiLVCurrentFileShortcut(row)
+{
+    global sandboxes_array, box
+    _GuiLVCurrentFileShortcut(row, box, sandboxes_array[box].bpath)
+}
+_GuiLVCurrentFileShortcut(row, box, boxpath)
 {
     global start
-    LV_GetText(LVFileName, row, 2)
-    LV_GetText(LVPath, row, 3)
-    LV_GetText(LVBoxPath, row, 10)
-    file = %LVPath%\%LVFileName%
+    LVFileName := MyListView.GetText(row, 2)
+    LVPath := MyListView.GetText(row, 3)
+    LVBoxPath := MyListView.GetText(row, 10)
+    file := LVPath . "\" . LVFileName
 
-    runstate = 1
-    splitPath, file, , dir, extension, label
-    A_Quotes = "
+    runstate := 1
+    splitPath(file, , &dir, &extension, &label)
+    A_Quotes := """"
     if (extension == "exe")
     {
-        iconfile = %boxpath%\%LVBoxPath%\%LVFileName%
-        iconnum = 1
+        iconfile := boxpath . "\" . LVBoxPath . "\" . LVFileName
+        iconnum := 1
     }
     else if (extension == "lnk")
     {
-        FileGetShortcut, %boxpath%\%LVBoxPath%\%LVFileName%, , , , , iconfile, iconnum, runstate
-        if (! FileExist(iconfile))
+        FileGetShortcut(boxpath . "\" . LVBoxPath . "\" . LVFileName, &outTarget, &outDir, &outArgs, &outDescription, &iconfile, &iconnum, &runstate)
+        if (!FileExist(iconfile))
             iconfile := stdPathToBoxPath(box, iconfile)
     }
     else
     {
-        Menu, __TEMP__, Add, __TEMP__, DummyMenuHandler
-        icon := setIconFromSandboxedShortcut(box, file, "__TEMP__", "__TEMP__", 32)
-        idx := InStr(icon, ",", false, 0)
+        TempMenu := Menu()
+        TempMenu.Add("__TEMP__", DummyMenuHandler)
+        icon := setIconFromSandboxedShortcut(box, file, TempMenu, "__TEMP__", 32)
+        idx := InStr(icon, ",",, 0)
         iconfile := SubStr(icon, 1, idx-1)
         iconnum := SubStr(icon, idx+1)
         if (iconnum < 0)
             iconnum := IndexOfIconResource(iconfile, iconnum)
-        Menu, __TEMP__, DeleteAll
     }
-    tip = Launch "%label%" in sandbox %box%
-    writeSandboxedShortcutFileToDesktop(start, label, boxpath . "\" . LVBoxPath, "/box:" box " " A_Quotes file A_Quotes, tip, iconfile, iconnum, 1, box)
-
-    Return
+    tip := "Launch """ . label . """ in sandbox " . box
+    writeSandboxedShortcutFileToDesktop(start, label, boxpath . "\" . LVBoxPath, "/box:" . box . " " . A_Quotes . file . A_Quotes, tip, iconfile, iconnum, 1, box)
 }
 
 ; Toggle Checkmark
-GuiLVToggleCurrent:
-    Gui +LastFound
-    SendMessage, 4140, row - 1, 0xF000, SysListView321
-    IsChecked := (ErrorLevel >> 12) - 1
-    if (IsChecked)
-        LV_Modify(row, "-Check")
+GuiLVToggleCurrent(row)
+{
+    if (MyListView.IsChecked(row))
+        MyListView.Modify(row, "-Check")
     else
-        LV_Modify(row, "Check")
-Return
+        MyListView.Modify(row, "Check")
+}
 
 ; Hide from this list
-GuiLVHideCurrent:
-    LV_Delete(row)
-Return
+GuiLVHideCurrent(row)
+{
+    MyListView.Delete(row)
+}
 
 ; Add File to Ignore List
-GuiLVIgnoreCurrentFile:
+GuiLVIgnoreCurrentFile(row)
+{
     LVIgnoreEntry(row, "files")
-Return
+}
 ; Add Folder to Ignore List
-GuiLVIgnoreCurrentDir:
+GuiLVIgnoreCurrentDir(row)
+{
     LVIgnoreEntry(row, "dirs")
-Return
+}
 ; Add Reg Value to Ignore List
-GuiLVIgnoreCurrentValue:
+GuiLVIgnoreCurrentValue(row)
+{
     LVIgnoreEntry(row, "values")
-Return
+}
 ; Add Reg Key to Ignore List
-GuiLVIgnoreCurrentKey:
+GuiLVIgnoreCurrentKey(row)
+{
     LVIgnoreEntry(row, "keys")
-Return
+}
 LVIgnoreEntry(row, mode)
 {
-    A_nl = `n
-
     if (mode == "dirs" || mode == "files")
-        pathcol = 10
+        pathcol := 10
     else
-        pathcol = 7
+        pathcol := 7
 
     if (mode == "keys")
-        LV_GetText(item, row, pathcol)
+        item := MyListView.GetText(row, pathcol)
     else if (mode == "dirs")
-        LV_GetText(item, row, pathcol)
+        item := MyListView.GetText(row, pathcol)
     else if (mode == "values")
     {
-        LV_GetText(item, row, pathcol)
-        LV_GetText(val, row, 4)
-        item = %item%\%val%
+        item := MyListView.GetText(row, pathcol)
+        val := MyListView.GetText(row, 4)
+        item := item . "\" . val
     }
     else
     {
-        LV_GetText(item, row, pathcol)
-        LV_GetText(val, row, 2)
-        item = %item%\%val%
+        item := MyListView.GetText(row, pathcol)
+        val := MyListView.GetText(row, 2)
+        item := item . "\" . val
     }
     AddIgnoreItem(mode, item)
-    LV_Delete(row)
+    MyListView.Delete(row)
 
     if (mode == "dirs" || mode == "keys") {
-        p = %item%
-        row := LV_GetCount()
-        loop
+        p := item
+        loop MyListView.GetCount()
         {
-            LV_GetText(item, row, pathcol)
-            if ( InStr(item, p, 1) == 1 )
-                LV_Delete(row)
-            row -= 1
-            if (row == 0)
-                break
+            i := MyListView.GetCount() - A_Index + 1
+            item := MyListView.GetText(i, pathcol)
+            if (InStr(item, p, 1) == 1)
+                MyListView.Delete(i)
         }
     }
-    Return
 }
 
 ; Add Sub-Folder to Ignore List...
-GuiLVIgnoreCurrentSubDir:
-    Gui +OwnDialogs
-    LVIgnoreSpecific(row, "dirs")
-Return
-; Add Reg Sub-Key to Ignore List...
-GuiLVIgnoreCurrentSubKey:
-    Gui +OwnDialogs
-    LVIgnoreSpecific(row, "keys")
-Return
-
-GuiLVRegMouseEventHandler:
-    row := A_EventInfo
-    if (row == 0)
-        Return
-
-    if (A_GuiEvent == "DoubleClick") {
-        GoSub, GuiLVCurrentOpenRegEdit
-        Return
-    }
-    if (A_GuiEvent == "RightClick") {
-        Menu, PopupMenu, Show
-    }
-Return
-
-GuiLVCurrentCopyToClipboard:
-    LV_GetText(LVRegPath, row, 2)
-    clipboard := LVRegPath
-Return
-
-GuiLVCurrentOpenRegEdit:
-    GuiLVCurrentOpenRegEdit(row, box)
-Return
-GuiLVCurrentOpenRegEdit(row, box)
+GuiLVIgnoreCurrentSubDir(row)
 {
-    run_pid := InitializeBox(box)
-    ; pre-select the right registry key
-    LV_GetText(LVRegPath, row, 7)
-    key = HKEY_USERS\%bregstr_%\%LVRegPath%
-    RegWrite, REG_SZ, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Applets\Regedit, LastKey, %key%
-    ; launch regedit
-    RunWait, RegEdit.exe, , UseErrorLevel
-    ReleaseBox(run_pid)
-    Return
+    MyGui.Opt("+OwnDialogs")
+    LVIgnoreSpecific(row, "dirs")
+}
+; Add Reg Sub-Key to Ignore List...
+GuiLVIgnoreCurrentSubKey(row)
+{
+    MyGui.Opt("+OwnDialogs")
+    LVIgnoreSpecific(row, "keys")
 }
 
-GuiLVAutostartMouseEventHandler:
-    row := A_EventInfo
-    if (row == 0)
-        Return
-
-    Gui, +OwnDialogs
-    if (A_GuiEvent == "DoubleClick") {
-        GuiLVRegistryRun(row, box)
-        Return
+GuiLVRegMouseEventHandler(ctl, info)
+{
+    if (info == "DoubleClick") {
+        GuiLVCurrentOpenRegEdit(ctl.FocusedRow)
     }
-    if (A_GuiEvent == "RightClick") {
-        Menu, PopupMenu, Show
+    if (info == "RightClick") {
+        PopupMenu.Show()
     }
-Return
+}
 
-GuiLVRegistryRun:
-    GuiLVRegistryRun(row, box)
-Return
+GuiLVCurrentCopyToClipboard(row)
+{
+    clipboard := MyListView.GetText(row, 2)
+}
+
+GuiLVCurrentOpenRegEdit(row)
+{
+    global box
+    _GuiLVCurrentOpenRegEdit(row, box)
+}
+_GuiLVCurrentOpenRegEdit(row, box)
+{
+    global bregstr_
+    run_pid := InitializeBox(box)
+    ; pre-select the right registry key
+    LVRegPath := MyListView.GetText(row, 7)
+    key := "HKEY_USERS\" . bregstr_ . "\" . LVRegPath
+    RegWrite(key, "LastKey", "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "REG_SZ")
+    ; launch regedit
+    RunWait("RegEdit.exe",, "UseErrorLevel")
+    ReleaseBox(run_pid)
+}
+
+GuiLVAutostartMouseEventHandler(ctl, info)
+{
+    global box
+    MyGui.Opt("+OwnDialogs")
+    if (info == "DoubleClick") {
+        GuiLVRegistryRun(ctl.FocusedRow, box)
+    }
+    if (info == "RightClick") {
+        PopupMenu.Show()
+    }
+}
+
 GuiLVRegistryRun(row, box)
 {
     global title, start
-    A_Quotes = "
-    Gui, +OwnDialogs
-    LV_GetText(LVRegName, row, 2)
-    LV_GetText(LVCommand, row, 3)
+    A_Quotes := """"
+    MyGui.Opt("+OwnDialogs")
+    LVRegName := MyListView.GetText(row, 2)
+    LVCommand := MyListView.GetText(row, 3)
     if (LVCommand == "")
-        MsgBox, 48, %title%, Can't run "%LVRegName%" in box %box%.`n`nNo command line., 3
+        MsgBox(48, title, "Can't run """ . LVRegName . """ in box " . box . ".`n`nNo command line.", 3)
     else
     {
         if (InStr(LVCommand, A_Quotes) == 1)
@@ -2565,55 +2488,56 @@ GuiLVRegistryRun(row, box)
         }
         else
         {
-            Filename = %LVCommand%
-            Args =
+            Filename := LVCommand
+            Args := ""
         }
         if (Args == "")
-            run, %start% /box:%box% "%Filename%", , UseErrorLevel
+            Run('"' . start . '" /box:' . box . ' "' . Filename . '"',, "UseErrorLevel")
         else
-            run, %start% /box:%box% "%Filename%" %Args%, , UseErrorLevel
-        MsgBox, 64, %title%, Running "%LVRegName%" in box %box%.`n`nPlease wait..., 3
+            Run('"' . start . '" /box:' . box . ' "' . Filename . '" ' . Args,, "UseErrorLevel")
+        MsgBox(64, title, "Running """ . LVRegName . """ in box " . box . ".`n`nPlease wait...", 3)
     }
-    Return
 }
 
-GuiLVRegistryToStartMenuStartup:
-    GuiLVRegistryToStartMenuStartup(box, sandboxes_array[box,"bpath"])
-Return
-GuiLVRegistryToStartMenuStartup(box, boxpath)
+GuiLVRegistryToStartMenuStartup()
 {
-    global title
-    A_Quotes = "
+    global box, sandboxes_array
+    _GuiLVRegistryToStartMenuStartup(box, sandboxes_array[box].bpath)
+}
+_GuiLVRegistryToStartMenuStartup(box, boxpath)
+{
     numfiles := numOfCheckedFiles()
     if (numfiles == 0)
     {
-        SoundBeep
+        SoundBeep()
         Return
     }
-    row = 0
+    row := 0
     Loop
     {
-        row := LV_GetNext(row, "Checked")
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
-        GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
+        _GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
     }
-    Return
 }
-GuiLVRegistryItemToStartMenuStartup:
-    GuiLVRegistryItemToStartMenuStartup(row, box, sandboxes_array[box,"bpath"])
-Return
-GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
+
+GuiLVRegistryItemToStartMenuStartup(row)
+{
+    global box, sandboxes_array
+    _GuiLVRegistryItemToStartMenuStartup(row, box, sandboxes_array[box].bpath)
+}
+_GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
 {
     global title
-    A_Quotes = "
+    A_Quotes := """"
 
-    LV_GetText(LVProgram, row, 2)
-    LV_GetText(LVCommand, row, 3)
-    LV_GetText(LVLocation, row, 4)
+    LVProgram := MyListView.GetText(row, 2)
+    LVCommand := MyListView.GetText(row, 3)
+    LVLocation := MyListView.GetText(row, 4)
     if (LVCommand == "")
     {
-        MsgBox, 48, %title%, Can't create shortcut to "%LVProgram%".`n`nNo command line., 3
+        MsgBox(48, title, "Can't create shortcut to """ . LVProgram . """.`n`nNo command line.", 3)
         Return
     }
 
@@ -2625,484 +2549,488 @@ GuiLVRegistryItemToStartMenuStartup(row, box, boxpath)
     }
     else
     {
-        Filename = %LVCommand%
-        Args =
+        Filename := LVCommand
+        Args := ""
     }
     if (InStr(LVLocation, "HKCU"))
-        ShortcutPath = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+        ShortcutPath := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
     else
-        ShortcutPath = %boxpath%\user\all\Microsoft\Windows\Start Menu\Programs\Startup
+        ShortcutPath := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs\Startup"
 
-    ShortcutFile = %ShortcutPath%\%LVProgram% (%LVLocation%).lnk
-    if (! FileExist(ShortcutPath))
-        FileCreateDir, %ShortcutPath%
+    ShortcutFile := ShortcutPath . "\" . LVProgram . " (" . LVLocation . ").lnk"
+    if (!DirExist(ShortcutPath))
+        DirCreate(ShortcutPath)
     if (Args == "")
-        FileCreateShortcut, %Filename%, %ShortcutFile%, , , Run "%LVProgram%"`n(Was in %LVLocation%)`nShortcut created by SandboxToys2
+        FileCreateShortcut(Filename, ShortcutFile, "", "", "Run """ . LVProgram . """`n(Was in " . LVLocation . ")`nShortcut created by SandboxToys2")
     else
-        FileCreateShortcut, %Filename%, %ShortcutFile%, , %Args%, Run "%LVProgram%"`n(Was in %LVLocation%)`nShortcut created by SandboxToys2
-
-    Return
+        FileCreateShortcut(Filename, ShortcutFile, "", Args, "Run """ . LVProgram . """`n(Was in " . LVLocation . ")`nShortcut created by SandboxToys2")
 }
 
-GuiLVRegistryExploreStartMenuCS:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "current", "sandboxed")
-Return
-GuiLVRegistryExploreStartMenuCU:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "current", "unsandboxed")
-Return
-GuiLVRegistryExploreStartMenuAS:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "all", "sandboxed")
-Return
-GuiLVRegistryExploreStartMenuAU:
-    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box,"bpath"], "all", "unsandboxed")
-Return
+GuiLVRegistryExploreStartMenuCS()
+{
+    global box, sandboxes_array
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box].bpath, "current", "sandboxed")
+}
+GuiLVRegistryExploreStartMenuCU()
+{
+    global box, sandboxes_array
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box].bpath, "current", "unsandboxed")
+}
+GuiLVRegistryExploreStartMenuAS()
+{
+    global box, sandboxes_array
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box].bpath, "all", "sandboxed")
+}
+GuiLVRegistryExploreStartMenuAU()
+{
+    global box, sandboxes_array
+    GuiLVRegistryExploreStartMenu(box, sandboxes_array[box].bpath, "all", "unsandboxed")
+}
 GuiLVRegistryExploreStartMenu(box, boxpath, user, mode)
 {
     global title, start
     if (mode == "unsandboxed") {
         if (user == "current") {
-            bpath = %boxpath%\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
-            mowner = Current User's
+            bpath := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
+            mowner := "Current User's"
         } else {
-            bpath = %boxpath%\user\all\Microsoft\Windows\Start Menu\Programs\Startup
-            mowner = All Users
+            bpath := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs\Startup"
+            mowner := "All Users"
         }
-        if (FileExist(bpath)) {
-            Run, %bpath%
+        if (DirExist(bpath)) {
+            Run(bpath)
         } else {
-            MsgBox, 48, %title%, The %mowner% Start Menu of box %box% has not been created yet.`n`nCan't explore it unsandboxed.
+            MsgBox(48, title, "The " . mowner . " Start Menu of box " . box . " has not been created yet.`n`nCan't explore it unsandboxed.")
         }
     }
     else
     {
         if (user == "current")
-            bpath = %A_StartMenu%\Programs\Startup
+            bpath := A_StartMenu . "\Programs\Startup"
         else
-            bpath = %A_StartMenuCommon%\Programs\Startup
-        Run, %start% /box:%box% "%bpath%"
+            bpath := A_StartMenuCommon . "\Programs\Startup"
+        Run('"' . start . '" /box:' . box . ' "' . bpath . '"')
     }
 }
 
-GuiLVToggleAllCheckmarks:
-    Checkedrows =
-    RowNumber = 0
+GuiLVToggleAllCheckmarks()
+{
+    Checkedrows := []
+    RowNumber := 0
     Loop
     {
-        RowNumber := LV_GetNext(RowNumber, "Checked")
+        RowNumber := MyListView.GetNext(RowNumber, "Checked")
         if not RowNumber
             break
-        Checkedrows = %Checkedrows%%RowNumber%,
+        Checkedrows.Push(RowNumber)
     }
-    Checkedrows := Trim(Checkedrows, ",")
-    LV_Modify(0, "Check")
-    Loop, Parse, Checkedrows, CSV
-        LV_Modify(A_LoopField, "-Check")
-Return
+    MyListView.Modify(0, "Check")
+    for i, row in Checkedrows
+        MyListView.Modify(row, "-Check")
+}
 
-GuiLVHideSelected:
-    Srows =
-    RowNumber = 0
+GuiLVHideSelected()
+{
+    Srows := []
+    RowNumber := 0
     Loop
     {
-        RowNumber := LV_GetNext(RowNumber)
+        RowNumber := MyListView.GetNext(RowNumber, "Focused")
         if not RowNumber
             break
-        Srows = %Srows%%RowNumber%,
+        Srows.Push(RowNumber)
     }
-    Srows := Trim(Srows, ",")
-    Sort, Srows, N R D,
-    Loop, Parse, Srows, CSV
-        LV_Delete(A_LoopField)
-Return
+    Srows.Sort("R")
+    for i, row in Srows
+        MyListView.Delete(row)
+}
 
-GuiLVIgnoreSelectedValues:
+GuiLVIgnoreSelectedValues()
+{
     LVIgnoreSelected("values")
-Return
+}
 
-GuiLVIgnoreSelectedKeys:
+GuiLVIgnoreSelectedKeys()
+{
     LVIgnoreSelected("keys")
-Return
+}
 
-GuiLVIgnoreSelectedFiles:
+GuiLVIgnoreSelectedFiles()
+{
     LVIgnoreSelected("files")
-Return
+}
 
-GuiLVIgnoreSelectedDirs:
+GuiLVIgnoreSelectedDirs()
+{
     LVIgnoreSelected("dirs")
-Return
+}
 
-GuiLVClearAllCheckmarks:
-    numrows := LV_GetCount()
-    Loop, %numrows%
-        LV_Modify(A_Index, "-Check")
-Return
+GuiLVClearAllCheckmarks()
+{
+    MyListView.Modify(0, "-Check")
+}
 
-GuiLVToggleSelected:
-    row = 0
+GuiLVToggleSelected()
+{
+    row := 0
     Loop
     {
-        row := LV_GetNext(row)
+        row := MyListView.GetNext(row, "Focused")
         if not row
             break
-        Gui +LastFound
-        SendMessage, 4140, row - 1, 0xF000, SysListView321
-        IsChecked := (ErrorLevel >> 12) - 1
-        if (IsChecked)
-            LV_Modify(row, "-Check")
+        if (MyListView.IsChecked(row))
+            MyListView.Modify(row, "-Check")
         else
-            LV_Modify(row, "Check")
+            MyListView.Modify(row, "Check")
     }
-Return
+}
 
-GuiLVFilesSaveAsText:
+GuiLVFilesSaveAsText()
+{
+    global box
     GuiLVSaveAsCSVText(box, "Files in sandbox " . box . ".txt")
-Return
-GuiLVRegistrySaveAsText:
+}
+GuiLVRegistrySaveAsText()
+{
+    global box
     GuiLVSaveAsCSVText(box, "Registry of sandbox " . box . ".txt")
-Return
+}
 GuiLVSaveAsCSVText(box, defaultfilename)
 {
     global DefaultFolder, title
-    A_Quotes = "
+    A_Quotes := """"
     numfiles := numOfCheckedFiles()
     if (numfiles == 0)
     {
-        SoundBeep
+        SoundBeep()
         Return
     }
-    Gui, +OwnDialogs
-    if (! InStr(FileExist(DefaultFolder . "\"), "D"))
-        DefaultFolder = %userprofile%\Desktop
-    FileSelectFile, filename, S16, %DefaultFolder%\%defaultfilename%, Select output text file to save the checkmarked items as coma separated values..., Text files (*.txt)
+    MyGui.Opt("+OwnDialogs")
+    if (!InStr(FileExist(DefaultFolder . "\"), "D"))
+        DefaultFolder := A_Desktop
+    filename := FileSelect("S16", DefaultFolder . "\" . defaultfilename, "Select output text file to save the checkmarked items as coma separated values...", "Text files (*.txt)")
     if (filename == "")
         Return
-    SplitPath, filename, , DefaultFolder, ProvidedExtension
+    SplitPath(filename, , &DefaultFolder, &ProvidedExtension)
     if (ProvidedExtension != "txt")
-        filename = %filename%.txt
+        filename .= ".txt"
 
-    Progress, A M R0-100, Please wait..., Saving list of %numfiles% files..., %title%
-    Progress, 100
-    FileDelete, %filename%
-    numcols := LV_GetCount("Column")
-    row = 0
-    filenum = 1
+    Progress("R0-100", "Please wait..., Saving list of " . numfiles . " files...", title)
+    FileDelete(filename)
+    numcols := MyListView.GetCount("Column")
+    row := 0
+    filenum := 1
     Loop
     {
-        row := LV_GetNext(row, "Checked")
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
-        line =
-        loop, %numcols%
+        line := ""
+        loop (numcols -1)
         {
-            colnum = %A_Index%
-            if (colnum == 1)
-                continue
-            LV_GetText(colitem, row, colnum)
-            line = %line%%A_Quotes%%colitem%%A_Quotes%,
+            colnum := A_Index + 1
+            colitem := MyListView.GetText(row, colnum)
+            line .= A_Quotes . colitem . A_Quotes . ","
         }
         line := Trim(line, ",")
-        FileAppend, %line%`n, %filename%
-        filenum ++
+        FileAppend(line . "`n", filename)
+        filenum++
     }
-    sleep 10
-    Progress, OFF
-    Return
+    sleep(10)
+    Progress(0)
 }
 
-GuiLVFilesToStartMenu:
-    GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box,"bpath"], "startmenu")
-Return
-GuiLVFilesToDesktop:
-    GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box,"bpath"], "desktop")
-Return
-GuiLVFilesToStartMenuOrDesktop(box, boxpath, where)
+GuiLVFilesToStartMenu()
+{
+    global box, sandboxes_array
+    _GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box].bpath, "startmenu")
+}
+GuiLVFilesToDesktop()
+{
+    global box, sandboxes_array
+    _GuiLVFilesToStartMenuOrDesktop(box, sandboxes_array[box].bpath, "desktop")
+}
+_GuiLVFilesToStartMenuOrDesktop(box, boxpath, where)
 {
     numfiles := numOfCheckedFiles()
     if (numfiles == 0)
     {
-        SoundBeep
+        SoundBeep()
         Return
     }
-    row = 0
+    row := 0
     Loop
     {
-        row := LV_GetNext(row, "Checked")
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
         GuiLVCurrentFileToStartMenuOrDesktop(row, box, boxpath, where)
     }
-    Return
 }
 
-GuiLVFilesShortcut:
-    GuiLVFilesShortcut(box, sandboxes_array[box,"bpath"])
-Return
-GuiLVFilesShortcut(box, boxpath)
+GuiLVFilesShortcut()
 {
-    global start
+    global box, sandboxes_array
+    _GuiLVFilesShortcut(box, sandboxes_array[box].bpath)
+}
+_GuiLVFilesShortcut(box, boxpath)
+{
     numfiles := numOfCheckedFiles()
     if (numfiles == 0)
     {
-        SoundBeep
+        SoundBeep()
         Return
     }
-    row = 0
+    row := 0
     Loop
     {
-        row := LV_GetNext(row, "Checked")
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
-        GuiLVCurrentFileShortcut(row, box, boxpath)
+        _GuiLVCurrentFileShortcut(row, box, boxpath)
     }
-    Return
 }
 
-GuiLVFilesSaveTo:
-    LVFilesSaveTo(sandboxes_array[box,"bpath"])
-Return
+GuiLVFilesSaveTo()
+{
+    global box, sandboxes_array
+    LVFilesSaveTo(sandboxes_array[box].bpath)
+}
 LVFilesSaveTo(boxpath)
 {
     static DefaultFolder
     numfiles := numOfCheckedFiles()
     if (numfiles == 0)
     {
-        SoundBeep
+        SoundBeep()
         Return
     }
-    Gui, +OwnDialogs
+    MyGui.Opt("+OwnDialogs")
     if (Not Instr(FileExist(DefaultFolder),"D"))
-        DefaultFolder =
-    if DefaultFolder =
-        DefaultFolder = %userprofile%\Desktop
+        DefaultFolder := ""
+    if DefaultFolder == ""
+        DefaultFolder := A_Desktop
     DefaultFolder := expandEnvVars(DefaultFolder)
-    FileSelectFolder, dirname, *%DefaultFolder%, 1, Copy checkmarked files from sandbox to folder...`n`n********** WARNING: Existing files will be OVERWRITTEN **********
+    dirname := DirSelect("*" . DefaultFolder, 1, "Copy checkmarked files from sandbox to folder...`n`n********** WARNING: Existing files will be OVERWRITTEN **********")
     if (dirname == "")
         Return
-    DefaultFolder = %dirname%
-    Progress, A M R0-100, Please wait..., Saving %numfiles% files..., %title%
-    Progress, 100
-    row = 0
-    filenum = 1
-    Overwrite = -1
+    DefaultFolder := dirname
+    Progress("R0-100", "Please wait..., Saving " . numfiles . " files...", title)
+    row := 0
+    filenum := 1
+    Overwrite := -1
     Loop
     {
-        row := LV_GetNext(row, "Checked")
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
-        LV_GetText(LVFileName, row, 2)
-        LV_GetText(LVSBFilePath, row, 10)
-        outfile = %dirname%\%LVFileName%
+        LVFileName := MyListView.GetText(row, 2)
+        LVSBFilePath := MyListView.GetText(row, 10)
+        outfile := dirname . "\" . LVFileName
         exist := FileExist(outfile)
-        if (exist && overwrite == -1) {
-            Progress, OFF
-            MsgBox, 291, %title%, Warning: Some files exist already in the destination folder.`nOverwrite them?
-            prog :=
-            Progress, % round(100 * (filenum / numfiles))
-            Sleep, 100
-            Progress, 100
-            IfMsgBox, Cancel
+        if (exist && Overwrite == -1) {
+            Progress(0)
+            Result := MsgBox("Warning: Some files exist already in the destination folder.`nOverwrite them?", title, "YesNoCancel")
+            Progress(round(100 * (filenum / numfiles)))
+            if (Result == "Cancel")
             {
-                Progress, OFF
+                Progress(0)
                 Return
             }
-            IfMsgBox, Yes
-                Overwrite = 1
-else
-    Overwrite = 0
+            if (Result == "Yes")
+                Overwrite := 1
+            else
+                Overwrite := 0
         }
-        if (NOT exist || Overwrite == 1)
-            FileCopy, %boxpath%\%LVSBFilePath%\%LVFileName%, %outfile%, 1
-        filenum ++
+        if (!exist || Overwrite == 1)
+            FileCopy(boxpath . "\" . LVSBFilePath . "\" . LVFileName, outfile, 1)
+        filenum++
     }
-    sleep 10
-    Progress, OFF
-    Return
+    sleep(10)
+    Progress(0)
 }
 
-GuiLVRegistrySaveAsReg:
-    GuiLVRegistrySaveAsReg(box)
-Return
-GuiLVRegistrySaveAsReg(box)
+GuiLVRegistrySaveAsReg()
 {
-    global title
+    global box
+    _GuiLVRegistrySaveAsReg(box)
+}
+_GuiLVRegistrySaveAsReg(box)
+{
+    global title, sandboxes_array, username
     static DefaultFolder
-    A_Quotes = "
-    A_nl = `n
+    A_Quotes := """"
 
-    global sandboxes_array
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    bregstr_ := sandboxes_array[box].KeyRootPath
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
-    mainsbkey = %bregstr_%
+    mainsbkey := bregstr_
 
     numregs := numOfCheckedFiles()
     if (numregs == 0)
     {
-        SoundBeep
+        SoundBeep()
         Return
     }
-    Gui, +OwnDialogs
-    if (! InStr(FileExist(DefaultFolder . "\"), "D"))
-        DefaultFolder = %userprofile%\Desktop
-    FileSelectFile, filename, S16, %DefaultFolder%\box %box%.reg, Select REG file to save the checkmarked keys and values to, REG files (*.reg)
+    MyGui.Opt("+OwnDialogs")
+    if (!InStr(FileExist(DefaultFolder . "\"), "D"))
+        DefaultFolder := A_Desktop
+    filename := FileSelect("S16", DefaultFolder . "\box " . box . ".reg", "Select REG file to save the checkmarked keys and values to", "REG files (*.reg)")
     if (filename == "")
         Return
-    SplitPath, filename, , DefaultFolder, ProvidedExtension
+    SplitPath(filename, , &DefaultFolder, &ProvidedExtension)
     if (ProvidedExtension != "reg")
-        filename = %filename%.reg
-    FileDelete, %filename%
+        filename .= ".reg"
+    FileDelete(filename)
 
-    ; ensure that the box is in use, or the hive will not be loaded
     run_pid := InitializeBox(box)
 
-    row = 0
-    lastrealkeypath =
-    failed =
-    out = REGEDIT4`n
+    row := 0
+    lastrealkeypath := ""
+    failed := ""
+    out := "REGEDIT4`n"
     Loop
     {
-        line =
-        row := LV_GetNext(row, "Checked")
+        line := ""
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
-        LV_GetText(Status, row, 1)
-        status = SubStr(Status,1,1)
-        LV_GetText(realkeypath, row, 2)
-        LV_GetText(keytype, row, 3)
-        LV_GetText(keyvaluename, row, 4)
-        LV_GetText(boxkeypath, row, 7)
-        boxkeypath = %mainsbkey%\%boxkeypath%
+        Status := MyListView.GetText(row, 1)
+        status := SubStr(Status, 1, 1)
+        realkeypath := MyListView.GetText(row, 2)
+        keytype := MyListView.GetText(row, 3)
+        keyvaluename := MyListView.GetText(row, 4)
+        boxkeypath := MyListView.GetText(row, 7)
+        boxkeypath := mainsbkey . "\" . boxkeypath
 
         if (keyvaluename == "@")
         {
-            valuename =
-            outvaluename = @
+            valuename := ""
+            outvaluename := "@"
         }
         else
         {
-            valuename = %keyvaluename%
-            outvaluename = "%keyvaluename%"
+            valuename := keyvaluename
+            outvaluename := """" . keyvaluename . """"
         }
         if (lastrealkeypath != realkeypath)
         {
             if (keytype == "-DELETED_KEY")
-                line = `n[-%realkeypath%]`n
+                line := "`n[-" . realkeypath . "]`n"
             else
-                line = `n[%realkeypath%]`n
-            lastrealkeypath = %realkeypath%
+                line := "`n[" . realkeypath . "]`n"
+            lastrealkeypath := realkeypath
         }
         if (keytype == "-DELETED_VALUE")
-            line = %line%%outvaluename%=-`n
+            line .= outvaluename . "=-`n"
         if (keytype != "-DELETED_KEY" && keytype != "-DELETED_VALUE")
         {
-            RegRead, keyvalueval, HKEY_USERS, %boxkeypath%, %valuename%
+            keyvalueval := RegRead("HKEY_USERS\" . boxkeypath, valuename)
             if (ErrorLevel)
             {
                 keyvalueval := RegRead64("HKEY_USERS", boxkeypath, valuename, false, 65536)
                 if (ErrorLevel)
-                    failed = %failed%[%boxkeypath%] %outvaluename% (%keytype%)`n
+                    failed .= "[" . boxkeypath . "] " . outvaluename . " (" . keytype . ")`n"
             }
-            if (! ErrorLevel)
+            if (!ErrorLevel)
             {
                 if (keytype == "REG_SZ")
                 {
-                    StringReplace, keyvalueval, keyvalueval, \, \\, 1
-                    StringReplace, keyvalueval, keyvalueval, %A_Quotes%, \%A_Quotes%, 1
-                    line = %line%%outvaluename%="%keyvalueval%"`n
+                    keyvalueval := StrReplace(keyvalueval, "\", "\\")
+                    keyvalueval := StrReplace(keyvalueval, A_Quotes, '\"')
+                    line .= outvaluename . '="' . keyvalueval . '"`n'
                 }
                 else if (keytype == "REG_EXPAND_SZ")
                 {
                     hexstr := str2hexstr(keyvalueval)
                     wrapped := WrapRegString(outvaluename . "=hex(2):" . hexstr)
-                    line = %line%%wrapped%`n
+                    line .= wrapped . "`n"
                 }
                 else if (keytype == "REG_BINARY")
                 {
                     hexstr := hexstr2hexstrcomas(keyvalueval)
                     wrapped := WrapRegString(outvaluename . "=hex:" . hexstr)
-                    line = %line%%wrapped%`n
+                    line .= wrapped . "`n"
                 }
                 else if (keytype == "REG_DWORD")
                 {
                     hex := dec2hex(keyvalueval,8)
-                    line = %line%%outvaluename%=dword:%hex%`n
+                    line .= outvaluename . "=dword:" . hex . "`n"
                 }
                 else if (keytype == "REG_QWORD")
                 {
                     hex := qword2hex(keyvalueval)
-                    line = %line%%outvaluename%=hex(b):%hex%`n
+                    line .= outvaluename . "=hex(b):" . hex . "`n"
                 }
                 else if (keytype == "REG_MULTI_SZ")
                 {
                     hexstr := str2hexstr(keyvalueval, true)
                     wrapped := WrapRegString(outvaluename . "=hex(7):" . hexstr)
-                    line = %line%%wrapped%`n
+                    line .= wrapped . "`n"
                 }
                 else
                 {
-                    failed = %failed%[%boxkeypath%] %outvaluename% (%keytype%)`n
+                    failed .= "[" . boxkeypath . "] " . outvaluename . " (" . keytype . ")`n"
                 }
             }
         }
-        out = %out%%line%
+        out .= line
     }
 
-    FileAppend, %out%, %filename%
+    FileAppend(out, filename)
     if (failed != "") {
-        MsgBox, 48, %title%, Warning! Some key values cannot be saved due to unsupported key type:`n`n%failed%
+        MsgBox(48, title, "Warning! Some key values cannot be saved due to unsupported key type:`n`n" . failed)
     }
 
     ReleaseBox(run_pid)
-
-    Return
 }
 
-GuiClose:
-    Gui, Destroy
-    guinotclosed = 0
-Return
+GuiClose()
+{
+    MyGui.Destroy()
+}
 
 WrapRegString(str)
 {
     if (strLen(str) <= 80)
-        return %str%
+        return str
 
-    A_Quotes = "
+    A_Quotes := """"
     idx := InStr(str, A_Quotes . "=")
     if (idx < 76)
-        idx = 76
-    idx := InStr(str, ",", 0, idx)
+        idx := 76
+    idx := InStr(str, ",",, idx)
     if (idx == 0)
-        return %str%
+        return str
 
     out := SubStr(str, 1, idx)
-    out = %out%\`n
+    out .= "\`n"
     str := subStr(str, idx+1)
     loop
     {
         if (StrLen(str) < 78)
         {
-            out = %out% %str%
+            out .= " " . str
             break
         }
-        idx := InStr(str, ",", 0, 75)
+        idx := InStr(str, ",",, 75)
         sub := subStr(str, 1, idx)
-        out = %out% %sub%\`n
+        out .= " " . sub . "\`n"
         str := subStr(str, idx+1)
     }
-    return %out%
+    return out
 }
 
 numOfCheckedFiles()
 {
-    num = 0
-    row = 0
+    num := 0
+    row := 0
     Loop
     {
-        row := LV_GetNext(row, "Checked")
+        row := MyListView.GetNext(row, "Checked")
         if not row
             break
-        num ++
+        num++
     }
     return num
 }
@@ -3121,22 +3049,22 @@ numOfCheckedFiles()
 
 GetReg(inrootkey, insubkey, outrootkey, outsubkey)
 {
-    outtxt =
+    outtxt := ""
     insubkeylen := StrLen(insubkey)+1
-    outfullkey = %outrootkey%
+    outfullkey := outrootkey
     if (outsubkey != "")
-        outfullkey = %outfullkey%\%outsubkey%
+        outfullkey .= "\" . outsubkey
 
-    Loop, %inrootkey%, %insubkey%, 1, 1
+    Loop Reg, inrootkey . "\" . insubkey, "KV", 1
     {
         subkey := outfullkey . SubStr(A_LoopRegSubKey, insubkeylen)
         if (A_LoopRegType != "KEY")
-            RegRead, value
+            value := RegRead(A_LoopRegKey . "\" . A_LoopRegSubKey, A_LoopRegName)
         else
-            value =
-        outtxt = %outtxt%%A_LoopRegTimeModified% %A_LoopRegType% %A_LoopRegName% %subkey% %value%`n
+            value := ""
+        outtxt .= A_LoopRegTimeModified . " " . A_LoopRegType . " " . A_LoopRegName . " " . subkey . " " . value . "`n"
     }
-    return %outtxt%
+    return outtxt
 }
 
 FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separator, includedate=false)
@@ -3145,150 +3073,145 @@ FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separat
     if (type == "")
         type := RegRead64KeyType("HKEY_USERS", RegSubKey, RegName, false)
     if (type == "")
-        type = UNKNOWN
+        type := "UNKNOWN"
 
     if (RegTimeModified == "19860523174702")
-        status = -
+        status := "-"
     else
-        status = +
+        status := "+"
     if (type == "REG_SB_DELETED")
     {
-        status = -
-        type = -DELETED_VALUE
+        status := "-"
+        type := "-DELETED_VALUE"
     }
 
-    RegRead, value
-    if (ErrorLevel)
+    try value := RegRead("HKEY_USERS\" . RegSubKey, RegName)
+    catch
     {
-        value := RegRead64("HKEY_USERS", RegSubKey, RegName)
-        if (ErrorLevel)
+        try value := RegRead64("HKEY_USERS", RegSubKey, RegName)
+        catch
         {
-            value := RegRead64("HKEY_USERS", RegSubKey, RegName, false)
-            if (ErrorLevel)
+            try value := RegRead64("HKEY_USERS", RegSubKey, RegName, false)
+            catch
             {
-                value =
-                status = -
+                value := ""
+                status := "-"
             }
         }
     }
+
     if (InStr(type, "_SZ"))
     {
-        StringReplace, value, value, `n, %A_Space%, 1
+        value := StrReplace(value, "`n", A_Space)
         if (type == "REG_MULTI_SZ")
-            StringTrimRight, value, value, 1
+            value := RTrim(value, A_Space)
     }
     if (StrLen(value) > 80)
         value := SubStr(value, 1, 80) . "..."
 
-    name = %RegName%
+    name := RegName
     if (name == "")
-        name = @
+        name := "@"
 
     if (type == "KEY")
     {
         if (status == "-")
-            type = -DELETED_KEY
-        outtxt = %status%%separator%%subkey%\%name%%separator%%type%%separator%%separator%
+            type := "-DELETED_KEY"
+        outtxt := status . separator . subkey . "\" . name . separator . type . separator . separator
     }
     else
-        outtxt = %status%%separator%%subkey%%separator%%type%%separator%%name%%separator%%value%
+        outtxt := status . separator . subkey . separator . type . separator . name . separator . value
     if (includedate)
-        outtxt = %outtxt%%separator%%RegTimeModified%
-    return %outtxt%
+        outtxt .= separator . RegTimeModified
+    return outtxt
 }
 
 MakeFilesConfig(box, filename, mainsbpath)
 {
     mainsbpathlen := StrLen(mainsbpath) + 2
+    outtxt := ""
 
-    outtxt =
-
-    Loop, %mainsbpath%\drive\*, 1, 1
+    Loop Files, mainsbpath . "\drive\*", "F"
     {
         if (A_LoopFileTimeCreated == "19860523174702")
-            status = -
+            status := "-"
         else
-            status = +
+            status := "+"
         if (InStr(A_LoopFileAttrib, "D") && status == "+")
             Continue
         name := SubStr(A_LoopFileFullPath, mainsbpathlen)
-        outtxt = %outtxt%%status% %A_LoopFileTimeModified% %name%:*:`n
+        outtxt .= status . " " . A_LoopFileTimeModified . " " . name . ":*:`n"
     }
-    Loop, %mainsbpath%\user\*, 1, 1
+    Loop Files, mainsbpath . "\user\*", "F"
     {
         if (A_LoopFileTimeCreated == "19860523174702")
-            status = -
+            status := "-"
         else
-            status = +
+            status := "+"
         if (InStr(A_LoopFileAttrib, "D") && status == "+")
             Continue
         name := SubStr(A_LoopFileFullPath, mainsbpathlen)
-        outtxt = %outtxt%%status% %A_LoopFileTimeModified% %name%:*:`n
+        outtxt .= status . " " . A_LoopFileTimeModified . " " . name . ":*:`n"
     }
 
-    FileDelete, %filename%
-    FileAppend, `n%outtxt%, %filename%
-    Return
+    FileDelete(filename)
+    FileAppend("`n" . outtxt, filename)
 }
 
 MakeRegConfig(box, filename="")
 {
-    global regconfig
+    global regconfig, sandboxes_array, username
     run_pid := InitializeBox(box)
 
-    global sandboxes_array
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    bregstr_ := sandboxes_array[box].KeyRootPath
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
-    mainsbkey = %bregstr_%
+    mainsbkey := bregstr_
     mainsbkeylen := StrLen(mainsbkey) + 2
+    outtxt := ""
 
-    outtxt =
-
-    Loop, HKEY_USERS, %mainsbkey%, 1, 1
+    Loop Reg, "HKEY_USERS\" . mainsbkey, "KV", 1
     {
+        RegTimeModified := ""
         if (A_LoopRegTimeModified != "")
-            RegTimeModified = %A_LoopRegTimeModified%
+            RegTimeModified := A_LoopRegTimeModified
 
-        if (A_LoopRegType == "KEY" && A_LoopRegTimeModified != "19860523174702")
+        if (A_LoopRegType == "KEY" && RegTimeModified != "19860523174702")
             Continue
 
         subkey := SubStr(A_LoopRegSubKey, mainsbkeylen)
         out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
-        outtxt = %outtxt%%out%`n
+        outtxt .= out . "`n"
     }
 
     if (filename == "")
-        filename = %regconfig%
-    FileDelete, %filename%
-    FileAppend, `n%outtxt%, %filename%
+        filename := regconfig
+    FileDelete(filename)
+    FileAppend("`n" . outtxt, filename)
 
     ReleaseBox(run_pid)
-
-    Return
 }
 
 SearchReg(box, ignoredKeys, ignoredValues, filename="")
 {
-    global regconfig
-
+    global regconfig, sandboxes_array, username
     run_pid := InitializeBox(box)
 
-    global sandboxes_array
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    bregstr_ := sandboxes_array[box].KeyRootPath
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
-    mainsbkey = %bregstr_%
+    mainsbkey := bregstr_
     mainsbkeylen := StrLen(mainsbkey) + 2
 
     if (filename == "")
-        filename = %regconfig%
-    FileRead, regconfigdata, %filename%
-    outtxt =
+        filename := regconfig
+    regconfigdata := FileRead(filename)
+    outtxt := ""
 
-    LastIgnoredKey = !xxx!:\
-    Loop, HKEY_USERS, %mainsbkey%, 1, 1
+    LastIgnoredKey := "!xxx!:\\"
+    Loop Reg, "HKEY_USERS\" . mainsbkey, "KV", 1
     {
+        RegTimeModified := ""
         if (A_LoopRegTimeModified != "")
             RegTimeModified := A_LoopRegTimeModified
 
@@ -3298,17 +3221,17 @@ SearchReg(box, ignoredKeys, ignoredValues, filename="")
 
         if (A_LoopRegType == "KEY")
         {
-            if (A_LoopRegTimeModified != "19860523174702")
+            if (RegTimeModified != "19860523174702")
                 Continue
             if (IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName))
             {
-                LastIgnoredKey = %subkey%\%A_LoopRegName%
+                LastIgnoredKey := subkey . "\" . A_LoopRegName
                 Continue
             }
         }
         else
         {
-            if A_LoopRegName =
+            if (A_LoopRegName == "")
             {
                 if (IsIgnored("values", ignoredValues, subkey, "@"))
                     Continue
@@ -3321,7 +3244,7 @@ SearchReg(box, ignoredKeys, ignoredValues, filename="")
         }
         if (IsIgnored("keys", ignoredKeys, subkey))
         {
-            LastIgnoredKey = %subkey%
+            LastIgnoredKey := subkey
             Continue
         }
 
@@ -3329,46 +3252,42 @@ SearchReg(box, ignoredKeys, ignoredValues, filename="")
         if (NOT InStr(regconfigdata, out))
         {
             out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, chr(1), true)
-            outtxt = %outtxt%%out%`n
+            outtxt .= out . "`n"
         }
     }
 
     ReleaseBox(run_pid)
 
-    Return %outtxt%
+    Return outtxt
 }
 
 ListReg(box, bpath, filename="")
 {
-    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
-    global guinotclosed, title, MyListView, LVLastSize
-    global newIgnored_keys, newIgnored_values
+    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, title, MyListView, LVLastSize, newIgnored_keys, newIgnored_values
     static MainLabel
 
     if (filename != "")
-        comparemode = 1
+        comparemode := 1
     else
-        comparemode = 0
-    A_Quotes = "
+        comparemode := 0
 
     ReadIgnoredConfig("reg")
-    newIgnored_keys =
-    newIgnored_values =
+    newIgnored_keys := ""
+    newIgnored_values := ""
 
-    A_nl = `n
-    Progress, A M R0-100, Please wait..., Scanning registry`nof box "%box%"., %title%
-    Progress, 50
+    Progress("R0-100", "Please wait..., Scanning registry`nof box """ . box . """.", title)
+    Progress(50)
 
-    StringReplace, ignoredKeys, ignoredKeys, :, ., 1
+    ignoredKeys := StrReplace(ignoredKeys, ":", ".")
     allregs := SearchReg(box, ignoredKeys, ignoredValues, filename)
 
-    Progress, 90, Please wait..., Sorting list of files`nin box "%box%"., %title%
-    sleep 150
-    Sort, allregs, P3
-    allregs := Trim(allregs, A_nl)
-    numregs = 0
-    loop, parse, allregs, `n
-        numregs ++
+    Progress(90, "Please wait..., Sorting list of files`nin box """ . box . """.", title)
+    sleep(150)
+    Sort(allregs, "P3")
+    allregs := Trim(allregs, "`n")
+
+    allregs_arr := StrSplit(allregs, "`n")
+    numregs := allregs_arr.Length
     if (numregs = 0)
     {
         Progress, OFF
@@ -3404,226 +3323,184 @@ ListReg(box, bpath, filename="")
         LVLastSize = w%width% %heightarg%
     }
 
-    Gui, Destroy
-    Gui, +Resize
-    Gui, Add, Text, W900 vMainLabel, Find Registry Keys...
+    MyGui := Gui("+Resize")
+    MainLabel := MyGui.Add("Text", "w900", "Find Registry Keys...")
 
-    Menu, FileMenu, Add
-    Menu, FileMenu, DeleteAll
-    Menu, FileMenu, Add, Save Checkmarked entries as &REG file, GuiLVRegistrySaveAsReg
-    Menu, FileMenu, Add
-    Menu, FileMenu, Add, Save Checkmarked entries as CSV &Text, GuiLVRegistrySaveAsText
+    FileMenu := Menu()
+    FileMenu.Add("Save Checkmarked entries as &REG file", GuiLVRegistrySaveAsReg)
+    FileMenu.Add()
+    FileMenu.Add("Save Checkmarked entries as CSV &Text", GuiLVRegistrySaveAsText)
 
-    Menu, EditMenu, Add
-    Menu, EditMenu, DeleteAll
-    Menu, EditMenu, Add, &Clear All Checkmarks, GuiLVClearAllCheckmarks
-    Menu, EditMenu, Add, &Toggle All Checkmarks, GuiLVToggleAllCheckmarks
-    Menu, EditMenu, Add, Toggle &Selected Checkmarks, GuiLVToggleSelected
-    Menu, EditMenu, Add
-    Menu, EditMenu, Add, &Hide Selected Entries, GuiLVHideSelected
-    Menu, EditMenu, Add
-    Menu, EditMenu, Add, Add Selected &Values to Ignore List, GuiLVIgnoreSelectedValues
-    Menu, EditMenu, Add, Add Selected &Keys to Ignore List, GuiLVIgnoreSelectedKeys
-    ;    Menu, EditMenu, Add, Add Specific &Key to Ignore List,    GuiLVIgnoreSpecificKey
+    EditMenu := Menu()
+    EditMenu.Add("&Clear All Checkmarks", GuiLVClearAllCheckmarks)
+    EditMenu.Add("&Toggle All Checkmarks", GuiLVToggleAllCheckmarks)
+    EditMenu.Add("Toggle &Selected Checkmarks", GuiLVToggleSelected)
+    EditMenu.Add()
+    EditMenu.Add("&Hide Selected Entries", GuiLVHideSelected)
+    EditMenu.Add()
+    EditMenu.Add("Add Selected &Values to Ignore List", GuiLVIgnoreSelectedValues)
+    EditMenu.Add("Add Selected &Keys to Ignore List", GuiLVIgnoreSelectedKeys)
 
-    Menu, LVMenuBar, Add
-    Menu, LVMenuBar, DeleteAll
-    Menu, LVMenuBar, Add, &File, :FileMenu
-    Menu, LVMenuBar, Add, &Edit, :EditMenu
-    Gui, Menu, LVMenuBar
+    LVMenuBar := Menu()
+    LVMenuBar.Add("&File", FileMenu)
+    LVMenuBar.Add("&Edit", EditMenu)
+    MyGui.SetMenu(LVMenuBar)
 
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, DeleteAll
-    Menu, PopupMenu, Add, Copy Key to Clipboard, GuiLVCurrentCopyToClipboard
-    Menu, PopupMenu, Add, Open Key in RegEdit, GuiLVCurrentOpenRegEdit
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Toggle Checkmark, GuiLVToggleCurrent
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Hide from this list, GuiLVHideCurrent
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Add Value to Ignore List, GuiLVIgnoreCurrentValue
-    Menu, PopupMenu, Add, Add Key to Ignore List, GuiLVIgnoreCurrentKey
-    Menu, PopupMenu, Add, Add Sub-Key to Ignore List..., GuiLVIgnoreCurrentSubKey
+    PopupMenu := Menu()
+    PopupMenu.Add("Copy Key to Clipboard", GuiLVCurrentCopyToClipboard)
+    PopupMenu.Add("Open Key in RegEdit", GuiLVCurrentOpenRegEdit)
+    PopupMenu.Add()
+    PopupMenu.Add("Toggle Checkmark", GuiLVToggleCurrent)
+    PopupMenu.Add()
+    PopupMenu.Add("Hide from this list", GuiLVHideCurrent)
+    PopupMenu.Add()
+    PopupMenu.Add("Add Value to Ignore List", GuiLVIgnoreCurrentValue)
+    PopupMenu.Add("Add Key to Ignore List", GuiLVIgnoreCurrentKey)
+    PopupMenu.Add("Add Sub-Key to Ignore List...", GuiLVIgnoreCurrentSubKey)
 
-    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVRegMouseEventHandler vMyListView AltSubmit, Status|Key|Type|Value Name|Value Data|Key modified time|Sandbox bpath
+    MyListView := MyGui.Add("ListView", "x10 y30 " . LVLastSize . " Checked Count" . numrows . " AltSubmit", ["Status", "Key", "Type", "Value Name", "Value Data", "Key modified time", "Sandbox bpath"])
+    MyListView.OnEvent("DoubleClick", GuiLVRegMouseEventHandler)
+    MyListView.OnEvent("RightClick", GuiLVRegMouseEventHandler)
 
     Progress, 100, Please wait..., Building list of keys`nin box "%box%"., %title%
     Sleep, 100
 
     ; add entries in listview
-    nummodified = 0
-    numadded = 0
-    numdeleted = 0
-    GuiControl, -Redraw, MyListView
+    nummodified := 0
+    numadded := 0
+    numdeleted := 0
+    MyListView.SetRedraw(false)
     sep := chr(1)
-    loop, parse, allregs, `n
+    for i, entry in allregs_arr
     {
-        entry := A_LoopField
-        loop, parse, entry, %sep%
-        {
-            if (A_Index == 1) {
-                St = %A_LoopField%
-            } else if (A_Index == 2) {
-                ; HKEY_USERS\%mainsbkey%\machine
-                ; -> HKEY_LOCAL_MACHINE
-                ;
-                ; HKEY_USERS\%mainsbkey%\user\current\software
-                ; -> HKEY_CURRENT_USER\Software
-                ;
-                ; HKEY_USERS\%mainsbkey%\user\current_classes
-                ; same as HKEY_USERS\%mainsbkey%\user\current\software\classes
-                ; -> HKEY_CLASSES_ROOT
+        entry_parts := StrSplit(entry, sep)
+        St := entry_parts[1]
 
-                keypath = %A_LoopField%
-                if (substr(keypath, 1, 8) == "machine\")
-                    realkeypath := "HKEY_LOCAL_MACHINE" . substr(keypath, 8)
-                else if (substr(keypath, 1, 13) == "user\current\")
-                    realkeypath := "HKEY_CURRENT_USER" . substr(keypath, 13)
-                else if (substr(keypath, 1, 21) == "user\current_classes\")
-                    realkeypath := "HKEY_CLASSES_ROOT" . substr(keypath, 21)
-            } else if (A_Index == 3) {
-                keytype = %A_LoopField%
-            } else if (A_Index == 4) {
-                keyvaluename = %A_LoopField%
-            } else if (A_Index == 5) {
-                keyvalueval = %A_LoopField%
-            } else if (A_Index == 6) {
-                FormatTime, modtime, %A_LoopField%, yyyy/MM/dd HH:mm:ss
-            }
-        }
+        keypath := entry_parts[2]
+        if (substr(keypath, 1, 8) == "machine\")
+            realkeypath := "HKEY_LOCAL_MACHINE" . substr(keypath, 8)
+        else if (substr(keypath, 1, 13) == "user\current\")
+            realkeypath := "HKEY_CURRENT_USER" . substr(keypath, 13)
+        else if (substr(keypath, 1, 21) == "user\current_classes\")
+            realkeypath := "HKEY_CLASSES_ROOT" . substr(keypath, 21)
+
+        keytype := entry_parts[3]
+        keyvaluename := entry_parts[4]
+        keyvalueval := entry_parts[5]
+        modtime := FormatTime(entry_parts[6], "yyyy/MM/dd HH:mm:ss")
+
         if (St == "+") {
             if (keytype != "KEY")
             {
                 idx := InStr(realkeypath, "\")
                 realrootkey := SubStr(realkeypath, 1, idx-1)
                 realsubkey := SubStr(realkeypath, idx+1)
-                if (keyvaluename == "@")
-                    realkeyvaluename =
-                else
-                    realkeyvaluename = %keyvaluename%
-                RegRead, tmp, %realrootkey%, %realsubkey%, %realkeyvaluename%
-                if (NOT ErrorLevel)
-                    St = #
-                else {
-                    tmp := RegRead64KeyType(realrootkey, realsubkey, realkeyvaluename)
-                    if (NOT ErrorLevel)
-                        St = #
+                realkeyvaluename := (keyvaluename == "@") ? "" : keyvaluename
+
+                try {
+                    RegRead(realrootkey . "\" . realsubkey, realkeyvaluename)
+                    St := "#"
+                } catch {
+                    try {
+                        RegRead64KeyType(realrootkey, realsubkey, realkeyvaluename)
+                        St := "#"
+                    }
                 }
             }
-        } else{
-            modtime =
+        } else {
+            modtime := ""
         }
         if (St == "#")
-            nummodified ++
+            nummodified++
         else if (St == "+")
-            numadded ++
+            numadded++
         else if (St == "-")
-            numdeleted ++
-        LV_Add("" , St . A_Space, realkeypath, keytype, keyvaluename, keyvalueval, modtime, keypath)
+            numdeleted++
+        MyListView.Add("", St . A_Space, realkeypath, keytype, keyvaluename, keyvalueval, modtime, keypath)
     }
-    Sleep, 10
+    Sleep(10)
 
-    LV_ModifyCol()
-    LV_ModifyCol(2, "Sort")
+    MyListView.ModifyCol()
+    MyListView.ModifyCol(2, "Sort")
 
-    msg = Found %numregs% registry key
-    if (numregs != 1)
-        msg = %msg%s or values
-    else
-        msg = %msg% or value
-    msg = %msg% in the sandbox "%box%"
-    msg = %msg% : # %nummodified% modified
-    msg = %msg% , + %numadded% new
-    msg = %msg% , - %numdeleted% deleted
-    msg = %msg%. Double-click a key to open it in RegEdit.
-    GuiControl, , MainLabel, %msg%
+    msg := "Found " . numregs . " registry key" . (numregs!=1 ? "s or values" : " or value")
+    msg .= " in the sandbox """ . box . """"
+    msg .= " : # " . nummodified . " modified"
+    msg .= ", + " . numadded . " new"
+    msg .= ", - " . numdeleted . " deleted"
+    msg .= ". Double-click a key to open it in RegEdit."
+    MainLabel.Text := msg
 
-    Progress, OFF
+    Progress(0)
     if (comparemode)
-        Gui, Show, , %title% - Changes in registry of box "%box%"
+        MyGui.Show(, title . " - Changes in registry of box """ . box . """")
     else
-        Gui, Show, , %title% - Registry of box "%box%"
-    GuiControl, +Redraw, MyListView
+        MyGui.Show(, title . " - Registry of box """ . box . """")
+    MyListView.SetRedraw(true)
 
-    guinotclosed = 1
-    while (guinotclosed)
-        Sleep 1000
-    SaveNewIgnoredItems("reg")
-
-    return
+    MyGui.OnEvent("Close", (*) => SaveNewIgnoredItems("reg"))
 }
 
 SearchAutostart(box, regpath, location, tick)
 {
-    A_Nl = `n
-    outtxt =
-    Loop, HKEY_USERS, %regpath%, 0, 0
+    outtxt := ""
+    Loop Reg, "HKEY_USERS\" . regpath, "V"
     {
         if (A_LoopRegType != "REG_SZ")
             Continue
-        RegRead, value
-        outtxt := outtxt . A_LoopRegName . A_Tab . value . A_Tab . location . A_Tab . tick . A_nl
+        outtxt .= A_LoopRegName . A_Tab . A_LoopRegValue . A_Tab . location . A_Tab . tick . "`n"
     }
-    Sort, outtxt, CL D`n
-    Return %outtxt%
+    Sort outtxt, "CL D`n"
+    Return outtxt
 }
 ListAutostarts(box, bpath)
 {
-    global guinotclosed, title, MyListView
+    global title, MyListView, sandboxes_array, username
     static MainLabel
 
-    A_Quotes = "
-    A_nl = `n
-
-    global sandboxes_array
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
+    bregstr_ := sandboxes_array[box].KeyRootPath
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
 
     run_pid := InitializeBox(box)
-    Sleep 1000
+    Sleep(1000)
 
-    autostarts =
+    autostarts := ""
 
     ; check RunOnce keys
-    key = %bregstr_%\machine\Software\Microsoft\Windows\CurrentVersion\RunOnce
-    location = HKLM RunOnce
-    autostarts := autostarts . SearchAutostart(box, key, location, 0)
+    key := bregstr_ . "\machine\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+    location := "HKLM RunOnce"
+    autostarts .= SearchAutostart(box, key, location, 0)
 
-    key = %bregstr_%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
-    location = HKLM RunOnce
-    autostarts := autostarts . SearchAutostart(box, key, location, 0)
+    key := bregstr_ . "\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce"
+    autostarts .= SearchAutostart(box, key, location, 0)
 
-    key = %bregstr_%\user\current\Software\Microsoft\Windows\CurrentVersion\RunOnce
-    location = HKCU RunOnce
-    autostarts := autostarts . SearchAutostart(box, key, location, 0)
+    key := bregstr_ . "\user\current\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+    location := "HKCU RunOnce"
+    autostarts .= SearchAutostart(box, key, location, 0)
 
-    key = %bregstr_%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce
-    location = HKCU RunOnce
-    autostarts := autostarts . SearchAutostart(box, key, location, 0)
+    key := bregstr_ . "\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce"
+    autostarts .= SearchAutostart(box, key, location, 0)
 
     ; check Run keys
-    key = %bregstr_%\machine\Software\Microsoft\Windows\CurrentVersion\Run
-    location = HKLM Run
-    autostarts := autostarts . SearchAutostart(box, key, location, 1)
+    key := bregstr_ . "\machine\Software\Microsoft\Windows\CurrentVersion\Run"
+    location := "HKLM Run"
+    autostarts .= SearchAutostart(box, key, location, 1)
 
-    key = S%bregstr_%\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
-    location = HKLM Run
-    autostarts := autostarts . SearchAutostart(box, key, location, 1)
+    key := "S" . bregstr_ . "\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run"
+    autostarts .= SearchAutostart(box, key, location, 1)
 
-    key = %bregstr_%\user\current\Software\Microsoft\Windows\CurrentVersion\Run
-    location = HKCU Run
-    autostarts := autostarts . SearchAutostart(box, key, location, 1)
+    key := bregstr_ . "\user\current\Software\Microsoft\Windows\CurrentVersion\Run"
+    location := "HKCU Run"
+    autostarts .= SearchAutostart(box, key, location, 1)
 
-    key = %bregstr_%\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run
-    location = HKCU Run
-    autostarts := autostarts . SearchAutostart(box, key, location, 1)
+    key := bregstr_ . "\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run"
+    autostarts .= SearchAutostart(box, key, location, 1)
 
     ReleaseBox(run_pid)
 
-    numregs = 0
-    autostarts := Trim(autostarts, A_nl)
-    loop, parse, autostarts, `n
-        numregs ++
+    autostarts := Trim(autostarts, "`n")
+    autostarts_arr := StrSplit(autostarts, "`n")
+    numregs := autostarts_arr.Length
     if (numregs = 0)
     {
         MsgBox, 64, %title%, No autostart programs found in the registry of box "%box%".
@@ -3655,71 +3532,60 @@ ListAutostarts(box, bpath)
         LVLastSize = w%width% %heightarg%
     }
 
-    Gui, Destroy
-    Gui, +Resize
-    Gui, Add, Text, W900 vMainLabel, Registry Autostarts...
+    MyGui := Gui("+Resize")
+    MainLabel := MyGui.Add("Text", "w900", "Registry Autostarts...")
 
-    Menu, FileMenu, Add
-    Menu, FileMenu, DeleteAll
-    Menu, FileMenu, Add, Copy Checkmarked Entries to Start Menu\Startup of Sandbox, GuiLVRegistryToStartMenuStartup
-    Menu, FileMenu, Add
-    Menu, FileMenu, Add, Explore Current User's Startup Menu (Unsandboxed), GuiLVRegistryExploreStartMenuCU
-    Menu, FileMenu, Add, Explore Current User's Startup Menu (Sandboxed), GuiLVRegistryExploreStartMenuCS
-    Menu, FileMenu, Add, Explore All Users Startup Menu (Unsandboxed), GuiLVRegistryExploreStartMenuAU
-    Menu, FileMenu, Add, Explore All Users Startup Menu (Sandboxed), GuiLVRegistryExploreStartMenuAS
+    FileMenu := Menu()
+    FileMenu.Add("Copy Checkmarked Entries to Start Menu\Startup of Sandbox", GuiLVRegistryToStartMenuStartup)
+    FileMenu.Add()
+    FileMenu.Add("Explore Current User's Startup Menu (Unsandboxed)", GuiLVRegistryExploreStartMenuCU)
+    FileMenu.Add("Explore Current User's Startup Menu (Sandboxed)", GuiLVRegistryExploreStartMenuCS)
+    FileMenu.Add("Explore All Users Startup Menu (Unsandboxed)", GuiLVRegistryExploreStartMenuAU)
+    FileMenu.Add("Explore All Users Startup Menu (Sandboxed)", GuiLVRegistryExploreStartMenuAS)
 
-    Menu, EditMenu, Add
-    Menu, EditMenu, DeleteAll
-    Menu, EditMenu, Add, &Clear All Checkmarks, GuiLVClearAllCheckmarks
-    Menu, EditMenu, Add, &Toggle All Checkmarks, GuiLVToggleAllCheckmarks
-    Menu, EditMenu, Add, Toggle &Selected Checkmarks, GuiLVToggleSelected
-    Menu, EditMenu, Add
-    Menu, EditMenu, Add, &Hide Selected Entries, GuiLVHideSelected
+    EditMenu := Menu()
+    EditMenu.Add("&Clear All Checkmarks", GuiLVClearAllCheckmarks)
+    EditMenu.Add("&Toggle All Checkmarks", GuiLVToggleAllCheckmarks)
+    EditMenu.Add("Toggle &Selected Checkmarks", GuiLVToggleSelected)
+    EditMenu.Add()
+    EditMenu.Add("&Hide Selected Entries", GuiLVHideSelected)
 
-    Menu, LVMenuBar, Add
-    Menu, LVMenuBar, DeleteAll
-    Menu, LVMenuBar, Add, &File, :FileMenu
-    Menu, LVMenuBar, Add, &Edit, :EditMenu
-    Gui, Menu, LVMenuBar
+    LVMenuBar := Menu()
+    LVMenuBar.Add("&File", FileMenu)
+    LVMenuBar.Add("&Edit", EditMenu)
+    MyGui.SetMenu(LVMenuBar)
 
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, DeleteAll
-    Menu, PopupMenu, Add, Run in Sandbox, GuiLVRegistryRun
-    Menu, PopupMenu, Add, Copy to Start Menu\Startup of Sandbox, GuiLVRegistryItemToStartMenuStartup
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, Toggle Checkmark, GuiLVToggleCurrent
-    Menu, PopupMenu, Add
-    Menu, PopupMenu, Add, &Hide from this list, GuiLVHideCurrent
+    PopupMenu := Menu()
+    PopupMenu.Add("Run in Sandbox", GuiLVRegistryRun)
+    PopupMenu.Add("Copy to Start Menu\Startup of Sandbox", GuiLVRegistryItemToStartMenuStartup)
+    PopupMenu.Add()
+    PopupMenu.Add("Toggle Checkmark", GuiLVToggleCurrent)
+    PopupMenu.Add()
+    PopupMenu.Add("&Hide from this list", GuiLVHideCurrent)
 
-    Gui, Add, ListView, X10 Y30 %LVLastSize% Checked Count%numrows% gGuiLVAutostartMouseEventHandler vMyListView AltSubmit, Status|Program|Command|Location
+    MyListView := MyGui.Add("ListView", "x10 y30 " . LVLastSize . " Checked Count" . numrows . " AltSubmit", ["Status", "Program", "Command", "Location"])
+    MyListView.OnEvent("DoubleClick", GuiLVAutostartMouseEventHandler)
+    MyListView.OnEvent("RightClick", GuiLVAutostartMouseEventHandler)
 
     ; icons array
     ImageListID1 := IL_Create(10)
     LV_SetImageList(ImageListID1)
 
     ; add entries in listview
-    GuiControl, -Redraw, MyListView
-    sep := chr(1)
-    row = 1
-    loop, parse, autostarts, `n
+    MyListView.SetRedraw(false)
+    row := 1
+    A_Quotes := """"
+    for i, entry in autostarts_arr
     {
-        entry := A_LoopField
-        loop, parse, entry, %A_Tab%
-        {
-            ; A_LoopRegName / value / location / tick
-            if (A_Index == 1) {
-                valuename = %A_LoopField%
-            } else if (A_Index == 2) {
-                valuedata = %A_LoopField%
-            } else if (A_Index == 3) {
-                location = %A_LoopField%
-            } else if (A_Index == 4) {
-                ticked = %A_LoopField%
-            }
-        }
+        entry_parts := StrSplit(entry, A_Tab)
+        valuename := entry_parts[1]
+        valuedata := entry_parts[2]
+        location := entry_parts[3]
+        ticked := entry_parts[4]
+
         if (valuedata != "")
         {
-            program = %valuedata%
+            program := valuedata
             if (SubStr(valuedata, 1, 1) == A_Quotes)
             {
                 idx2 := InStr(valuedata, A_Quotes, 0, 2)
@@ -3727,36 +3593,28 @@ ListAutostarts(box, bpath)
                     program := SubStr(valuedata, 2, idx2-2)
             }
             boxprogram := StdPathToBoxPath(box, program)
-            if (! FileExist(boxprogram))
-                boxprogram = %program%
+            if (!FileExist(boxprogram))
+                boxprogram := program
             hIcon := GetAssociatedIcon(boxprogram, false, 16, box)
             IconNumber := DllCall("ImageList_ReplaceIcon", "uint", ImageListID1, "int", -1, "uint", hIcon) + 1
-            LV_Add("Icon" . IconNumber, "", valuename, valuedata, location)
+            MyListView.Add("Icon" . IconNumber, "", valuename, valuedata, location)
             if (ticked)
-                LV_Modify(row, "Check")
+                MyListView.Modify(row, "Check")
         }
         else
-            LV_Add("Icon0" , "", valuename, "", location)
+            MyListView.Add("Icon0", "", valuename, "", location)
 
-        row ++
+        row++
     }
-    LV_ModifyCol()
+    MyListView.ModifyCol()
 
-    msg = Found %numregs% autostart program
-    if (numregs != 1)
-        msg = %msg%s
-    else
-        msg = %msg%
-    msg = %msg% in the sandbox "%box%"
-    msg = %msg%. Double-click an entry to run it.
-    GuiControl, , MainLabel, %msg%
-    Gui, Show, , %title% - Autostart programs in registry of box "%box%"
-    GuiControl, +Redraw, MyListView
-
-    guinotclosed = 1
-    while (guinotclosed)
-        Sleep 1000
-    return
+    msg := "Found " . numregs . " autostart program" . (numregs!=1 ? "s" : "")
+    msg .= " in the sandbox """ . box . """."
+    msg .= " Double-click an entry to run it."
+    MainLabel.Text := msg
+    MyGui.Show(, title . " - Autostart programs in registry of box """ . box . """")
+    MyListView.SetRedraw(true)
+    MyGui.OnEvent("Close", (*) => MyGui.Destroy())
 }
 
 ; _reg64.ahk ver 0.1 by tomte
@@ -3778,322 +3636,177 @@ ListAutostarts(box, bpath)
 ;
 ; argument to read either in 64bit or 32bit mode added by r0lZ
 RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
+    static HKEY := Map( "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002, "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006)
+    static REG_NONE := 0, REG_SZ := 1, REG_EXPAND_SZ := 2, REG_BINARY := 3, REG_DWORD := 4, REG_DWORD_BIG_ENDIAN := 5, REG_LINK := 6, REG_MULTI_SZ := 7, REG_RESOURCE_LIST := 8, REG_FULL_RESOURCE_DESCRIPTOR := 9, REG_RESOURCE_REQUIREMENTS_LIST := 10, REG_QWORD := 11
+    static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
 
-    ; http://msdn.microsoft.com/en-us/library/ms724884.aspx
-    REG_NONE := 0 ; unsupported
-    REG_SZ := 1 ; supported
-    REG_EXPAND_SZ := 2 ; supported
-    REG_BINARY := 3 ; supported
-    REG_DWORD := 4 ; supported
-    REG_DWORD_BIG_ENDIAN := 5 ; supported, but handled like REG_DWORD
-    REG_LINK := 6
-    REG_MULTI_SZ := 7 ; supported
-    REG_RESOURCE_LIST := 8 ; UNSUPPORTED!
-    ; added by r0lZ
-    REG_FULL_RESOURCE_DESCRIPTOR := 9 ; UNSUPPORTED!
-    REG_RESOURCE_REQUIREMENTS_LIST := 10 ; UNSUPPORTED!
-    REG_QWORD := 11 ; supported (but not in unsigned mode)
-
-    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100 ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
-    KEY_WOW64_32KEY := 0x0200
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
-        ErrorLevel := 3
-        return ""
+    myhKey := HKEY.Has(sRootKey) ? HKEY[sRootKey] : ""
+    if (myhKey == "") {
+        throw Error("Invalid root key", -1)
     }
 
-    ; argument to read either in 64bit or 32bit mode added by r0lZ
-    if (mode64bit)
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
+    RegAccessRight := mode64bit ? KEY_QUERY_VALUE + KEY_WOW64_64KEY : KEY_QUERY_VALUE + KEY_WOW64_32KEY
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey) ; open key
-    If (hKey==0) {
-        ErrorLevel := 4
-        return ""
+    hKey := 0
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "Ptr", myhKey, "Str", sKeyName, "UInt", 0, "UInt", RegAccessRight, "Ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key", -1)
     }
-    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0) ; get value type
 
-    If (sValueType == REG_SZ or sValueType == REG_EXPAND_SZ) {
-        VarSetCapacity(sValue, vValueSize:=DataMaxSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sValue, "uint*", vValueSize) ; get string or string-exp
-    } Else If (sValueType == REG_DWORD or sValueType == REG_DWORD_BIG_ENDIAN) {
-        VarSetCapacity(sValue, vValueSize:=4)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint*", sValue, "uint*", vValueSize) ; get dword
-    } Else If (sValueType == REG_QWORD) {
-        VarSetCapacity(sValue, vValueSize:=8) ; added by r0lZ
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint64*", sValue, "uint*", vValueSize) ; get qword
-    } Else If (sValueType == REG_MULTI_SZ) {
-        VarSetCapacity(sTmp, vValueSize:=DataMaxSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sTmp, "uint*", vValueSize) ; get string-mult
-        if (as_hex)
-        {
-            sValue := ""
-            SetFormat, integer, H
-            Loop %vValueSize% {
-                hex := SubStr(Asc(SubStr(sTmp,A_Index,1)),3)
-                sValue := sValue hex
-            }
-            SetFormat, integer, d
-        }
-        else
-        {
-            sValue := ExtractData(&sTmp) "`n"
-            Loop {
-                If (errorLevel+2 >= &sTmp + vValueSize)
-                    Break
-                sValue := sValue ExtractData( errorLevel+1 ) "`n"
-            }
-        }
-    } Else If (sValueType == REG_BINARY) {
-        VarSetCapacity(sTmp, vValueSize:=DataMaxSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", sTmp, "uint*", vValueSize) ; get binary
+    sValueType := 0
+    DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt*", &sValueType, "Ptr", 0, "Ptr", 0)
+
+    if (sValueType == REG_SZ || sValueType == REG_EXPAND_SZ) {
+        sValue := Buffer(vValueSize := DataMaxSize)
+        DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt", 0, "Str", sValue, "UInt*", &vValueSize)
+        sValue := StrGet(sValue, vValueSize)
+    } else if (sValueType == REG_DWORD || sValueType == REG_DWORD_BIG_ENDIAN) {
+        vValueSize := 4
+        sValue := 0
+        DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt", 0, "UInt*", &sValue, "UInt*", &vValueSize)
+    } else if (sValueType == REG_QWORD) {
+        vValueSize := 8
+        sValue := 0
+        DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt", 0, "Int64*", &sValue, "UInt*", &vValueSize)
+    } else if (sValueType == REG_MULTI_SZ) {
+        sTmp := Buffer(vValueSize := DataMaxSize)
+        DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt", 0, "Ptr", sTmp, "UInt*", &vValueSize)
         sValue := ""
-        SetFormat, integer, H
-        Loop %vValueSize% {
-            hex := SubStr(Asc(SubStr(sTmp,A_Index,1)),3)
-            sValue := sValue hex
+        offset := 0
+        while (offset < vValueSize) {
+            str := StrGet(sTmp.Ptr + offset)
+            if (str == "") break
+            sValue .= str . "`n"
+            offset += StrLen(str) * (A_IsUnicode ? 2 : 1) + (A_IsUnicode ? 2 : 1)
         }
-        SetFormat, integer, d
-    } Else If (sValueType == REG_NONE) {
+    } else if (sValueType == REG_BINARY) {
+        sTmp := Buffer(vValueSize := DataMaxSize)
+        DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt", 0, "Ptr", sTmp, "UInt*", &vValueSize)
         sValue := ""
-    } Else { ; value does not exist or unsupported value type
-        DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
-        ErrorLevel := 1
-        return ""
+        Loop vValueSize {
+            sValue .= Format("{:02X}", NumGet(sTmp, A_Index - 1, "UChar"))
+        }
+    } else if (sValueType == REG_NONE) {
+        sValue := ""
+    } else {
+        DllCall("Advapi32.dll\RegCloseKey", "Ptr", hKey)
+        throw Error("Unsupported value type", -1)
     }
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
+    DllCall("Advapi32.dll\RegCloseKey", "Ptr", hKey)
     return sValue
 }
 
 RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
+    static HKEY := Map( "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002, "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006)
+    static REG_TYPES := Map(0, "REG_NONE", 1, "REG_SZ", 2, "REG_EXPAND_SZ", 3, "REG_BINARY", 4, "REG_DWORD", 5, "REG_DWORD_BIG_ENDIAN", 6, "REG_LINK", 7, "REG_MULTI_SZ", 8, "REG_RESOURCE_LIST", 9, "REG_FULL_RESOURCE_DESCRIPTOR", 10, "REG_RESOURCE_REQUIREMENTS_LIST", 11, "REG_QWORD", 0x786F6273, "REG_SB_DELETED")
+    static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
 
-    REG_NONE := 0 ; http://msdn.microsoft.com/en-us/library/ms724884.aspx
-    REG_SZ := 1
-    REG_EXPAND_SZ := 2
-    REG_BINARY := 3
-    REG_DWORD := 4
-    REG_DWORD_BIG_ENDIAN := 5
-    REG_LINK := 6
-    REG_MULTI_SZ := 7
-    REG_RESOURCE_LIST := 8
-
-    REG_FULL_RESOURCE_DESCRIPTOR := 9
-    REG_RESOURCE_REQUIREMENTS_LIST := 10
-    REG_QWORD := 11
-
-    ; Unofficial REG type used by Sandboxie to "delete" an existing key in the sandbox registry.
-    ; REG_SB_DELETED := 0x6B757A74
-    REG_SB_DELETED := 0x786F6273
-
-    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100 ; http://msdn.microsoft.com/en-gb/library/aa384129.aspx (do not redirect to Wow6432Node on 64-bit machines)
-    KEY_WOW64_32KEY := 0x0200
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
-        ErrorLevel := 3
-        return ""
+    myhKey := HKEY.Has(sRootKey) ? HKEY[sRootKey] : ""
+    if (myhKey == "") {
+        throw Error("Invalid root key", -1)
     }
 
-    if (mode64)
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
+    RegAccessRight := mode64bit ? KEY_QUERY_VALUE + KEY_WOW64_64KEY : KEY_QUERY_VALUE + KEY_WOW64_32KEY
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey) ; open key
-    If (hKey==0) {
-        ErrorLevel := 4
-        return ""
+    hKey := 0
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "Ptr", myhKey, "Str", sKeyName, "UInt", 0, "UInt", RegAccessRight, "Ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key", -1)
     }
-    DllCall("Advapi32.dll\RegQueryValueEx", "uint", hKey, "str", sValueName, "uint", 0, "uint*", sValueType, "uint", 0, "uint", 0) ; get value type
 
-    If (sValueType == REG_NONE)
-        keytype := "REG_NONE"
-    Else If (sValueType == REG_SZ)
-        keytype := "REG_SZ"
-    Else If (sValueType == REG_EXPAND_SZ)
-        keytype := "REG_EXPAND_SZ"
-    Else If (sValueType == REG_BINARY)
-        keytype := "REG_BINARY"
-    Else If (sValueType == REG_DWORD)
-        keytype := "REG_DWORD"
-    Else If (sValueType == REG_DWORD_BIG_ENDIAN)
-        keytype := "REG_DWORD_BIG_ENDIAN"
-    Else If (sValueType == REG_LINK)
-        keytype := "REG_LINK"
-    Else If (sValueType == REG_MULTI_SZ)
-        keytype := "REG_MULTI_SZ"
-    Else If (sValueType == REG_RESOURCE_LIST)
-        keytype := "REG_RESOURCE_LIST"
-    Else If (sValueType == REG_FULL_RESOURCE_DESCRIPTOR)
-        keytype := "REG_FULL_RESOURCE_DESCRIPTOR"
-    Else If (sValueType == REG_RESOURCE_REQUIREMENTS_LIST)
-        keytype := "REG_RESOURCE_REQUIREMENTS_LIST"
-    Else If (sValueType == REG_QWORD)
-        keytype := "REG_QWORD"
-    Else If (sValueType == REG_SB_DELETED)
-        keytype := "REG_SB_DELETED"
-    Else ; value does not exist or unsupported value type
-        keytype := ""
+    sValueType := 0
+    DllCall("Advapi32.dll\RegQueryValueEx", "Ptr", hKey, "Str", sValueName, "UInt", 0, "UInt*", &sValueType, "Ptr", 0, "Ptr", 0)
+    DllCall("Advapi32.dll\RegCloseKey", "Ptr", hKey)
 
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
-    return keytype
+    return REG_TYPES.Has(sValueType) ? REG_TYPES[sValueType] : ""
 }
 
 RegEnumKey(sRootKey, sKeyName, x64mode=true) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
-    HKCR := HKEY_CLASSES_ROOT
-    HKCU := HKEY_CURRENT_USER
-    HKLM := HKEY_LOCAL_MACHINE
-    HKU := HKEY_USERS
-    HKCC := HKEY_CURRENT_CONFIG
+    static HKEY := Map( "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002, "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006)
+    static KEY_ENUMERATE_SUB_KEYS := 0x0008, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
+    static ERROR_NO_MORE_ITEMS := 259
 
-    KEY_ENUMERATE_SUB_KEYS := 0x0008
-    KEY_WOW64_64KEY := 0x0100
-    KEY_WOW64_32KEY := 0x0200
-
-    ERROR_NO_MORE_ITEMS = 259
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
-        ErrorLevel := 3
-        return ""
+    myhKey := HKEY.Has(sRootKey) ? HKEY[sRootKey] : ""
+    if (myhKey == "") {
+        throw Error("Invalid root key", -1)
     }
 
-    if (x64mode)
-        RegAccessRight := KEY_ENUMERATE_SUB_KEYS + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_ENUMERATE_SUB_KEYS + KEY_WOW64_32KEY
+    RegAccessRight := x64mode ? KEY_ENUMERATE_SUB_KEYS + KEY_WOW64_64KEY : KEY_ENUMERATE_SUB_KEYS + KEY_WOW64_32KEY
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey)
-    if (hKey == 0) {
-        ErrorLevel := 4
-        return ""
+    hKey := 0
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "Ptr", myhKey, "Str", sKeyName, "UInt", 0, "UInt", RegAccessRight, "Ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key", -1)
     }
 
-    lpcName := 512
-    VarSetCapacity(lpName, lpcName)
-    names =
-
-    dwIndex = 0
+    names := ""
+    dwIndex := 0
     loop
     {
         lpcName := 512
-        rc := DllCall("Advapi32.dll\RegEnumKeyEx", "uint", hKey, "uint", dwIndex, "str", lpName, "uint*", lpcName, "uint", 0, "uint", 0, "uint", 0, "uint", 0)
+        lpName := Buffer(lpcName)
+        rc := DllCall("Advapi32.dll\RegEnumKeyEx", "Ptr", hKey, "UInt", dwIndex, "Str", lpName, "UInt*", &lpcName, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Ptr", 0)
         if (rc == 0) {
-            names = %names%%lpName%`n
-            dwIndex ++
+            names .= StrGet(lpName) . "`n"
+            dwIndex++
         } else {
-            if (rc == ERROR_NO_MORE_ITEMS)
-                ErrorLevel = 0
-            else
-                ErrorLevel := rc
-            Break
+            if (rc != ERROR_NO_MORE_ITEMS)
+                throw Error("RegEnumKeyEx failed", -1, rc)
+            break
         }
     }
 
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
+    DllCall("Advapi32.dll\RegCloseKey", "Ptr", hKey)
 
-    StringTrimRight, names, names, 1
-    Sort, names, CL
-    return %names%
+    names := Trim(names, "`n")
+    Sort names, "CL"
+    return names
 }
 
 RegEnumValue(sRootKey, sKeyName, x64mode=true) {
-    HKEY_CLASSES_ROOT := 0x80000000 ; http://msdn.microsoft.com/en-us/library/aa393286.aspx
-    HKEY_CURRENT_USER := 0x80000001
-    HKEY_LOCAL_MACHINE := 0x80000002
-    HKEY_USERS := 0x80000003
-    HKEY_CURRENT_CONFIG := 0x80000005
-    HKEY_DYN_DATA := 0x80000006
-    HKCR := HKEY_CLASSES_ROOT
-    HKCU := HKEY_CURRENT_USER
-    HKLM := HKEY_LOCAL_MACHINE
-    HKU := HKEY_USERS
-    HKCC := HKEY_CURRENT_CONFIG
+    static HKEY := Map( "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002, "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006)
+    static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
+    static ERROR_NO_MORE_ITEMS := 259
 
-    KEY_QUERY_VALUE := 0x0001 ; http://msdn.microsoft.com/en-us/library/ms724878.aspx
-    KEY_WOW64_64KEY := 0x0100
-    KEY_WOW64_32KEY := 0x0200
-
-    ERROR_NO_MORE_ITEMS = 259
-
-    myhKey := %sRootKey% ; pick out value (0x8000000x) from list of HKEY_xx vars
-    IfEqual,myhKey,, { ; Error - Invalid root key
-        ErrorLevel := 3
-        return ""
+    myhKey := HKEY.Has(sRootKey) ? HKEY[sRootKey] : ""
+    if (myhKey == "") {
+        throw Error("Invalid root key", -1)
     }
 
-    if (x64mode)
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_QUERY_VALUE + KEY_WOW64_32KEY
+    RegAccessRight := x64mode ? KEY_QUERY_VALUE + KEY_WOW64_64KEY : KEY_QUERY_VALUE + KEY_WOW64_32KEY
 
-    DllCall("Advapi32.dll\RegOpenKeyEx", "uint", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "uint*", hKey)
-    if (hKey == 0) {
-        ErrorLevel := 4
-        return ""
+    hKey := 0
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "Ptr", myhKey, "Str", sKeyName, "UInt", 0, "UInt", RegAccessRight, "Ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key", -1)
     }
 
-    rc := DllCall("Advapi32.dll\RegQueryInfoKey", "uint", hKey, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint", 0, "uint *", lpcMaxValueNameLen, "uint", 0, "uint", 0, "uint", 0)
+    lpcMaxValueNameLen := 0
+    DllCall("Advapi32.dll\RegQueryInfoKey", "Ptr", hKey, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Ptr", 0, "UInt*", &lpcMaxValueNameLen, "Ptr", 0, "Ptr", 0, "Ptr", 0)
     lpcMaxValueNameLen := lpcMaxValueNameLen * 2 + 2
-    lpcName := lpcMaxValueNameLen
-    VarSetCapacity(lpName, lpcName)
-    names =
 
-    dwIndex = 0
+    names := ""
+    dwIndex := 0
     loop
     {
         lpcName := lpcMaxValueNameLen
-        rc := DllCall("Advapi32.dll\RegEnumValue", "uint", hKey, "uint", dwIndex, "Wstr", lpName, "uint*", lpcName, "uint", 0, "uint", 0, "uint", 0, "uint", 0)
+        lpName := Buffer(lpcName)
+        rc := DllCall("Advapi32.dll\RegEnumValue", "Ptr", hKey, "UInt", dwIndex, "WStr", lpName, "UInt*", &lpcName, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Ptr", 0)
         if (rc == 0) {
-            names = %names%%lpName%`n
-            dwIndex ++
+            names .= StrGet(lpName) . "`n"
+            dwIndex++
         } else {
-            if (rc == ERROR_NO_MORE_ITEMS)
-                ErrorLevel = 0
-            else
-                ErrorLevel := rc
-            Break
+            if (rc != ERROR_NO_MORE_ITEMS)
+                throw Error("RegEnumValue failed", -1, rc)
+            break
         }
     }
 
-    DllCall("Advapi32.dll\RegCloseKey", "uint", hKey)
+    DllCall("Advapi32.dll\RegCloseKey", "Ptr", hKey)
 
-    StringTrimRight, names, names, 1
-    Sort, names, CL
-    return %names%
+    names := Trim(names, "`n")
+    Sort names, "CL"
+    return names
 }
 
-ExtractData(pointer) { ; http://www.autohotkey.com/forum/viewtopic.php?p=91578#91578 SKAN
-    Loop {
-        errorLevel := ( pointer+(A_Index-1) )
-        Asc := *( errorLevel )
-        IfEqual, Asc, 0, Break ; Break if NULL Character
-        String := String . Chr(Asc)
-    }
-    Return String
+ExtractData(pointer) {
+    return StrGet(pointer)
 }
 
 ; ###########################################
@@ -4102,125 +3815,71 @@ ExtractData(pointer) { ; http://www.autohotkey.com/forum/viewtopic.php?p=91578#9
 
 hex2dec(hex)
 {
-    if (SubStr(hex,1,2) != "0x")
-        hex = 0x%hex%
-    oldformat := A_FormatInteger
-    SetFormat, integer, decimal
-    dec := hex + 0 ; Convert from hex to dec.
-    SetFormat, integer, %oldformat%
-    return % SubStr(dec,1)
+    return Integer("0x" . LTrim(hex, "0x"))
 }
 
 dec2hex(dec,minlength=2)
 {
-    oldformat := A_FormatInteger
-    SetFormat, integer, H ; H = upper case, h = lower case
-    dec += 0 ; Convert from decimal to hex.
-    SetFormat, integer, %oldformat%
-    hex := substr(dec,3)
-    if (mod(strLen(hex),2) != 0)
-        hex = 0%hex%
-    loop
-    {
-        if (strlen(hex) >= minlength)
-            break
-        hex = 0%hex%
-    }
-    return %hex%
+    hex := Format("{:X}", dec)
+    while (StrLen(hex) < minlength)
+        hex := "0" . hex
+    return hex
 }
 
 qword2hex(qword)
 {
-    oldformat := A_FormatInteger
-    SetFormat, integer, H
-    if (qword < 0)
-    {
-        qword := (qword * -1) - 1
-        dec1 := 0xFFFFFFFF - (qword & 0xFFFFFFFF)
-        dec2 := 0xFFFFFFFF - (qword >> 32)
-        dec1 := SubStr(dec1, 3)
-        loop {
-            if (strLen(dec1) == 8)
-                break
-            dec1 = 0%dec1%
-        }
-        dec2 := SubStr(dec2, 3)
-        loop {
-            if (strLen(dec2) == 8)
-                break
-            dec2 = 0%dec2%
-        }
-        hex = %dec2%%dec1%
-    } else {
-        qword += 0 ; Convert from decimal to hex.
-        hex := substr(qword, 3)
-        loop
-        {
-            if (strlen(hex) >= 16)
-                break
-            hex = 0%hex%
-        }
-    }
-    SetFormat, integer, %oldformat%
+    hex := Format("{:X}", qword)
+    while (StrLen(hex) < 16)
+        hex := "0" . hex
 
-    out =
-    loop, 8
+    out := ""
+    loop 8
     {
         b := SubStr(hex, (A_Index-1)*2+1, 2)
-        out = %b%,%out%
+        out .= b . ","
     }
-    out := Trim(out, ",")
-    return %out%
+    return Trim(out, ",")
 }
 
 hexstr2hexstrcomas(hex)
 {
-    limit := StrLen(hex)
-    out =
-    loop, %limit%
+    out := ""
+    loop StrLen(hex)
     {
-        out := out . SubStr(hex, A_Index, 1)
-        if (mod(A_Index,2)==0)
-            out = %out%,
+        out .= SubStr(hex, A_Index, 1)
+        if (Mod(A_Index,2)==0)
+            out .= ","
     }
-    out := Trim(out, ",")
-    return %out%
+    return Trim(out, ",")
 }
 
 hexstr2str(hexstr)
 {
-    str =
-    numchars := StrLen(hexstr) / 2
-    oldformat := A_FormatInteger
-    SetFormat, integer, decimal
-    Loop, %numchars%
-        str := str . chr("0x" . substr(hexstr, (A_Index-1)*2+1, 2))
-    SetFormat, integer, %oldformat%
-    return %str%
+    str := ""
+    loop (StrLen(hexstr) / 2)
+        str .= Chr("0x" . SubStr(hexstr, (A_Index-1)*2+1, 2))
+    return str
 }
 
 str2hexstr(str,replacenlwithzero=false)
 {
-    out =
-    oldformat := A_FormatInteger
-    SetFormat, integer, H ; H = upper case, h = lower case
+    out := ""
     ; TODO: convert really to UTF-16
-    loop, Parse, str
+    for i, char in StrSplit(str, "")
     {
-        h := SubStr(Asc(A_LoopField),3)
-        if (replacenlwithzero && h == "a")
-            out = %out%00,
+        h := Format("{:X}", Asc(char))
+        if (replacenlwithzero && h == "A")
+            out .= "00,"
         else
         {
             if (StrLen(h)==1)
-                out = %out%0%h%,
+                out .= "0" . h . ","
             else
-                out = %out%%h%,
+                out .= h . ","
         }
     }
-    out = %out%00
-    SetFormat, integer, %oldformat%
-    return %out%
+    out .= "00"
+    return out
 }
 
 ; mode = hide (just temporarly hide entries: do not
@@ -4230,276 +3889,237 @@ Return
 ; mode = values, keys, files or dirs
 LVIgnoreSelected(mode)
 {
-    A_nl = `n
-
     if (mode == "dirs" || mode == "files")
-        pathcol = 10
+        pathcol := 10
     else
-        pathcol = 7
+        pathcol := 7
 
-    Srows =
-    RowNumber = 0
+    Srows := []
+    RowNumber := 0
     Loop
     {
-        RowNumber := LV_GetNext(RowNumber)
+        RowNumber := MyListView.GetNext(RowNumber, "Focused")
         if not RowNumber
             break
-        Srows = %Srows%%RowNumber%,
+        Srows.Push(RowNumber)
     }
-    Srows := Trim(Srows, ",")
-    removedpaths =
-    Loop, Parse, Srows, CSV
+
+    removedpaths := []
+    for i, row in Srows
     {
-        if (mode == "keys")
+        if (mode == "keys" || mode == "dirs")
         {
-            LV_GetText(item, A_LoopField, pathcol)
-            removedpaths = %removedpaths%%item%`n
-        }
-        else if (mode == "dirs")
-        {
-            LV_GetText(item, A_LoopField, pathcol)
-            removedpaths = %removedpaths%%item%`n
+            item := MyListView.GetText(row, pathcol)
+            removedpaths.Push(item)
         }
         else if (mode == "values")
         {
-            LV_GetText(item, A_LoopField, pathcol)
-            LV_GetText(val, A_LoopField, 4)
-            item = %item%\%val%
+            item := MyListView.GetText(row, pathcol)
+            val := MyListView.GetText(row, 4)
+            item := item . "\" . val
         }
         else
         {
-            LV_GetText(item, A_LoopField, pathcol)
-            LV_GetText(val, A_LoopField, 2)
-            item = %item%\%val%
+            item := MyListView.GetText(row, pathcol)
+            val := MyListView.GetText(row, 2)
+            item := item . "\" . val
         }
         AddIgnoreItem(mode, item)
     }
 
-    Sort, Srows, N R D,
-    Loop, Parse, Srows, CSV
-        LV_Delete(A_LoopField)
+    Srows.Sort("R")
+    for i, row in Srows
+        MyListView.Delete(row)
 
     if (mode == "dirs" || mode == "keys") {
-        removedpaths := Trim(removedpaths, A_nl)
-        Loop, Parse, removedpaths, `n
+        for i, p in removedpaths
         {
-            p = %A_LoopField%
-            row := LV_GetCount()
-            loop
+            loop MyListView.GetCount()
             {
-                LV_GetText(item, row, pathcol)
-                if ( InStr(item, p, 1) == 1 )
-                    LV_Delete(row)
-                row -= 1
-                if (row == 0)
-                    break
+                j := MyListView.GetCount() - A_Index + 1
+                item := MyListView.GetText(j, pathcol)
+                if (InStr(item, p, 1) == 1)
+                    MyListView.Delete(j)
             }
         }
     }
-
-    Return
 }
 
 ReadIgnoredConfig(type)
 {
-    Global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist
+    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist
 
     if (type == "files")
     {
-        ignoredDirs = `n
-        Loop, Read, %ignorelist%dirs.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredDirs = %ignoredDirs%%A_LoopReadLine%`n
-        }
-        ignoredFiles = `n
-        Loop, Read, %ignorelist%files.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredFiles = %ignoredFiles%%A_LoopReadLine%`n
-        }
+        ignoredDirs := "`n"
+        if (FileExist(ignorelist . "dirs.cfg"))
+            ignoredDirs .= FileRead(ignorelist . "dirs.cfg") . "`n"
+        ignoredFiles := "`n"
+        if (FileExist(ignorelist . "files.cfg"))
+            ignoredFiles .= FileRead(ignorelist . "files.cfg") . "`n"
     }
     else
     {
-        ignoredKeys = `n
-        Loop, Read, %ignorelist%keys.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredKeys = %ignoredKeys%%A_LoopReadLine%`n
-        }
-        ignoredValues = `n
-        Loop, Read, %ignorelist%values.cfg
-        {
-            if (A_LoopReadLine == "")
-                Continue
-            ignoredValues = %ignoredValues%%A_LoopReadLine%`n
-        }
+        ignoredKeys := "`n"
+        if (FileExist(ignorelist . "keys.cfg"))
+            ignoredKeys .= FileRead(ignorelist . "keys.cfg") . "`n"
+        ignoredValues := "`n"
+        if (FileExist(ignorelist . "values.cfg"))
+            ignoredValues .= FileRead(ignorelist . "values.cfg") . "`n"
     }
-    Return
 }
 
 AddIgnoreItem(mode, item)
 {
     global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
-    data := newIgnored_%mode%
-    data = %data%`n%item%
-    newIgnored_%mode% = %data%
-    Return
+    if (mode == "dirs")
+        newIgnored_dirs .= item . "`n"
+    else if (mode == "files")
+        newIgnored_files .= item . "`n"
+    else if (mode == "keys")
+        newIgnored_keys .= item . "`n"
+    else if (mode == "values")
+        newIgnored_values .= item . "`n"
 }
 
 SaveNewIgnoredItems(mode)
 {
-    Global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist
-    Global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
-    A_nl = `n
+    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues, ignorelist, newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
 
     if (mode == "files")
     {
         if (newIgnored_dirs == "" && newIgnored_files == "")
             Return
-        pathdata = %ignoredDirs%`n%newIgnored_dirs%
-        itemdata = %ignoredFiles%`n%newIgnored_files%
-        pathfilename = %ignorelist%dirs.cfg
-        itemfilename = %ignorelist%files.cfg
+        pathdata := ignoredDirs . newIgnored_dirs
+        itemdata := ignoredFiles . newIgnored_files
+        pathfilename := ignorelist . "dirs.cfg"
+        itemfilename := ignorelist . "files.cfg"
     }
     else
     {
         if (newIgnored_keys == "" && newIgnored_values == "")
             Return
-        pathdata = %ignoredKeys%`n%newIgnored_keys%
-        itemdata = %ignoredValues%`n%newIgnored_values%
-        pathfilename = %ignorelist%keys.cfg
-        itemfilename = %ignorelist%values.cfg
+        pathdata := ignoredKeys . newIgnored_keys
+        itemdata := ignoredValues . newIgnored_values
+        pathfilename := ignorelist . "keys.cfg"
+        itemfilename := ignorelist . "values.cfg"
     }
-    Sort, pathdata, U
-    Sort, itemdata, U
+    Sort pathdata, "U"
+    Sort itemdata, "U"
 
-    outpathdata = `n
-    loop, parse, pathdata, `n
+    outpathdata := "`n"
+    for i, field in StrSplit(pathdata, "`n", "`r")
     {
-        if (A_LoopField == "")
+        if (field == "")
             Continue
-        sub = %A_LoopField%
-        found = 0
+        sub := field
+        found := 0
         Loop
         {
-            SplitPath, sub, , sub
-            if (sub = "")
+            SplitPath(sub, , &sub)
+            if (sub == "")
                 break
-            if (InStr(outpathdata, A_nl . sub . A_nl))
+            if (InStr(outpathdata, "`n" . sub . "`n"))
             {
-                found = 1
+                found := 1
                 break
             }
         }
-        if (! found)
-            outpathdata = %outpathdata%%A_LoopField%`n
+        if (!found)
+            outpathdata .= field . "`n"
     }
 
-    outitemdata = `n
-    loop, parse, itemdata, `n
+    outitemdata := "`n"
+    for i, field in StrSplit(itemdata, "`n", "`r")
     {
-        if (A_LoopField == "")
+        if (field == "")
             Continue
-        sub = %A_LoopField%
-        found = 0
+        sub := field
+        found := 0
         Loop
         {
-            SplitPath, sub, , sub
-            if (sub = "")
+            SplitPath(sub, , &sub)
+            if (sub == "")
                 break
-            if (InStr(outpathdata, A_nl . sub . A_nl))
+            if (InStr(outpathdata, "`n" . sub . "`n"))
             {
-                found = 1
+                found := 1
                 break
             }
         }
-        if (! found)
-            outitemdata = %outitemdata%%A_LoopField%`n
+        if (!found)
+            outitemdata .= field . "`n"
     }
 
-    FileDelete, %pathfilename%
-    FileAppend, %outpathdata%, %pathfilename%
+    FileDelete(pathfilename)
+    FileAppend(outpathdata, pathfilename)
 
-    FileDelete, %itemfilename%
-    FileAppend, %outitemdata%, %itemfilename%
-
-    Return
+    FileDelete(itemfilename)
+    FileAppend(outitemdata, itemfilename)
 }
 
 LVIgnoreSpecific(row, mode)
 {
     if (mode == "dirs")
     {
-        pathcol = 10
-        name = directory
-        names = directories
+        pathcol := 10
+        name := "directory"
+        names := "directories"
     }
     else
     {
-        pathcol = 7
-        name = key
-        names = keys
+        pathcol := 7
+        name := "key"
+        names := "keys"
     }
 
-    LV_GetText(tohide, row, pathcol)
+    tohide := MyListView.GetText(row, pathcol)
 
-    prompt = Type the name of the %name% to permanently hide.`n
-    prompt = %prompt%Use the format of the last column (Sandbox bpath).`n
-    prompt = %prompt%Do not type the leading box bpath and the tailing backslash.`n
-    prompt = %prompt%Note that all sub-%names% will be hidden as well.`n
-    prompt = %prompt%Take care: The ignore list is global to all sandboxes!
-    InputBox, tohide, Add item to Ignore List, %prompt%, , , , , , , , %tohide%
-    if (ErrorLevel)
+    prompt := "Type the name of the " . name . " to permanently hide.`n"
+    prompt .= "Use the format of the last column (Sandbox bpath).`n"
+    prompt .= "Do not type the leading box bpath and the tailing backslash.`n"
+    prompt .= "Note that all sub-" . names . " will be hidden as well.`n"
+    prompt .= "Take care: The ignore list is global to all sandboxes!"
+
+    result := InputBox("Add item to Ignore List", prompt, , , , , , , , tohide)
+    if result.Result == "Cancel"
         Return
+    tohide := result.Value
 
     tohide := Trim(tohide, "\")
     if (tohide != "")
         AddIgnoreItem(mode, tohide)
 
-    tohidepath = %tohide%\
-    row := LV_GetCount()
-    loop
+    tohidepath := tohide . "\"
+    loop MyListView.GetCount()
     {
-        LV_GetText(item, row, pathcol)
-        if ( InStr(item, tohidepath, 1) == 1 )
-            LV_Delete(row)
-        else if ( item == tohide )
-            LV_Delete(row)
-        row -= 1
-        if (row == 0)
-            break
+        i := MyListView.GetCount() - A_Index + 1
+        item := MyListView.GetText(i, pathcol)
+        if (InStr(item, tohidepath, 1) == 1 || item == tohide)
+            MyListView.Delete(i)
     }
-
-    Return
 }
 
 IsIgnored(mode, ignoredList, checkpath, item="")
 {
-    StringReplace, checkpath, checkpath, :, ., 1
-    if IgnoredList =
+    checkpath := StrReplace(checkpath, ":", ".")
+    if (ignoredList == "")
         Return 0
-
-    ; TODO: doesn't work well due to new line characters
-    A_nl = `n
 
     if (mode == "values" || mode == "files")
     {
-        tocheck = `n%checkpath%\%item%`n
-        Return % InStr(ignoredList, tocheck)
+        tocheck := "`n" . checkpath . "\" . item . "`n"
+        return InStr(ignoredList, tocheck)
     }
     else
     {
         loop
         {
-            tocheck = `n%checkpath%`n
+            tocheck := "`n" . checkpath . "`n"
             if (InStr(ignoredList, tocheck))
                 Return 1
-            SplitPath, checkpath, , checkpath
-            if checkpath =
+            SplitPath(checkpath, , &checkpath)
+            if (checkpath == "")
                 Return 0
         }
     }
@@ -4584,226 +4204,278 @@ SCmdMenuHandler:
     }
 Return
 
-UCmdMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
+UCmdMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array, comspec, cmdRes
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
     if (GetKeyState("Control", "P"))
     {
-        args = /k "cd /d "%bpath%""
-        writeUnsandboxedShortcutFileToDesktop(comspec,"Unsandboxed Command Prompt in sandbox " box,bpath,args,"Unsandboxed Command Prompt in sandbox " box,cmdRes,1,1)
+        args := '/k "cd /d ""' . bpath . '"""'
+        writeUnsandboxedShortcutFileToDesktop(comspec, "Unsandboxed Command Prompt in sandbox " . box, bpath, args, "Unsandboxed Command Prompt in sandbox " . box, cmdRes, 1, 1)
     }
     else
-        run, %comspec% /k "cd /d "%bpath%"", , UseErrorLevel
-Return
+        Run(comspec . ' /k "cd /d ""' . bpath . '"""',, "UseErrorLevel")
+}
 
-SRegEditMenuHandler:
-    box := getBoxFromMenu()
+SRegEditMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global start, regeditImg, regeditRes
+    box := getBoxFromMenuObj(MyMenu)
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Sandboxed Registry Editor","","/box:" box " " regeditImg,"Launch RegEdit in sandbox " box, regeditRes,1,1, box)
+        writeSandboxedShortcutFileToDesktop(start, "Sandboxed Registry Editor", "", "/box:" . box . " " . regeditImg, "Launch RegEdit in sandbox " . box, regeditRes, 1, 1, box)
     else
-        run, %start% /box:%box% %regeditImg%, , UseErrorLevel
-Return
+        Run(start . " /box:" . box . " " . regeditImg,, "UseErrorLevel")
+}
 
-URegEditMenuHandler:
+URegEditMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global title, sandboxes_array, username
     if (GetKeyState("Control", "P"))
-        MsgBox 48, %title%, Since something must be running in the box to analyse its registry`, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported`, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.
+        MsgBox(48, title, "Since something must be running in the box to analyse its registry, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.")
     else
     {
-        box := getBoxFromMenu()
+        box := getBoxFromMenuObj(MyMenu)
         ; ensure that the box is in use, or the hive will not be loaded
         run_pid := InitializeBox(box)
         ; pre-select the right registry key
-        bregstr_ := sandboxes_array[box,"KeyRootPath"]
-        bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
-        RegWrite, REG_SZ, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Applets\Regedit, LastKey, HKEY_USERS\%regstr_%
+        bregstr_ := sandboxes_array[box, "KeyRootPath"]
+        bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+        RegWrite "HKEY_USERS\" . bregstr_, "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "LastKey", "REG_SZ"
         ; launch regedit
-        RunWait, RegEdit.exe, , UseErrorLevel
+        RunWait('RegEdit.exe',, 'UseErrorLevel')
         ReleaseBox(run_pid)
     }
-Return
+}
 
-UninstallMenuHandler:
-    box := getBoxFromMenu()
+UninstallMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global start, shell32
+    box := getBoxFromMenuObj(MyMenu)
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Uninstall Programs","","/box:" box " appwiz.cpl","Uninstall or installs programs in sandbox " box,shell32,22,1, box)
+        writeSandboxedShortcutFileToDesktop(start, "Uninstall Programs", "", "/box:" . box . " appwiz.cpl", "Uninstall or installs programs in sandbox " . box, shell32, 22, 1, box)
     else
-        runWait, %start% /box:%box% appwiz.cpl, , UseErrorLevel
-Return
+        RunWait(start . " /box:" . box . " appwiz.cpl",, "UseErrorLevel")
+}
 
-TerminateMenuHandler:
-    box := getBoxFromMenu()
+TerminateMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global start, shell32
+    box := getBoxFromMenuObj(MyMenu)
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(start,"Terminate Programs in sandbox " box,"","/box:" box " /terminate","Terminate all programs running in sandbox " box,shell32,220,1)
+        writeUnsandboxedShortcutFileToDesktop(start, "Terminate Programs in sandbox " . box, "", "/box:" . box . " /terminate", "Terminate all programs running in sandbox " . box, shell32, 220, 1)
     else
-        runWait, %start% /box:%box% /terminate, , UseErrorLevel
-Return
+        RunWait(start . " /box:" . box . " /terminate",, "UseErrorLevel")
+}
 
-DeleteBoxMenuHandler:
-    box := getBoxFromMenu()
+DeleteBoxMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global start, shell32, title
+    box := getBoxFromMenuObj(MyMenu)
     if (GetKeyState("Control", "P")) {
-        writeUnsandboxedShortcutFileToDesktop(start,"! Delete sandbox " box " !","","/box:" box " delete_sandbox","Deletes the sandbox " box,shell32,132,1)
-        msgbox, 48, %title%, Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu`, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!
+        writeUnsandboxedShortcutFileToDesktop(start, "! Delete sandbox " . box . " !", "", "/box:" . box . " delete_sandbox", "Deletes the sandbox " . box, shell32, 132, 1)
+        MsgBox(48, title, "Warning! Unlike when this is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!")
     } else {
-        msgbox, 289, %title%, Are you sure you want to delete the sandbox "%box%"?
-        ifMsgbox, Cancel, Return
-            runWait, %start% /box:%box% delete_sandbox, , UseErrorLevel
+        if (MsgBox("Are you sure you want to delete the sandbox """ . box . """?", title, "YesNoCancel IconQuestion") != "Yes")
+            Return
+        RunWait(start . " /box:" . box . " delete_sandbox",, "UseErrorLevel")
     }
-Return
+}
 
-SExploreMenuHandler:
-    box := getBoxFromMenu()
+SExploreMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global start, sbdir, explorer, explorerRes
+    box := getBoxFromMenuObj(MyMenu)
     if (GetKeyState("Control", "P"))
-        writeSandboxedShortcutFileToDesktop(start,"Explore sandbox " box " (Sandboxed)",sbdir,"/box:" box " " explorer,"Launches Explorer sandboxed in sandbox " box,explorerRes,1,1, box)
+        writeSandboxedShortcutFileToDesktop(start, "Explore sandbox " . box . " (Sandboxed)", sbdir, "/box:" . box . " " . explorer, "Launches Explorer sandboxed in sandbox " . box, explorerRes, 1, 1, box)
     else
-        run, %start% /box:%box% %explorer%, , , UseErrorLevel
-Return
+        Run(start . " /box:" . box . " " . explorer,,, "UseErrorLevel")
+}
 
-UExploreMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
+UExploreMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array, explorerImg, explorerArgE, explorer, explorerRes, A_Quotes
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed)",bpath,explorerArgE "\" A_Quotes bpath A_Quotes,"Launches Explorer unsandboxed in sandbox " box,explorerRes,1,1)
+        writeUnsandboxedShortcutFileToDesktop(explorerImg, "Explore sandbox " . box . " (Unsandboxed)", bpath, explorerArgE . " " . A_Quotes . bpath . A_Quotes, "Launches Explorer unsandboxed in sandbox " . box, explorerRes, 1, 1)
     else
-        run, %explorer%\%bpath%, , , UseErrorLevel
-Return
+        Run(explorer . " " . A_Quotes . bpath . A_Quotes,,, "UseErrorLevel")
+}
 
-URExploreMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
+URExploreMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array, explorerImg, explorerArgER, explorerERArg, explorerRes, A_Quotes
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
     if (GetKeyState("Control", "P"))
-        writeUnsandboxedShortcutFileToDesktop(explorerImg,"Explore sandbox " box " (Unsandboxed, restricted)",bpath,explorerArgER "\" A_Quotes bpath A_Quotes,"Launches Explorer unsandboxed and restricted to sandbox " box,explorerRes,1,1)
+        writeUnsandboxedShortcutFileToDesktop(explorerImg, "Explore sandbox " . box . " (Unsandboxed, restricted)", bpath, explorerArgER . " " . A_Quotes . bpath . A_Quotes, "Launches Explorer unsandboxed and restricted to sandbox " . box, explorerRes, 1, 1)
     else
-        run, %explorerERArg%\%bpath%, , , UseErrorLevel
-Return
+        Run(explorerERArg . " " . A_Quotes . bpath . A_Quotes,,, "UseErrorLevel")
+}
 
-LaunchSbieAgentMenuHandler:
+LaunchSbieAgentMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global SbieAgent, SbieMngr, SbieCtrl, SbieAgentResMainText, sbdir
     if (GetKeyState("Control", "P")) {
         if (SbieAgent == SbieMngr) {
-            writeUnsandboxedShortcutFileToDesktop(SbieAgent,SbieAgentResMainText,sbdir,"","Launch " SbieAgentResMainText,"","",1)
+            writeUnsandboxedShortcutFileToDesktop(SbieAgent, SbieAgentResMainText, sbdir, "", "Launch " . SbieAgentResMainText, "", "", 1)
         }
         if (SbieAgent == SbieCtrl) {
-            writeUnsandboxedShortcutFileToDesktop(SbieAgent,SbieAgentResMainText,sbdir,"","Launch " SbieAgentResMainText,"","",1)
+            writeUnsandboxedShortcutFileToDesktop(SbieAgent, SbieAgentResMainText, sbdir, "", "Launch " . SbieAgentResMainText, "", "", 1)
         }
     }
     else {
-        run, %SbieAgent%, , UseErrorLevel
+        Run(SbieAgent,, "UseErrorLevel")
     }
-Return
+}
 
-ListFilesMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
+ListFilesMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
     ListFiles(box, bpath)
-Return
+}
 
-ListRegMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
+ListRegMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
     ListReg(box, bpath)
-Return
+}
 
-ListAutostartsMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
+ListAutostartsMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
     ListAutostarts(box, bpath)
-Return
+}
 
-WatchRegMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
-    comparefile = %temp%\S%regstr_%_reg_compare.cfg
+WatchRegMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array, username, temp, title
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
+    bregstr_ := sandboxes_array[box, "KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+    comparefile := temp . "\S" . regstr_ . "_reg_compare.cfg"
     MakeRegConfig(box, comparefile)
-    MsgBox, 38, %title%, The current state of the registry of sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the registry will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export them as a REG file if you wish.`n`nNote that the registry keys and the deleted registry values will not be listed. However, a deleted key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
-    ifMsgBox Continue
+    result := MsgBox("The current state of the registry of sandbox """ . box . """ has been saved.`n`nYou can now work in the box. When finished, click Continue, and the new state of the registry will be compared with the old state, and the result displayed so that you can analyse the changes, and export them as a REG file if you wish.`n`nNote that the registry keys and the deleted registry values will not be listed. However, a deleted key or value will be listed if it is present in the ""real world"".`n`n*** Click Continue ONLY when ready! ***", title, "Continue&Try Again&Cancel")
+    if (result == "Continue")
         ListReg(box, bpath, comparefile)
-    ifMsgBox TryAgain
-        GoSub, WatchRegMenuHandler
-Return
+    else if (result == "Try Again")
+        WatchRegMenuHandler(ItemName, ItemPos, MyMenu)
+}
 
-WatchFilesMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
-    comparefile = %temp%\%regstr_%_files_compare.cfg
+WatchFilesMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array, username, temp, title
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
+    bregstr_ := sandboxes_array[box, "KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+    comparefile := temp . "\" . regstr_ . "_files_compare.cfg"
     MakeFilesConfig(box, comparefile, bpath)
-    MsgBox, 38, %title%, The current state of the files in sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the files will be compared with the old state`, and the result displayed so that you can analyse the changes`, and export the modified or new files if you wish.`n`nNote that the folders and the deleted files will not be listed. However, a deleted folder or file will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
-    ifMsgBox Continue
+    result := MsgBox("The current state of the files in sandbox """ . box . """ has been saved.`n`nYou can now work in the box. When finished, click Continue, and the new state of the files will be compared with the old state, and the result displayed so that you can analyse the changes, and export the modified or new files if you wish.`n`nNote that the folders and the deleted files will not be listed. However, a deleted folder or file will be listed if it is present in the ""real world"".`n`n*** Click Continue ONLY when ready! ***", title, "Continue&Try Again&Cancel")
+    if (result == "Continue")
         ListFiles(box, bpath, comparefile)
-    ifMsgBox TryAgain
-        GoSub, WatchFilesMenuHandler
-Return
+    else if (result == "Try Again")
+        WatchFilesMenuHandler(ItemName, ItemPos, MyMenu)
+}
 
-WatchFilesRegMenuHandler:
-    box := getBoxFromMenu()
-    bpath := sandboxes_array[box,"bpath"]
-    bregstr_ := sandboxes_array[box,"KeyRootPath"]
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), `%SANDBOX`%, box), `%USER`%, username)
-    comparefile1 = %temp%\%regstr_%_files_compare.cfg
+WatchFilesRegMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global sandboxes_array, username, temp, title
+    box := getBoxFromMenuObj(MyMenu)
+    bpath := sandboxes_array[box, "bpath"]
+    bregstr_ := sandboxes_array[box, "KeyRootPath"]
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+    comparefile1 := temp . "\" . regstr_ . "_files_compare.cfg"
     MakeFilesConfig(box, comparefile1, bpath)
-    comparefile2 = %temp%\%regstr_%_reg_compare.cfg
+    comparefile2 := temp . "\S" . regstr_ . "_reg_compare.cfg"
     MakeRegConfig(box, comparefile2)
-    MsgBox, 38, %title%, The current state of the files and registry of sandbox "%box%" has been saved.`n`nYou can now work in the box. When finished`, click Continue, and the new state of the files and registry will be compared with the old state`, and the result displayed so that you can analyse the changes.`n`nNote that the folders, the deleted files, the registry keys and the deleted registry values will not be listed. However, a deleted folder, file, key or value will be listed if it is present in the "real world".`n`n*** Click Continue ONLY when ready! ***
-    ifMsgBox Continue
+    result := MsgBox("The current state of the files and registry of sandbox """ . box . """ has been saved.`n`nYou can now work in the box. When finished, click Continue, and the new state of the files and registry will be compared with the old state, and the result displayed so that you can analyse the changes.`n`nNote that the folders, the deleted files, the registry keys and the deleted registry values will not be listed. However, a deleted folder, file, key or value will be listed if it is present in the ""real world"".`n`n*** Click Continue ONLY when ready! ***", title, "Continue&Try Again&Cancel")
+    if (result == "Continue")
     {
         ListFiles(box, bpath, comparefile1)
         ListReg(box, bpath, comparefile2)
     }
-    ifMsgBox TryAgain
-        GoSub, WatchFilesRegMenuHandler
-Return
+    else if (result == "Try Again")
+        WatchFilesRegMenuHandler(ItemName, ItemPos, MyMenu)
+}
 
-SetupMenuMenuHandler1:
+SetupMenuMenuHandler1(ItemName, ItemPos, MyMenu)
+{
+    global largeiconsize, sbtini
     if (largeiconsize > 16) {
-        largeiconsize = 16
-        Menu, SBMenuSetup, UnCheck, Large main-menu and box icons?
+        largeiconsize := 16
+        MyMenu.Uncheck(ItemName)
     } else {
-        largeiconsize = 32
-        Menu, SBMenuSetup, Check, Large main-menu and box icons?
+        largeiconsize := 32
+        MyMenu.Check(ItemName)
     }
-    IniWrite, %largeiconsize%, %sbtini%, AutoConfig, LargeIconSize
-Return
-SetupMenuMenuHandler2:
+    IniWrite(largeiconsize, sbtini, "AutoConfig", "LargeIconSize")
+}
+
+SetupMenuMenuHandler2(ItemName, ItemPos, MyMenu)
+{
+    global smalliconsize, sbtini
     if (smalliconsize > 16) {
-        smalliconsize = 16
-        Menu, SBMenuSetup, UnCheck, Large sub-menu icons?
+        smalliconsize := 16
+        MyMenu.Uncheck(ItemName)
     } else {
-        smalliconsize = 32
-        Menu, SBMenuSetup, Check, Large sub-menu icons?
+        smalliconsize := 32
+        MyMenu.Check(ItemName)
     }
-    IniWrite, %smalliconsize%, %sbtini%, AutoConfig, SmallIconSize
-Return
-SetupMenuMenuHandler3:
+    IniWrite(smalliconsize, sbtini, "AutoConfig", "SmallIconSize")
+}
+
+SetupMenuMenuHandler3(ItemName, ItemPos, MyMenu)
+{
+    global seperatedstartmenus, sbtini
     if (seperatedstartmenus) {
-        seperatedstartmenus = 0
-        Menu, SBMenuSetup, UnCheck, Seperated All Users menus?
+        seperatedstartmenus := 0
+        MyMenu.Uncheck(ItemName)
     } else {
-        seperatedstartmenus = 1
-        Menu, SBMenuSetup, Check, Seperated All Users menus?
+        seperatedstartmenus := 1
+        MyMenu.Check(ItemName)
     }
-    IniWrite, %seperatedstartmenus%, %sbtini%, AutoConfig, SeperatedStartMenus
-Return
-SetupMenuMenuHandler4:
+    IniWrite(seperatedstartmenus, sbtini, "AutoConfig", "SeperatedStartMenus")
+}
+
+SetupMenuMenuHandler4(ItemName, ItemPos, MyMenu)
+{
+    global includeboxnames, sbtini
     if (includeboxnames) {
-        includeboxnames = 0
-        Menu, SBMenuSetup, UnCheck, Include [#BoxName] in shortcut names?
+        includeboxnames := 0
+        MyMenu.Uncheck(ItemName)
     } else {
-        includeboxnames = 1
-        Menu, SBMenuSetup, Check, Include [#BoxName] in shortcut names?
+        includeboxnames := 1
+        MyMenu.Check(ItemName)
     }
-    IniWrite, %includeboxnames%, %sbtini%, AutoConfig, IncludeBoxNames
-Return
+    IniWrite(includeboxnames, sbtini, "AutoConfig", "IncludeBoxNames")
+}
 
-MainHelpMenuHandler:
-    msgbox, 64, %title%, %title%`n`nSandboxToys2 Main Menu usage:`n`nThe main menu displays the shortcuts present in the Start Menu, Desktop and QuickLaunch folders of your sandboxes. Just select any of these shortcuts to launch the program, sandboxed in the right box. Of course, there must be programs installed in your sandboxes, or the menus will not be displayed.`n`nNote also that you can create easily a "sandboxed shortcut" on your real destkop to launch any program displayed in the SandboxToys Menu even easier! Just Control-Click on the menu entry, and the shortcut will be created on your desktop. (Note: This work also with most icons of the Explore, Registry and Tools menu.)`n`nSimilarly, Shift-clicking on a menu icon opens the folder containing the file. The Windows explorer is run sandboxed.`n`nSandboxToys2 offers also some tools in its Explore, Registry and Tools Menus. They should be self-explanatory.`nUnlike the method explained above, Tools -> New Sandboxed Shortcut creates a sandboxed shortcut on your desktop to any unsandboxed file located in your real discs.`n`nThe User Tools menu is a configurable menu, that can contain almost anything you want. To use it, place a (normal or sandboxed) shortcut in the "%usertoolsdir%" folder, and it will be displayed in the User Tools menu. Note that the tools launched via that menu are run unsandboxed, unless the shortcut itself is sandboxed (ie it uses Sandboxie's Start.exe to launch the command). You can create sub-menus in the User Tools menu by placing shortcuts in folders within the "%usertoolsdir%" folder.
-CmdLineHelp:
-    msgbox, 64, %title%, %title%`n`nSandboxToys2 Command Line usage:`n`n> SandboxToys2 [/box:boxname]`nWithout arguments, SandboxToys2 opens its main menu, waits for a selection, execute it and then exits immediately.`nThe optional argument /box:boxname can be used to restrict the menu to a single sandbox.`n`n> SandboxToys2 [/box:boxname] /tray`nSandboxToys2 stays resident in the tray.`nClick the tray icon to launch the main SandboxToys Menu.`nRight-click the tray icon to exit SandboxToys.`n`n> SandboxToys2 [/box:boxname] "existing file, folder or shortcut"`nCreates a new sandboxed shortcut on the desktop. If the /box:boxname argument is not present, you will need to select the target box in a menu.`nIt is recommended to create a shortcut to SandboxToys in your SendTo folder to easily create sandboxed shortcuts to any file or folder.`nYour SendTo folder should be:`n"%appdata%\Microsoft\Windows\SendTo"`n`nNote: The SandboxToys2.ini file holds the settings of SandboxToys. It should be in "%APPDATA%\SandboxToys2\" or in the same folder than the SandboxToys2 executable. The name of the INI file is the same than the name of the SandboxToys2 executable file, so if you rename SandboxToys2.exe, you should rename also SandboxToys2.ini.`nSimilarly, the name of the "SandboxToys2_UserTools" folder depends of the name of SandboxToys2.exe, and it should be also in your APPDATA folder or in the SandboxToys2.exe folder.`nThis allows you to run several instances of SandboxToys2 with different configurations and/or user tools.
-Return
+MainHelpMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    global title, usertoolsdir
+    MsgBox(64, title, title . "`n`nSandboxToys2 Main Menu usage:`n`nThe main menu displays the shortcuts present in the Start Menu, Desktop and QuickLaunch folders of your sandboxes. Just select any of these shortcuts to launch the program, sandboxed in the right box. Of course, there must be programs installed in your sandboxes, or the menus will not be displayed.`n`nNote also that you can create easily a ""sandboxed shortcut"" on your real destkop to launch any program displayed in the SandboxToys Menu even easier! Just Control-Click on the menu entry, and the shortcut will be created on your desktop. (Note: This work also with most icons of the Explore, Registry and Tools menu.)`n`nSimilarly, Shift-clicking on a menu icon opens the folder containing the file. The Windows explorer is run sandboxed.`n`nSandboxToys2 offers also some tools in its Explore, Registry and Tools Menus. They should be self-explanatory.`nUnlike the method explained above, Tools -> New Sandboxed Shortcut creates a sandboxed shortcut on your desktop to any unsandboxed file located in your real discs.`n`nThe User Tools menu is a configurable menu, that can contain almost anything you want. To use it, place a (normal or sandboxed) shortcut in the """ . usertoolsdir . """ folder, and it will be displayed in the User Tools menu. Note that the tools launched via that menu are run unsandboxed, unless the shortcut itself is sandboxed (ie it uses Sandboxie's Start.exe to launch the command). You can create sub-menus in the User Tools menu by placing shortcuts in folders within the """ . usertoolsdir . """ folder.")
+}
 
-DummyMenuHandler:
-Return
+CmdLineHelp()
+{
+    global title
+    MsgBox(64, title, title . "`n`nSandboxToys2 Command Line usage:`n`n> SandboxToys2 [/box:boxname]`nWithout arguments, SandboxToys2 opens its main menu, waits for a selection, execute it and then exits immediately.`nThe optional argument /box:boxname can be used to restrict the menu to a single sandbox.`n`n> SandboxToys2 [/box:boxname] /tray`nSandboxToys2 stays resident in the tray.`nClick the tray icon to launch the main SandboxToys Menu.`nRight-click the tray icon to exit SandboxToys.`n`n> SandboxToys2 [/box:boxname] ""existing file, folder or shortcut""`nCreates a new sandboxed shortcut on the desktop. If the /box:boxname argument is not present, you will need to select the target box in a menu.`nIt is recommended to create a shortcut to SandboxToys in your SendTo folder to easily create sandboxed shortcuts to any file or folder.`nYour SendTo folder should be:`n""%appdata%\Microsoft\Windows\SendTo""`n`nNote: The SandboxToys2.ini file holds the settings of SandboxToys. It should be in ""%APPDATA%\SandboxToys2\"" or in the same folder than the SandboxToys2 executable. The name of the INI file is the same than the name of the SandboxToys2 executable file, so if you rename SandboxToys2.exe, you should rename also SandboxToys2.ini.`nSimilarly, the name of the ""SandboxToys2_UserTools"" folder depends of the name of SandboxToys2.exe, and it should be also in your APPDATA folder or in the SandboxToys2.exe folder.`nThis allows you to run several instances of SandboxToys2 with different configurations and/or user tools.")
+}
 
-ExitMenuHandler:
-ExitApp
+DummyMenuHandler(ItemName, ItemPos, MyMenu)
+{
+}
+
+ExitMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    ExitApp
+}
