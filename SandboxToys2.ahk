@@ -39,6 +39,7 @@ smalliconsize := 16 ; other icons
 largeiconsize := 32 ; sandbox icons
 seperatedstartmenus := 0
 includeboxnames := 1
+listemptyitems := 0
 trayiconfile := ""
 trayiconnumber := 1
 sbcommandpromptdir := A_UserProfile
@@ -66,6 +67,7 @@ if (FileExist(sbtini)) {
     smalliconsize := IniRead(sbtini, "AutoConfig", "SmallIconSize", smalliconsize)
     seperatedstartmenus := IniRead(sbtini, "AutoConfig", "SeperatedStartMenus", seperatedstartmenus)
     includeboxnames := IniRead(sbtini, "AutoConfig", "IncludeBoxNames", includeboxnames)
+    listemptyitems := IniRead(sbtini, "AutoConfig", "ListEmptyItems", listemptyitems)
     trayiconfile := IniRead(sbtini, "UserConfig", "TrayIconFile", trayiconfile)
     trayiconnumber := IniRead(sbtini, "UserConfig", "TrayIconNumber", trayiconnumber)
     sbcommandpromptdir := IniRead(sbtini, "UserConfig", "SandboxedCommandPromptDir", sbcommandpromptdir)
@@ -76,6 +78,7 @@ else
     IniWrite(smalliconsize, sbtini, "AutoConfig", "SmallIconSize")
     IniWrite(seperatedstartmenus, sbtini, "AutoConfig", "SeperatedStartMenus")
     IniWrite(includeboxnames, sbtini, "AutoConfig", "IncludeBoxNames")
+    IniWrite(listemptyitems, sbtini, "AutoConfig", "ListEmptyItems")
     IniWrite(trayiconfile, sbtini, "UserConfig", "TrayIconFile")
     IniWrite(trayiconnumber, sbtini, "UserConfig", "TrayIconNumber")
     IniWrite(sbcommandpromptdir, sbtini, "UserConfig", "SandboxedCommandPromptDir")
@@ -356,7 +359,7 @@ BuildMainMenu(ItemName, ItemPos, MyMenu)
     global traymode, sandboxes_array, ini, menucommands, menuicons, numboxes, singleboxmode, singlebox, box, boxpath, boxexist, dropadminrights, benabled, boxlabel
     global SbieAgentResFull, SbieAgentResFullId, SbieAgentResEmpty, SbieAgentResEmptyId, seperatedstartmenus, public, shell32, largeiconsize, smalliconsize
     global added_menus, public_dir, idx, tmp1, topicons, numtopicons, files1, menunum, numicons, m, files2, explorerRes, imageres, regeditRes
-    global A_WinDir, cmdRes, SbieAgentResMain, SbieAgentResMainId, usertoolsdir, mainmenu, SbieAgent, SbieAgentResMainText, title, includeboxnames
+    global A_WinDir, cmdRes, SbieAgentResMain, SbieAgentResMainId, usertoolsdir, mainmenu, SbieAgent, SbieAgentResMainText, title, includeboxnames, listemptyitems
     global SBMenuSetup, menus
     if (traymode)
     {
@@ -707,6 +710,10 @@ BuildMainMenu(ItemName, ItemPos, MyMenu)
     SBMenuSetup.Add("Include [#BoxName] in shortcut names?", SetupMenuMenuHandler4)
     if (includeboxnames)
         SBMenuSetup.Check("Include [#BoxName] in shortcut names?")
+    SBMenuSetup.Add()
+    SBMenuSetup.Add("List empty folders and keys?", SetupMenuMenuHandler5)
+    if (listemptyitems)
+        SBMenuSetup.Check("List empty folders and keys?")
     mainmenu_obj.Add()
     mainmenu_obj.Add("Options", SBMenuSetup)
     setMenuIcon(mainmenu_obj, "Options", shell32, 24, 16)
@@ -1842,6 +1849,7 @@ ReleaseBox(run_pid)
 
 SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 {
+    global listemptyitems
     local A_nl := "`n"
     local sep := A_Tab
 
@@ -1906,6 +1914,32 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
                 Continue
         }
 
+        local is_empty := true
+        Loop Files, bdir . "\*", "FD"
+        {
+            is_empty := false
+            break
+        }
+
+        if (is_empty && listemptyitems)
+        {
+            local rdir_empty := rp . "\" . A_LoopFileFullPath
+            local timeCreated := FormatTime(A_LoopFileTimeCreated, "yyyy/MM/dd HH:mm:ss")
+            local timeModified := FormatTime(A_LoopFileTimeModified, "yyyy/MM/dd HH:mm:ss")
+            local timeAccessed := FormatTime(A_LoopFileTimeAccessed, "yyyy/MM/dd HH:mm:ss")
+            local st
+            if (A_LoopFileTimeCreated == "19860523174702")
+                st := "-"
+            else
+            {
+                if (DirExist(rdir_empty))
+                    st := "#"
+                else
+                    st := "+"
+            }
+            r .= st . sep . rdir_empty . sep . A_LoopFileAttrib . sep . "0" . sep . timeCreated . sep . timeModified . sep . timeAccessed . sep . boxsubpath . A_nl
+        }
+
         local rdir := rp . "\" . A_LoopFileFullPath
         local ret := SearchFiles(bdir, rdir, boxbasepath, ignoredDirs, ignoredFiles, comparedata)
         if (ret != "")
@@ -1917,6 +1951,7 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 
     return r
 }
+
 
 ; GUILVViewIcon:
 ;     GuiControl, +Icon, MyListView
@@ -1952,7 +1987,7 @@ ListFiles(box, bpath, comparefilename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
     global guinotclosed, title, MyListView, LVLastSize
-    global newIgnored, guinotclosed, title, MyListView, LVLastSize
+    global newIgnored, guinotclosed, title, MyListView, LVLastSize, listemptyitems
 
     static MainLabel
 
@@ -3189,7 +3224,7 @@ MakeRegConfig(box, filename := "")
 
 SearchReg(box, ignoredKeys, ignoredValues, filename := "")
 {
-    global regconfig, sandboxes_array, username
+    global regconfig, sandboxes_array, username, listemptyitems
     run_pid := InitializeBox(box)
 
     local bregstr_ := sandboxes_array[box].KeyRootPath
@@ -3210,10 +3245,23 @@ SearchReg(box, ignoredKeys, ignoredValues, filename := "")
         local subkey := SubStr(A_LoopRegSubKey, mainsbkeylen)
 
         if (InStr(subkey, LastIgnoredKey) == 1)
-            Continue
+            continue
+
+        local is_key_without_values := false
+        if (A_LoopRegType == "KEY" && listemptyitems)
+        {
+            local hasValues := false
+            Loop Reg, A_LoopRegFullPath, "V"
+            {
+                hasValues := true
+                break
+            }
+            if (!hasValues)
+                is_key_without_values := true
+        }
 
         if (A_LoopRegType == "KEY") {
-            if (RegTimeModified != "19860523174702")
+            if (RegTimeModified != "19860523174702" && !is_key_without_values)
                 Continue
             if (IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName)) {
                 LastIgnoredKey := subkey . "\" . A_LoopRegName
@@ -3236,7 +3284,7 @@ SearchReg(box, ignoredKeys, ignoredValues, filename := "")
         }
 
         local out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
-        if (!InStr(regconfigdata, out)) {
+        if (is_key_without_values || !InStr(regconfigdata, out)) {
             out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, Chr(1), true)
             outtxt .= out . "`n"
         }
@@ -3250,7 +3298,7 @@ ListReg(box, bpath, filename="")
 {
     global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
     global guinotclosed, title, MyListView, LVLastSize
-    global newIgnored, guinotclosed, title, MyListView, LVLastSize
+    global newIgnored, guinotclosed, title, MyListView, LVLastSize, listemptyitems
     static MainLabel
 
     local comparemode
@@ -4462,6 +4510,13 @@ SetupMenuMenuHandler4(*) {
     includeboxnames := !includeboxnames
     SBMenuSetup.ToggleCheck("Include [#BoxName] in shortcut names?")
     IniWrite(includeboxnames, sbtini, "AutoConfig", "IncludeBoxNames")
+}
+
+SetupMenuMenuHandler5(*) {
+    global listemptyitems, SBMenuSetup, sbtini
+    listemptyitems := !listemptyitems
+    SBMenuSetup.ToggleCheck("List empty folders and keys?")
+    IniWrite(listemptyitems, sbtini, "AutoConfig", "ListEmptyItems")
 }
 
 MainHelpMenuHandler(*) {
