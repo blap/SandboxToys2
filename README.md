@@ -3,9 +3,9 @@ SandboxToys2 by r0lZ updated by blap and others.
 
 I just updated the original file by r0lZ to be more compatible to recent files of Sandboxie Plus (https://github.com/sandboxie-plus/Sandboxie).
 
-Developed and compiled with AHK2Exe 1.1.36.02 (Unicode 64-bit.bin) with no compression.
+This script has been updated to be fully compatible with AutoHotkey v2.
 
-NOTE: AutoHotKey deprecated version 1.1. With the new changes in version 2 (https://www.autohotkey.com/docs/v2/v2-changes.htm) in a matter of time SandboxToys2 will be deprecated too with my lack of programming knowledge in AutoHotKey.
+Version: 3.0.0.0
 
 You can download the last SandboxToys2 here: https://github.com/blap/SandboxToys2/releases/latest
 
