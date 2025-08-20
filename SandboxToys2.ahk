@@ -3626,49 +3626,52 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
     if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
         throw Error("Failed to open registry key.")
     }
-    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    try {
+        local sValueType := 0, vValueSize := 0
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "uint*", &sValueType, "ptr", 0, "uint*", &vValueSize)
 
-    local sValueType := 0, vValueSize := 0
-    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "uint*", &sValueType, "ptr", 0, "uint*", &vValueSize)
-
-    local sValue
-    if (sValueType == REG_SZ || sValueType == REG_EXPAND_SZ) {
-        sValue := Buffer(vValueSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "str", sValue, "uint*", &vValueSize)
-        return StrGet(sValue)
-    } else if (sValueType == REG_DWORD || sValueType == REG_DWORD_BIG_ENDIAN) {
-        local dwordValue := 0
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "uint*", &dwordValue, "uint*", &vValueSize)
-        return dwordValue
-    } else if (sValueType == REG_QWORD) {
-        local qwordValue := 0
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "uint64*", &qwordValue, "uint*", &vValueSize)
-        return qwordValue
-    } else if (sValueType == REG_MULTI_SZ) {
-        local sTmp := Buffer(vValueSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "ptr", sTmp, "uint*", &vValueSize)
-        local result := ""
-        local offset := 0
-        while offset < vValueSize - 1 {
-            local part := StrGet(sTmp.Ptr + offset)
-            if part == ""
-                break
-            result .= part . "`n"
-            offset += (StrLen(part) + 1) * (A_IsUnicode ? 2 : 1)
+        local sValue
+        if (sValueType == REG_SZ || sValueType == REG_EXPAND_SZ) {
+            sValue := Buffer(vValueSize)
+            DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "str", sValue, "uint*", &vValueSize)
+            return StrGet(sValue)
+        } else if (sValueType == REG_DWORD || sValueType == REG_DWORD_BIG_ENDIAN) {
+            local dwordValue := 0
+            DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "uint*", &dwordValue, "uint*", &vValueSize)
+            return dwordValue
+        } else if (sValueType == REG_QWORD) {
+            local qwordValue := 0
+            DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "uint64*", &qwordValue, "uint*", &vValueSize)
+            return qwordValue
+        } else if (sValueType == REG_MULTI_SZ) {
+            local sTmp := Buffer(vValueSize)
+            DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "ptr", sTmp, "uint*", &vValueSize)
+            local result := ""
+            local offset := 0
+            while offset < vValueSize - 1 {
+                local part := StrGet(sTmp.Ptr + offset)
+                if part == ""
+                    break
+                result .= part . "`n"
+                offset += (StrLen(part) + 1) * (A_IsUnicode ? 2 : 1)
+            }
+            return result
+        } else if (sValueType == REG_BINARY) {
+            local sTmp := Buffer(vValueSize)
+            DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "ptr", sTmp, "uint*", &vValueSize)
+            local result := ""
+            Loop vValueSize {
+                result .= Format("{:02X}", NumGet(sTmp, A_Index - 1, "UChar"))
+            }
+            return result
+        } else if (sValueType == REG_NONE) {
+            return ""
+        } else {
+            throw Error("Unsupported value type or value does not exist.")
         }
-        return result
-    } else if (sValueType == REG_BINARY) {
-        local sTmp := Buffer(vValueSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "ptr", sTmp, "uint*", &vValueSize)
-        local result := ""
-        Loop vValueSize {
-            result .= Format("{:02X}", NumGet(sTmp, A_Index - 1, "UChar"))
-        }
-        return result
-    } else if (sValueType == REG_NONE) {
-        return ""
-    } else {
-        throw Error("Unsupported value type or value does not exist.")
+    }
+    finally {
+        DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
     }
 }
 
@@ -3696,12 +3699,14 @@ RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
     if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
         throw Error("Failed to open registry key.")
     }
-    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
-
-    local sValueType := 0
-    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "uint*", &sValueType, "ptr", 0, "ptr", 0)
-
-    return typeMap.Has(sValueType) ? typeMap[sValueType] : ""
+    try {
+        local sValueType := 0
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "uint*", &sValueType, "ptr", 0, "ptr", 0)
+        return typeMap.Has(sValueType) ? typeMap[sValueType] : ""
+    }
+    finally {
+        DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    }
 }
 
 RegEnumKey(sRootKey, sKeyName, x64mode=true) {
@@ -3723,19 +3728,22 @@ RegEnumKey(sRootKey, sKeyName, x64mode=true) {
     if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
         throw Error("Failed to open registry key.")
     }
-    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    try {
+        local names := []
+        local dwIndex := 0
+        local lpName := Buffer(512 * (A_IsUnicode ? 2 : 1))
 
-    local names := []
-    local dwIndex := 0
-    local lpName := Buffer(512 * (A_IsUnicode ? 2 : 1))
+        while DllCall("Advapi32.dll\RegEnumKeyEx", "ptr", hKey, "uint", dwIndex, "str", lpName, "uint*", 512, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0) == 0 {
+            names.Push(StrGet(lpName))
+            dwIndex++
+        }
 
-    while DllCall("Advapi32.dll\RegEnumKeyEx", "ptr", hKey, "uint", dwIndex, "str", lpName, "uint*", 512, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0) == 0 {
-        names.Push(StrGet(lpName))
-        dwIndex++
+        names.Sort("CL")
+        return names
     }
-
-    names.Sort("CL")
-    return names
+    finally {
+        DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    }
 }
 
 RegEnumValue(sRootKey, sKeyName, x64mode=true) {
@@ -3757,22 +3765,25 @@ RegEnumValue(sRootKey, sKeyName, x64mode=true) {
     if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
         throw Error("Failed to open registry key.")
     }
-    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    try {
+        local lpcMaxValueNameLen := 0
+        DllCall("Advapi32.dll\RegQueryInfoKey", "ptr", hKey, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "uint*", &lpcMaxValueNameLen, "ptr", 0, "ptr", 0, "ptr", 0)
 
-    local lpcMaxValueNameLen := 0
-    DllCall("Advapi32.dll\RegQueryInfoKey", "ptr", hKey, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "uint*", &lpcMaxValueNameLen, "ptr", 0, "ptr", 0, "ptr", 0)
+        local names := []
+        local dwIndex := 0
+        local lpName := Buffer((lpcMaxValueNameLen + 1) * (A_IsUnicode ? 2 : 1))
 
-    local names := []
-    local dwIndex := 0
-    local lpName := Buffer((lpcMaxValueNameLen + 1) * (A_IsUnicode ? 2 : 1))
+        while DllCall("Advapi32.dll\RegEnumValue", "ptr", hKey, "uint", dwIndex, "wstr", lpName, "uint*", lpcMaxValueNameLen + 1, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0) == 0 {
+            names.Push(StrGet(lpName))
+            dwIndex++
+        }
 
-    while DllCall("Advapi32.dll\RegEnumValue", "ptr", hKey, "uint", dwIndex, "wstr", lpName, "uint*", lpcMaxValueNameLen + 1, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0) == 0 {
-        names.Push(StrGet(lpName))
-        dwIndex++
+        names.Sort("CL")
+        return names
     }
-
-    names.Sort("CL")
-    return names
+    finally {
+        DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
+    }
 }
 
 ; ###########################################
