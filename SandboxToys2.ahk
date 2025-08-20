@@ -416,6 +416,101 @@ class GuiManager
             executeShortcut(box, filePath)
         }
 
+        HideSelected(*)
+        {
+            local row := 0, Srows := []
+            while row := LV_GetNext(row, "S")
+                Srows.Push(row)
+
+            Loop Srows.Length
+                LV_Delete(Srows[Srows.Length - A_Index + 1])
+        }
+
+        CurrentFileSaveTo(*)
+        {
+            local row := LV_GetNext(0, "F")
+            if (!row) return
+
+            LV_GetText(&filePath, row, 1)
+            LV_GetText(&fileName, row, 2)
+            static DefaultFolder := A_Desktop
+            local filename := FileSelect("S16", DefaultFolder . "\" . fileName, "Copy file to...")
+            if (filename == "") return
+
+            FileCopy(filePath, filename, true)
+            SplitPath(filename, , &DefaultFolder)
+        }
+
+        OpenContainer(sandboxed)
+        {
+            local row := LV_GetNext(0, "F")
+            if (!row) return
+
+            LV_GetText(&filePath, row, 1)
+            SplitPath(filePath, , &dir)
+            if (sandboxed)
+                Run(Globals.start . " /box:" . box . " """ . dir . """")
+            else
+                Run(dir)
+        }
+
+        RegistrySaveAsReg(*)
+        {
+            if (numOfCheckedFiles() == 0) { SoundBeep(); return }
+            static DefaultFolder := A_Desktop
+            local filename := FileSelect("S16", DefaultFolder . "\box " . box . ".reg", "Save checkmarked as REG file", "*.reg")
+            if (filename == "") return
+            SplitPath(filename, , &DefaultFolder)
+
+            local run_pid := InitializeBox(box)
+            local out := "REGEDIT4`n"
+            local row := 0
+            while row := LV_GetNext(row, "Checked")
+            {
+                LV_GetText(&key, row, 1)
+                LV_GetText(&type, row, 2)
+                LV_GetText(&valName, row, 4)
+                LV_GetText(&valData, row, 5)
+
+                if (A_Index == 1)
+                    out .= "`n[" . key . "]`n"
+
+                if valName == "@"
+                    out .= "@="
+                else
+                    out .= """" . valName . """="
+
+                if type == "REG_SZ"
+                    out .= """" . valData . """`n"
+                else if type == "REG_DWORD"
+                    out .= "dword:" . dec2hex(valData, 8) . "`n"
+                ; TODO: Add other REG types
+            }
+            ReleaseBox(run_pid)
+            FileDelete(filename)
+            FileAppend(out, filename)
+        }
+
+        CurrentCopyToClipboard(*)
+        {
+            local row := LV_GetNext(0, "F")
+            if (!row) return
+            LV_GetText(&key, row, 1)
+            A_Clipboard := key
+        }
+
+        CurrentOpenRegEdit(*)
+        {
+            local row := LV_GetNext(0, "F")
+            if (!row) return
+            LV_GetText(&key, row, 1)
+
+            local run_pid := InitializeBox(box)
+            try RegWrite(key, "REG_SZ", "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "LastKey")
+            RunWait(Globals.regeditImg)
+            ReleaseBox(run_pid)
+        }
+
         FilesToStartMenuOrDesktop(where)
         {
             if (numOfCheckedFiles() == 0) { SoundBeep(); return }
@@ -491,7 +586,7 @@ class GuiManager
             editMenu.Add("Add Selected &Files to Ignore List", LVIgnoreEntry.Bind("files"))
             editMenu.Add("Add Selected &Dirs to Ignore List", LVIgnoreEntry.Bind("dirs"))
 
-            popupMenu.Add("Copy To...", (*) => MsgBox("Not implemented"))
+            popupMenu.Add("Copy To...", CurrentFileSaveTo)
             popupMenu.Add("Open in Sandbox", CurrentFileRun)
             popupMenu.Add()
             popupMenu.Add("Add File to Ignore List", LVIgnoreEntry.Bind("files"))
@@ -764,7 +859,8 @@ class MenuManager
             if (this.menuCommands.Has(menuObj.Name . "," . label))
                 label .= " (2)"
 
-            menuObj.Add(label, this.RunProgramMenuHandler.Bind(this))
+            local handler := (box == "") ? RunUserToolMenuHandler : this.RunProgramMenuHandler.Bind(this)
+            menuObj.Add(label, handler)
             setIconFromSandboxedShortcut(box, exefile, menuObj, label, Settings.smalliconsize)
             this.menuCommands.Set(menuObj.Name . "," . label, exefile)
         }
@@ -2236,6 +2332,109 @@ NewShortcutMenuHandler(ItemName, ItemPos, MyMenu)
 
     ShortcutManager.NewShortcut(box, file)
     SplitPath(file, , &DefaultShortcutFolder)
+}
+
+hex2dec(hex)
+{
+    if SubStr(hex, 1, 2) != "0x"
+        hex := "0x" . hex
+    return Integer(hex)
+}
+
+dec2hex(dec, minlength := 2)
+{
+    hex := Format("{:H}", dec)
+    if Mod(StrLen(hex), 2) != 0
+        hex := "0" . hex
+    while StrLen(hex) < minlength
+        hex := "0" . hex
+    return hex
+}
+
+qword2hex(qword)
+{
+    if (qword < 0)
+    {
+        qword := (qword * -1) - 1
+        local dec1 := 0xFFFFFFFF - (qword & 0xFFFFFFFF)
+        local dec2 := 0xFFFFFFFF - (qword >> 32)
+        local hex1 := Format("{:08X}", dec1)
+        local hex2 := Format("{:08X}", dec2)
+        local hex := hex2 . hex1
+    }
+    else
+    {
+        hex := Format("{:016X}", qword)
+    }
+
+    local out := ""
+    Loop 8
+    {
+        out .= SubStr(hex, (A_Index - 1) * 2 + 1, 2) . ","
+    }
+    return RTrim(out, ",")
+}
+
+hexstr2hexstrcomas(hex)
+{
+    local out := ""
+    Loop StrLen(hex)
+    {
+        out .= SubStr(hex, A_Index, 1)
+        if Mod(A_Index, 2) == 0
+            out .= ","
+    }
+    return RTrim(out, ",")
+}
+
+hexstr2str(hexstr)
+{
+    local str := ""
+    Loop (StrLen(hexstr) / 2)
+        str .= Chr("0x" . SubStr(hexstr, (A_Index - 1) * 2 + 1, 2))
+    return str
+}
+
+str2hexstr(str, replacenlwithzero := false)
+{
+    local out := ""
+    Loop Parse, str
+    {
+        local h := Format("{:X}", Asc(A_LoopField))
+        if (replacenlwithzero && h == "a")
+            out .= "00,"
+        else
+        {
+            if (StrLen(h) == 1)
+                out .= "0" . h . ","
+            else
+                out .= h . ","
+        }
+    }
+    out .= "00"
+    return out
+}
+
+RunUserToolMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    ; This handler needs access to the menuCommands map from the MenuManager instance.
+    ; This is a design flaw of using global handlers with class-based data.
+    ; TODO: Refactor menuManager to be a singleton or pass its instance to handlers.
+    MsgBox("User Tools are not fully implemented in this version due to a data access issue.", Globals.title, 48)
+}
+
+CmdLineHelp()
+{
+    local msg := ""
+    msg .= Globals.title . "`n`n"
+    msg .= "SandboxToys2 Command Line usage:`n`n"
+    msg .= "> SandboxToys2 [/box:boxname]`n"
+    msg .= "Without arguments, SandboxToys2 opens its main menu.`n`n"
+    msg .= "> SandboxToys2 [/box:boxname] /tray`n"
+    msg .= "Stays resident in the tray.`n`n"
+    msg .= "> SandboxToys2 [/box:boxname] ""existing file, folder or shortcut""`n"
+    msg .= "Creates a new sandboxed shortcut on the desktop."
+    MsgBox(msg, Globals.title, 64)
 }
 
 SExploreMenuHandler(ItemName, ItemPos, MyMenu)
