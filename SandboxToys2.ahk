@@ -450,50 +450,46 @@ BuildMainMenu(ItemName, ItemPos, MyMenu)
             if (seperatedstartmenus) {
                 ; get shortcut files from the All Users StartMenu (top section)
                 tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu"
-                topicons := getFilenames(tmp1, 0)
-                topicons := Trim(topicons, A_nl)
-                Sort(topicons, "CL D`n")
-                if (topicons) {
-                    numtopicons := addCmdsToMenu(box, "ST2StartMenuAU", topicons)
+                topicons_arr := getFilenames(tmp1, 0)
+                if (topicons_arr.Length > 0) {
+                    addCmdsToMenu(box, menus[box . "_ST2StartMenuAU"], topicons_arr)
                     menus[box . "_ST2MenuBox"].Add("Start Menu (all users)", menus[box . "_ST2StartMenuAU"])
                     setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (all users)", shell32, 20, largeiconsize)
                     added_menus := 1
                 }
                 ; and from the Programs section
                 tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs"
-                files1 := getFilenames(tmp1, 1)
-                if (files1 && topicons)
+                files1_arr := getFilenames(tmp1, 1)
+                if (files1_arr.Length > 0 && topicons_arr.Length > 0)
                     menus[box . "_ST2StartMenuAU"].Add()
                 menunum := 0
                 numicons := buildProgramsMenu1(box, "ST2StartMenuAU", tmp1)
                 if (numicons)
                     added_menus := 1
-                if (topicons == "" && numicons > 0) {
+                if (topicons_arr.Length == 0 && numicons > 0) {
                     menus[box . "_ST2MenuBox"].Add("Start Menu (all users)", menus[box . "_ST2StartMenuAU"])
                     setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (all users)", shell32, 20, largeiconsize)
                 }
 
                 ; get shortcut files from the Current User StartMenu (top section)
                 tmp1 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
-                topicons := getFilenames(tmp1, 0)
-                topicons := Trim(topicons, A_nl)
-                Sort(topicons, "CL D`n")
-                if (topicons) {
-                    numtopicons := addCmdsToMenu(box, "ST2StartMenuCU", topicons)
+                topicons_arr := getFilenames(tmp1, 0)
+                if (topicons_arr.Length > 0) {
+                    addCmdsToMenu(box, menus[box . "_ST2StartMenuCU"], topicons_arr)
                     menus[box . "_ST2MenuBox"].Add("Start Menu (current user)", menus[box . "_ST2StartMenuCU"])
                     setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (current user)", shell32, 20, largeiconsize)
                     added_menus := 1
                 }
                 ; and from the Programs section
                 tmp1 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
-                files1 := getFilenames(tmp1, 1)
-                if (files1 && topicons)
+                files1_arr := getFilenames(tmp1, 1)
+                if (files1_arr.Length > 0 && topicons_arr.Length > 0)
                     menus[box . "_ST2StartMenuCU"].Add()
                 menunum := 0
                 numicons := buildProgramsMenu1(box, "ST2StartMenuCU", tmp1)
                 if (numicons)
                     added_menus := 1
-                if (topicons == "" && numicons > 0) {
+                if (topicons_arr.Length == 0 && numicons > 0) {
                     menus[box . "_ST2MenuBox"].Add("Start Menu (current user)", menus[box . "_ST2StartMenuCU"])
                     setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu (current user)", shell32, 20, largeiconsize)
                 }
@@ -519,40 +515,44 @@ BuildMainMenu(ItemName, ItemPos, MyMenu)
             } else {
                 ; get shortcut files from the StartMenu (top section)
                 tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu"
-                files1 := getFilenames(tmp1, 0)
+                files1_arr := getFilenames(tmp1, 0)
                 tmp2 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
-                files2 := getFilenames(tmp2, 0)
-                topicons := files1 . "`n" . files2
-                topicons := Trim(topicons, A_nl)
-                Sort(topicons, "CL D`n")
-                if (topicons) {
-                    numtopicons := addCmdsToMenu(box, "ST2StartMenu", topicons)
+                files2_arr := getFilenames(tmp2, 0)
+                topicons_arr := []
+                for _, f in files1_arr
+                    topicons_arr.Push(f)
+                for _, f in files2_arr
+                    topicons_arr.Push(f)
+                topicons_arr.Sort("CL")
+
+                if (topicons_arr.Length > 0) {
+                    addCmdsToMenu(box, menus[box . "_ST2StartMenu"], topicons_arr)
                     menus[box . "_ST2MenuBox"].Add("Start Menu", menus[box . "_ST2StartMenu"])
                     setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu", shell32, 20, largeiconsize)
                     added_menus := 1
                 }
                 ; and from the Programs section
                 tmp1 := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs"
-                files1 := getFilenames(tmp1, 1)
+                files1_arr := getFilenames(tmp1, 1)
                 tmp2 := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
-                files2 := getFilenames(tmp2, 1)
-                if ((files1 || files2) && topicons)
+                files2_arr := getFilenames(tmp2, 1)
+                if ((files1_arr.Length > 0 || files2_arr.Length > 0) && topicons_arr.Length > 0)
                     menus[box . "_ST2StartMenu"].Add()
                 menunum := 0
                 numicons := buildProgramsMenu2(box, "ST2StartMenu", tmp1, tmp2)
                 if (numicons)
                     added_menus := 1
-                if (topicons == "" && numicons > 0) {
+                if (topicons_arr.Length == 0 && numicons > 0) {
                     menus[box . "_ST2MenuBox"].Add("Start Menu", menus[box . "_ST2StartMenu"])
                     setMenuIcon(menus[box . "_ST2MenuBox"], "Start Menu", shell32, 20, largeiconsize)
                 }
 
                 ; process Desktop
                 tmp1 := boxpath . "\drive\" . public_dir . "\Desktop"
-                files1 := getFilenames(tmp1, 1)
+                files1_arr := getFilenames(tmp1, 1)
                 tmp2 := boxpath . "\user\current\Desktop"
-                files2 := getFilenames(tmp2, 1)
-                if ((files1 || files2) && topicons)
+                files2_arr := getFilenames(tmp2, 1)
+                if ((files1_arr.Length > 0 || files2_arr.Length > 0) && topicons_arr.Length > 0)
                     menus[box . "_ST2MenuBox"].Add()
                 menunum := 0
                 m := buildProgramsMenu2(box, "ST2Desktop", tmp1, tmp2)
@@ -885,9 +885,8 @@ getFilenames(directory, includeFolders)
     }
     if (files.Length > 0) {
         files.Sort("CL")
-        return files.Join("`n")
     }
-    Return ""
+    Return files
 }
 
 ; Build a menu with the files from a specific directory
@@ -937,7 +936,6 @@ buildProgramsMenu1(box, menuname, bpath)
 buildProgramsMenu2(box, menuname, path1, path2)
 {
     global smalliconsize, menunum, menus, shell32
-    A_Return := "`n"
 
     if (menunum > 0)
         thismenuname := menuname . "_" . menunum
@@ -951,25 +949,31 @@ buildProgramsMenu2(box, menuname, path1, path2)
     numfiles := 0
 
     ; process files
-    menufiles1 := getFilenames(path1, 0)
-    menufiles2 := getFilenames(path2, 0)
-    menufiles := menufiles1 . "`n" . menufiles2
-    menufiles := Trim(menufiles, A_Return)
-    if (menufiles) {
-        local file_array := StrSplit(menufiles, "`n")
-        file_array.Sort("CL")
-        menufiles := file_array.Join("`n")
-        numfiles += addCmdsToMenu(box, thismenu, menufiles)
+    menufiles1_arr := getFilenames(path1, 0)
+    menufiles2_arr := getFilenames(path2, 0)
+    menufiles_arr := []
+    for _, f in menufiles1_arr
+        menufiles_arr.Push(f)
+    for _, f in menufiles2_arr
+        menufiles_arr.Push(f)
+
+    if (menufiles_arr.Length > 0) {
+        menufiles_arr.Sort("CL")
+        numfiles += addCmdsToMenu(box, thismenu, menufiles_arr)
     }
 
     ; recurse
-    menudirs1 := getFilenames(path1, 2)
-    menudirs2 := getFilenames(path2, 2)
-    menudirsStr := menudirs1 . "`n" . menudirs2
-    menudirsStr := Trim(menudirsStr, A_Return)
-    if (menudirsStr) {
+    menudirs1_arr := getFilenames(path1, 2)
+    menudirs2_arr := getFilenames(path2, 2)
+    menudirs_arr := []
+    for _, d in menudirs1_arr
+        menudirs_arr.Push(d)
+    for _, d in menudirs2_arr
+        menudirs_arr.Push(d)
+
+    if (menudirs_arr.Length > 0) {
         dirMap := Map()
-        for _, entry in StrSplit(menudirsStr, "`n")
+        for _, entry in menudirs_arr
         {
             idx := InStr(entry, ":")
             label := SubStr(entry, 1, idx-1)
@@ -1524,11 +1528,11 @@ boxPathToStdPath(box, bpath)
 
 ; Add sandboxed commands in the main menu.
 ; filelist is a list of filenames seperated by newline characters.
-addCmdsToMenu(box, menuObj, fileslist)
+addCmdsToMenu(box, menuObj, filesArray)
 {
     global menucommands, smalliconsize
     numentries := 0
-    for _, entry in StrSplit(fileslist, "`n")
+    for _, entry in filesArray
     {
         idx := InStr(entry, ":")
         label := SubStr(entry, 1, idx-1)
