@@ -1,6 +1,7 @@
 A_Persistent := true
 A_SingleInstance := "Off"
 
+; Represents a single Sandboxie box and its associated properties.
 class Sandbox
 {
     __New(name, fileRootPath, keyRootPath, dropAdminRights, enabled, neverDelete, useFileImage, useRamDisk)
@@ -26,6 +27,8 @@ class Sandbox
     }
 }
 
+; Holds global variables, constants, and application-wide state.
+; Initializes critical paths and settings on startup.
 class Globals
 {
     static version := "3.0.0.0"
@@ -37,6 +40,7 @@ class Globals
 
     static init()
     {
+        try {
         SplitPath(A_ScriptName, , , , &this.nameNoExt)
         this.title := "SandboxToys v" . this.version . " by r0lZ updated by blap"
         if (this.nameNoExt != "SandboxToys")
@@ -166,6 +170,12 @@ class Globals
         this.sandboxes_path := IniRead(this.ini, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
         this.sandboxes_path := expandEnvVars(this.sandboxes_path)
         this.sandboxes_array := this.getSandboxesArray(this.ini)
+        }
+        catch e
+        {
+            MsgBox("A critical error occurred during script initialization: `n" . e.Message, "SandboxToys Error", 16)
+            ExitApp()
+        }
     }
 
     static getSandboxByName(name)
@@ -217,6 +227,7 @@ class Globals
     }
 }
 
+; Manages user-configurable settings stored in the script's INI file.
 class Settings
 {
     static sbtini, regconfig, ignorelist, usertoolsdir
@@ -256,14 +267,19 @@ class Settings
 
         if (FileExist(this.sbtini))
         {
-            this.largeiconsize       := IniRead(this.sbtini, "AutoConfig", "LargeIconSize", this.largeiconsize)
-            this.smalliconsize       := IniRead(this.sbtini, "AutoConfig", "SmallIconSize", this.smalliconsize)
-            this.seperatedstartmenus := IniRead(this.sbtini, "AutoConfig", "SeperatedStartMenus", this.seperatedstartmenus)
-            this.includeboxnames     := IniRead(this.sbtini, "AutoConfig", "IncludeBoxNames", this.includeboxnames)
-            this.listemptyitems      := IniRead(this.sbtini, "AutoConfig", "ListEmptyItems", this.listemptyitems)
-            this.trayiconfile        := IniRead(this.sbtini, "UserConfig", "TrayIconFile", this.trayiconfile)
-            this.trayiconnumber      := IniRead(this.sbtini, "UserConfig", "TrayIconNumber", this.trayiconnumber)
-            this.sbcommandpromptdir  := IniRead(this.sbtini, "UserConfig", "SandboxedCommandPromptDir", this.sbcommandpromptdir)
+            try {
+                this.largeiconsize       := IniRead(this.sbtini, "AutoConfig", "LargeIconSize", this.largeiconsize)
+                this.smalliconsize       := IniRead(this.sbtini, "AutoConfig", "SmallIconSize", this.smalliconsize)
+                this.seperatedstartmenus := IniRead(this.sbtini, "AutoConfig", "SeperatedStartMenus", this.seperatedstartmenus)
+                this.includeboxnames     := IniRead(this.sbtini, "AutoConfig", "IncludeBoxNames", this.includeboxnames)
+                this.listemptyitems      := IniRead(this.sbtini, "AutoConfig", "ListEmptyItems", this.listemptyitems)
+                this.trayiconfile        := IniRead(this.sbtini, "UserConfig", "TrayIconFile", this.trayiconfile)
+                this.trayiconnumber      := IniRead(this.sbtini, "UserConfig", "TrayIconNumber", this.trayiconnumber)
+                this.sbcommandpromptdir  := IniRead(this.sbtini, "UserConfig", "SandboxedCommandPromptDir", this.sbcommandpromptdir)
+            }
+            catch {
+                MsgBox("Error reading settings from " . this.sbtini . ". Using default values.", Globals.title, 48)
+            }
         }
         else
         {
@@ -297,8 +313,12 @@ class Settings
     }
 }
 
+; Manages the creation and event handling for the script's GUI windows,
+; primarily the ListView for displaying files, registry keys, and autostart programs.
 class GuiManager
 {
+    ; Creates and displays a generic ListView GUI for showing files or registry keys.
+    ; It dynamically builds the menus and event handlers for the window.
     static ListGUI(title, box, type, data)
     {
         local fileMenu := Menu()
@@ -703,6 +723,7 @@ class GuiManager
     }
 }
 
+; Encapsulates all logic related to creating and managing file shortcuts.
 class ShortcutManager
 {
     static writeUnsandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState)
@@ -817,6 +838,8 @@ ListAutostartsMenuHandler(ItemName, ItemPos, MyMenu)
         MsgBox("No autostart programs found in the registry of box '" . box . "'.", Globals.title, "64|IconInfo")
 }
 
+; Responsible for building the entire dynamic menu structure of the application.
+; It scans sandbox folders and creates the main menu and all sub-menus.
 class MenuManager
 {
     __New()
@@ -997,6 +1020,9 @@ class MenuManager
 
     BuildMainMenu(traymode, singleboxmode, singlebox)
     {
+        ; This is the main method for constructing the entire menu structure.
+        ; It iterates through all available sandboxes and builds a nested menu
+        ; for each one, including Start Menu, Desktop, and Tools sub-menus.
         local box, boxpath, boxexist, dropadminrights, benabled, boxlabel
         local public, added_menus, public_dir, idx, tmp1, topicons, numtopicons, files1, menunum, numicons, m, files2
 
@@ -1552,6 +1578,9 @@ ListFiles(boxName, compareFile := "")
     return fileList
 }
 
+; This function forces a sandbox to become active by launching a hidden
+; run_dialog process. This makes Sandboxie load the sandboxed registry hive
+; into the live HKEY_USERS section, allowing it to be read by standard commands.
 InitializeBox(boxName)
 {
     local sandbox := Globals.getSandboxByName(boxName)
@@ -1583,6 +1612,8 @@ ReleaseBox(run_pid)
     return
 }
 
+; Gathers all registry keys and values from a given sandbox.
+; It uses the InitializeBox/ReleaseBox trick to read the live hive.
 ListReg(boxName, compareFile := "")
 {
     ReadIgnoredConfig("reg")
