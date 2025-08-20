@@ -165,7 +165,55 @@ class Globals
         }
         this.sandboxes_path := IniRead(this.ini, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
         this.sandboxes_path := expandEnvVars(this.sandboxes_path)
-        this.sandboxes_array := getSandboxesArray(this.ini)
+        this.sandboxes_array := this.getSandboxesArray(this.ini)
+    }
+
+    static getSandboxByName(name)
+    {
+        for _, sandbox in this.sandboxes_array
+        {
+            if (sandbox.name == name)
+                return sandbox
+        }
+        return ""
+    }
+
+    static getSandboxesArray(ini)
+    {
+        local sandboxes_array := []
+        local sandboxes_path := IniRead(ini, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
+        local sandboxeskey_path := IniRead(ini, "GlobalSettings", "KeyRootPath", "\REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%")
+
+        local old_encoding := A_FileEncoding
+        FileEncoding("UTF-16")
+
+        local sections := ""
+        try sections := FileRead(ini)
+        local boxes := []
+        for _, section in StrSplit(sections, "`n")
+        {
+            if (RegExMatch(section, "\[([^\]]+)\]", &m) && m[1] != "GlobalSettings" && !InStr(m[1], "UserSettings_") && !InStr(m[1], "Template"))
+            {
+                boxes.Push(m[1])
+            }
+        }
+        boxes.Sort("CL")
+        FileEncoding(old_encoding)
+
+        for _, boxName in boxes
+        {
+            local bfilerootpath := IniRead(ini, boxName, "FileRootPath", sandboxes_path)
+            local bkeyrootpath := IniRead(ini, boxName, "KeyRootPath", sandboxeskey_path)
+
+            local dropAdminRights := IniRead(ini, boxName, "DropAdminRights", "n") == "y"
+            local enabled := IniRead(ini, boxName, "Enabled", "y") == "y"
+            local neverDelete := IniRead(ini, boxName, "NeverDelete", "n") == "y"
+            local useFileImage := IniRead(ini, boxName, "UseFileImage", "n") == "y"
+            local useRamDisk := IniRead(ini, boxName, "UseRamDisk", "n") == "y"
+
+            sandboxes_array.Push(Sandbox(boxName, bfilerootpath, bkeyrootpath, dropAdminRights, enabled, neverDelete, useFileImage, useRamDisk))
+        }
+        return sandboxes_array
     }
 }
 
@@ -368,9 +416,78 @@ class GuiManager
             executeShortcut(box, filePath)
         }
 
+        FilesToStartMenuOrDesktop(where)
+        {
+            if (numOfCheckedFiles() == 0) { SoundBeep(); return }
+            local row := 0
+            while row := LV_GetNext(row, "Checked")
+                CurrentFileToStartMenuOrDesktop(row, where)
+        }
+
+        CurrentFileToStartMenuOrDesktop(row, where)
+        {
+            if (!row) row := LV_GetNext(0, "F")
+            if (!row) return
+
+            LV_GetText(&filePath, row, 1)
+            SplitPath(filePath, &fileName, &dir)
+            SplitPath(fileName, &fileNameNoExt)
+
+            local sandbox := getSandboxByName(box)
+            local shortcutPath := (where == "startmenu") ? sandbox.bpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu" : sandbox.bpath . "\user\current\Desktop"
+            local shortcutFile := shortcutPath . "\" . fileNameNoExt . ".lnk"
+
+            try DirCreate(shortcutPath)
+            FileCreateShortcut(filePath, shortcutFile, dir, "", "Shortcut created by SandboxToys2")
+        }
+
+        FilesShortcut(*)
+        {
+            if (numOfCheckedFiles() == 0) { SoundBeep(); return }
+            local row := 0
+            while row := LV_GetNext(row, "Checked")
+                CurrentFileShortcut(row)
+        }
+
+        CurrentFileShortcut(row)
+        {
+            if (!row) row := LV_GetNext(0, "F")
+            if (!row) return
+            LV_GetText(&filePath, row, 1)
+            createDesktopShortcutFromLnk(box, filePath, "", 1) ; Simplified icon logic
+        }
+
+        SaveAsText(*)
+        {
+            if (numOfCheckedFiles() == 0) { SoundBeep(); return }
+            local defaultfilename := (type == "files") ? "Files in sandbox " . box . ".txt" : "Registry of sandbox " . box . ".txt"
+            local filename := FileSelect("S16", A_Desktop . "\" . defaultfilename, "Save Checkmarked as CSV Text", "Text files (*.txt)")
+            if (filename == "") return
+
+            local csv_data := ""
+            local row := 0
+            while row := LV_GetNext(row, "Checked")
+            {
+                local line := ""
+                Loop LV_GetCount("Column")
+                {
+                    LV_GetText(&col_text, row, A_Index)
+                    line .= """" . col_text . ""","
+                }
+                csv_data .= RTrim(line, ",") . "`r`n"
+            }
+            FileDelete(filename)
+            FileAppend(csv_data, filename)
+        }
+
         if (type == "files")
         {
             fileMenu.Add("&Copy Checkmarked Files To...", FilesSaveTo)
+            fileMenu.Add("Save Checkmarked Entries as CSV &Text", SaveAsText)
+            fileMenu.Add()
+            fileMenu.Add("Add Shortcuts to Checkmarked Files to Sandboxed Start &Menu", FilesToStartMenuOrDesktop.Bind("startmenu"))
+            fileMenu.Add("Add Shortcuts to Checkmarked Files to Sandboxed &Desktop", FilesToStartMenuOrDesktop.Bind("desktop"))
+            fileMenu.Add("Create Sandboxed &Shortcuts to Checkmarked Files on your Real Desktop", FilesShortcut)
             editMenu.Add("Add Selected &Files to Ignore List", LVIgnoreEntry.Bind("files"))
             editMenu.Add("Add Selected &Dirs to Ignore List", LVIgnoreEntry.Bind("dirs"))
 
@@ -488,6 +605,109 @@ class GuiManager
     AutostartGui_Close:
         Gui, AutostartGui:Destroy
         return
+    }
+}
+
+class ShortcutManager
+{
+    static writeUnsandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState)
+    {
+        local linkFile := A_Desktop . "\" . name . ".lnk"
+        if (FileExist(linkFile))
+        {
+            local result := MsgBox("Shortcut '" . name . "' already exists on your desktop!`n`nOverwrite it?", Globals.title, "4|IconQuestion")
+            if (result == "No")
+                return
+        }
+        FileCreateShortcut(target, linkFile, dir, args, description, iconFile, , iconNum, runState)
+    }
+
+    static writeSandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState, box)
+    {
+        if (Settings.includeboxnames)
+        {
+            if (box == "__ask__")
+                name := "[#ask box] " . name
+            else
+                name := "[#" . box . "] " . name
+        }
+        else
+            name := "[#] " . name
+
+        local linkFile := A_Desktop . "\" . name . ".lnk"
+
+        if (FileExist(linkFile))
+        {
+            local result := MsgBox("Shortcut '" . name . "' already exists on your desktop!`n`nOverwrite it?", Globals.title, "4|IconQuestion")
+            if (result == "No")
+                return
+        }
+
+        FileCreateShortcut(target, linkFile, dir, args, description, iconFile, , iconNum, runState)
+    }
+
+    static createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
+    {
+        local outTarget, outDir, outArgs, outDescription, outRunState, outNameNoExt, outExtension, file
+
+        SplitPath(shortcut, &outNameNoExt, &outDir, &outExtension)
+
+        if (box == "") {
+            if (outExtension == "lnk") {
+                local dest := A_Desktop . "\" . outNameNoExt . ".lnk"
+                FileCopy(shortcut, dest, true)
+            } else {
+                this.writeUnsandboxedShortcutFileToDesktop(shortcut, outNameNoExt, outDir, "", "SandboxToys User Tool", "", "", 1)
+            }
+            return
+        }
+
+        if (outExtension == "lnk") {
+            local sc := FileGetShortcut(shortcut)
+            outTarget := sc.Target
+            outDir := sc.Dir
+            outArgs := sc.Args
+            outDescription := sc.Desc
+            outRunState := sc.RunState
+            outArgs := "/box:" . box . " """ . outTarget . """ " . outArgs
+            if (!outDir)
+                outDir := boxPathToStdPath(box, outTarget)
+            outDir := stdPathToBoxPath(box, outDir)
+            outDescription := "Run '" . outNameNoExt . "' in sandbox " . box . ".`n" . outDescription
+        } else {
+            file := boxPathToStdPath(box, shortcut)
+            outTarget := Globals.start
+            outArgs := "/box:" . box . " """ . file . """"
+            SplitPath(file, , &outDir)
+            outDescription := "Run '" . outNameNoExt . "' in sandbox " . box . "."
+            outRunState := 1
+        }
+
+        local iconNumToUse := iconnum == 0 ? 1 : iconnum
+        this.writeSandboxedShortcutFileToDesktop(outTarget, outNameNoExt, outDir, outArgs, outDescription, iconfile, iconNumToUse, outRunState, box)
+    }
+
+    static NewShortcut(box, file)
+    {
+        SplitPath(file, , &dir, &extension, &label)
+        if (!FileExist(dir))
+            dir := stdPathToBoxPath(box, dir)
+
+        local iconfile, iconnum
+        if (extension == "exe")
+        {
+            iconfile := file
+            iconnum := 1
+        }
+        else
+        {
+            ; Simplified icon logic for now. A full port is a future task.
+            iconfile := Globals.shell32
+            iconnum := 2
+        }
+
+        local tip := (box == "__ask__") ? "Launch '" . label . "' in any sandbox" : "Launch '" . label . "' in sandbox " . box
+        this.writeSandboxedShortcutFileToDesktop(Globals.start, label, dir, "/box:" . box . " """ . file . """", tip, iconfile, iconnum, 1, box)
     }
 }
 ListAutostartsMenuHandler(ItemName, ItemPos, MyMenu)
@@ -635,7 +855,7 @@ class MenuManager
 
         if GetKeyState("Control", "P") {
             ; TODO: Get icon info from a menuIcons map. For now, pass empty.
-            createDesktopShortcutFromLnk(box, shortcut, "", "")
+            ShortcutManager.createDesktopShortcutFromLnk(box, shortcut, "", "")
         } else if GetKeyState("Shift", "P") {
             SplitPath(shortcut, , &dir)
             Run(Globals.start . " /box:" . box . " """ . dir . """")
@@ -1095,12 +1315,12 @@ if (startupfile != "")
     }
     if (singleboxmode)
     {
-        NewShortcut(singlebox, startupfile)
+        ShortcutManager.NewShortcut(singlebox, startupfile)
         ExitApp
     }
     box := getSandboxName(Globals.sandboxes_array, "Target sandbox for shortcut:", true)
     if (box != "")
-        NewShortcut(box, startupfile)
+        ShortcutManager.NewShortcut(box, startupfile)
 
     ExitApp
 }
@@ -1187,20 +1407,10 @@ Return
 ; Functions
 ; ###################################################################################################
 
-getSandboxByName(name)
-{
-    for _, sandbox in Globals.sandboxes_array
-    {
-        if (sandbox.name == name)
-            return sandbox
-    }
-    return ""
-}
-
 ListFiles(boxName, compareFile := "")
 {
     ReadIgnoredConfig("files")
-    local sandbox := getSandboxByName(boxName)
+    local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
 
@@ -1248,7 +1458,7 @@ ListFiles(boxName, compareFile := "")
 
 InitializeBox(boxName)
 {
-    local sandbox := getSandboxByName(boxName)
+    local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return 0
 
@@ -1280,7 +1490,7 @@ ReleaseBox(run_pid)
 ListReg(boxName, compareFile := "")
 {
     ReadIgnoredConfig("reg")
-    local sandbox := getSandboxByName(boxName)
+    local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
 
@@ -1385,7 +1595,7 @@ MakeRegConfig(boxName, filename := "")
     if (filename == "")
         filename := Settings.regconfig
 
-    local sandbox := getSandboxByName(boxName)
+    local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return
 
@@ -1416,7 +1626,7 @@ MakeRegConfig(boxName, filename := "")
 
 MakeFilesConfig(boxName, filename)
 {
-    local sandbox := getSandboxByName(boxName)
+    local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return
 
@@ -1446,7 +1656,7 @@ MakeFilesConfig(boxName, filename)
 WatchRegMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
-    local sandbox := getSandboxByName(box)
+    local sandbox := Globals.getSandboxByName(box)
     if (!IsObject(sandbox)) return
 
     local comparefile := A_Temp . "\" . sandbox.RegStr_ . "_reg_compare.cfg"
@@ -1461,7 +1671,7 @@ WatchRegMenuHandler(ItemName, ItemPos, MyMenu)
 WatchFilesMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
-    local sandbox := getSandboxByName(box)
+    local sandbox := Globals.getSandboxByName(box)
     if (!IsObject(sandbox)) return
 
     local comparefile := A_Temp . "\" . sandbox.RegStr_ . "_files_compare.cfg"
@@ -1476,7 +1686,7 @@ WatchFilesMenuHandler(ItemName, ItemPos, MyMenu)
 WatchFilesRegMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
-    local sandbox := getSandboxByName(box)
+    local sandbox := Globals.getSandboxByName(box)
     if (!IsObject(sandbox)) return
 
     local comparefile_files := A_Temp . "\" . sandbox.RegStr_ . "_files_compare.cfg"
@@ -1514,7 +1724,7 @@ SearchAutostart(regpath, location, tick)
 
 ListAutostarts(boxName)
 {
-    local sandbox := getSandboxByName(boxName)
+    local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
 
@@ -1573,7 +1783,7 @@ expandEnvVars(str)
 
 stdPathToBoxPath(box, bpath)
 {
-    local sandbox := getSandboxByName(box)
+    local sandbox := Globals.getSandboxByName(box)
     if (!IsObject(sandbox)) return bpath
 
     local boxpath := sandbox.bpath
@@ -1606,7 +1816,7 @@ stdPathToBoxPath(box, bpath)
 
 boxPathToStdPath(box, bpath)
 {
-    local sandbox := getSandboxByName(box)
+    local sandbox := Globals.getSandboxByName(box)
     if (!IsObject(sandbox)) return bpath
 
     local boxpath := sandbox.bpath
@@ -1662,83 +1872,6 @@ executeShortcut(box, shortcut)
     SetWorkingDir(A_ScriptDir)
 }
 
-writeUnsandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState)
-{
-    local linkFile := A_Desktop . "\" . name . ".lnk"
-    if (FileExist(linkFile))
-    {
-        local result := MsgBox("Shortcut '" . name . "' already exists on your desktop!`n`nOverwrite it?", Globals.title, "4|IconQuestion")
-        if (result == "No")
-            return
-    }
-    FileCreateShortcut(target, linkFile, dir, args, description, iconFile, , iconNum, runState)
-}
-
-writeSandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState, box)
-{
-    if (Settings.includeboxnames)
-    {
-        if (box == "__ask__")
-            name := "[#ask box] " . name
-        else
-            name := "[#" . box . "] " . name
-    }
-    else
-        name := "[#] " . name
-
-    local linkFile := A_Desktop . "\" . name . ".lnk"
-
-    if (FileExist(linkFile))
-    {
-        local result := MsgBox("Shortcut '" . name . "' already exists on your desktop!`n`nOverwrite it?", Globals.title, "4|IconQuestion")
-        if (result == "No")
-            return
-    }
-
-    FileCreateShortcut(target, linkFile, dir, args, description, iconFile, , iconNum, runState)
-}
-
-createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
-{
-    local outTarget, outDir, outArgs, outDescription, outRunState, outNameNoExt, outExtension, file
-
-    SplitPath(shortcut, &outNameNoExt, &outDir, &outExtension)
-
-    if (box == "") {
-        if (outExtension == "lnk") {
-            local dest := A_Desktop . "\" . outNameNoExt . ".lnk"
-            FileCopy(shortcut, dest, true)
-        } else {
-            writeUnsandboxedShortcutFileToDesktop(shortcut, outNameNoExt, outDir, "", "SandboxToys User Tool", "", "", 1)
-        }
-        return
-    }
-
-    if (outExtension == "lnk") {
-        local sc := FileGetShortcut(shortcut)
-        outTarget := sc.Target
-        outDir := sc.Dir
-        outArgs := sc.Args
-        outDescription := sc.Desc
-        outRunState := sc.RunState
-        outArgs := "/box:" . box . " """ . outTarget . """ " . outArgs
-        if (!outDir)
-            outDir := boxPathToStdPath(box, outTarget)
-        outDir := stdPathToBoxPath(box, outDir)
-        outDescription := "Run '" . outNameNoExt . "' in sandbox " . box . ".`n" . outDescription
-    } else {
-        file := boxPathToStdPath(box, shortcut)
-        outTarget := Globals.start
-        outArgs := "/box:" . box . " """ . file . """"
-        SplitPath(file, , &outDir)
-        outDescription := "Run '" . outNameNoExt . "' in sandbox " . box . "."
-        outRunState := 1
-    }
-
-    local iconNumToUse := iconnum == 0 ? 1 : iconnum
-    writeSandboxedShortcutFileToDesktop(outTarget, outNameNoExt, outDir, outArgs, outDescription, iconfile, iconNumToUse, outRunState, box)
-}
-
 setMenuIcon(menuObj, item, iconfile, iconindex, largeiconsize)
 {
     try {
@@ -1787,7 +1920,7 @@ IndexOfIconResource_EnumIconResources(hModule, lpszType, lpszName, lParam)
 
 setIconFromSandboxedShortcut(box, shortcut, menuObj, label, iconsize)
 {
-    local sandbox := getSandboxByName(box)
+    local sandbox := Globals.getSandboxByName(box)
     if (!IsObject(sandbox)) return
 
     local bregstr_ := sandbox.RegStr_
@@ -1920,7 +2053,7 @@ TerminateMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P")
-        writeUnsandboxedShortcutFileToDesktop(Globals.start, "Terminate Programs in sandbox " . box, "", "/box:" . box . " /terminate", "Terminate all programs running in sandbox " . box, Globals.shell32, 220, 1)
+        ShortcutManager.writeUnsandboxedShortcutFileToDesktop(Globals.start, "Terminate Programs in sandbox " . box, "", "/box:" . box . " /terminate", "Terminate all programs running in sandbox " . box, Globals.shell32, 220, 1)
     else
         RunWait(Globals.start . " /box:" . box . " /terminate",, "UseErrorLevel")
 }
@@ -1929,7 +2062,7 @@ DeleteBoxMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P") {
-        writeUnsandboxedShortcutFileToDesktop(Globals.start, "! Delete sandbox " . box . " !", "", "/box:" . box . " delete_sandbox", "Deletes the sandbox " . box, Globals.shell32, 132, 1)
+        ShortcutManager.writeUnsandboxedShortcutFileToDesktop(Globals.start, "! Delete sandbox " . box . " !", "", "/box:" . box . " delete_sandbox", "Deletes the sandbox " . box, Globals.shell32, 132, 1)
         MsgBox("Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!", Globals.title, "48|IconExclamation")
     } else {
         if (MsgBox("Are you sure you want to delete the sandbox '" . box . "'?", Globals.title, "292|IconQuestion") == "No")
@@ -1944,7 +2077,7 @@ SCmdMenuHandler(ItemName, ItemPos, MyMenu)
     if GetKeyState("Control", "P")
     {
         local args := "/box:" . box . " " . A_ComSpec . " /k ""cd /d " . A_WinDir . "\"""
-        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxed Command Prompt", "", args, "Sandboxed Command Prompt in sandbox " . box, Globals.cmdRes, 1, 1, box)
+        ShortcutManager.writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxed Command Prompt", "", args, "Sandboxed Command Prompt in sandbox " . box, Globals.cmdRes, 1, 1, box)
     }
     else
     {
@@ -1962,7 +2095,7 @@ UCmdMenuHandler(ItemName, ItemPos, MyMenu)
     if GetKeyState("Control", "P")
     {
         local args := "/k ""cd /d """ . sandbox.bpath . """"""
-        writeUnsandboxedShortcutFileToDesktop(A_ComSpec, "Unsandboxed Command Prompt in sandbox " . box, sandbox.bpath, args, "Unsandboxed Command Prompt in sandbox " . box, Globals.cmdRes, 1, 1)
+        ShortcutManager.writeUnsandboxedShortcutFileToDesktop(A_ComSpec, "Unsandboxed Command Prompt in sandbox " . box, sandbox.bpath, args, "Unsandboxed Command Prompt in sandbox " . box, Globals.cmdRes, 1, 1)
     }
     else
         Run(A_ComSpec . " /k ""cd /d """ . sandbox.bpath . """""",, "UseErrorLevel")
@@ -1972,7 +2105,7 @@ RunDialogMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P")
-        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxie's Run dialog", "", "/box:" . box . " run_dialog", "Launch Sandboxie's Run Dialog in sandbox " . box, Globals.SbieAgentResMain, Globals.SbieAgentResMainId, 1, box)
+        ShortcutManager.writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxie's Run dialog", "", "/box:" . box . " run_dialog", "Launch Sandboxie's Run Dialog in sandbox " . box, Globals.SbieAgentResMain, Globals.SbieAgentResMainId, 1, box)
     else
         Run(Globals.start . " /box:" . box . " run_dialog",, "UseErrorLevel")
 }
@@ -1981,7 +2114,7 @@ StartMenuMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P")
-        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxie's Start Menu", "", "/box:" . box . " start_menu", "Launch Sandboxie's Start Menu in sandbox " . box, Globals.SbieAgentResMain, Globals.SbieAgentResMainId, 1, box)
+        ShortcutManager.writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxie's Start Menu", "", "/box:" . box . " start_menu", "Launch Sandboxie's Start Menu in sandbox " . box, Globals.SbieAgentResMain, Globals.SbieAgentResMainId, 1, box)
     else
         Run(Globals.start . " /box:" . box . " start_menu",, "UseErrorLevel")
 }
@@ -1990,7 +2123,7 @@ UninstallMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P")
-        writeSandboxedShortcutFileToDesktop(Globals.start, "Uninstall Programs", "", "/box:" . box . " appwiz.cpl", "Uninstall or installs programs in sandbox " . box, Globals.shell32, 22, 1, box)
+        ShortcutManager.writeSandboxedShortcutFileToDesktop(Globals.start, "Uninstall Programs", "", "/box:" . box . " appwiz.cpl", "Uninstall or installs programs in sandbox " . box, Globals.shell32, 22, 1, box)
     else
         RunWait(Globals.start . " /box:" . box . " appwiz.cpl",, "UseErrorLevel")
 }
@@ -1999,7 +2132,7 @@ SRegEditMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P")
-        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxed Registry Editor", "", "/box:" . box . " " . Globals.regeditImg, "Launch RegEdit in sandbox " . box, Globals.regeditRes, 1, 1, box)
+        ShortcutManager.writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxed Registry Editor", "", "/box:" . box . " " . Globals.regeditImg, "Launch RegEdit in sandbox " . box, Globals.regeditRes, 1, 1, box)
     else
         Run(Globals.start . " /box:" . box . " " . Globals.regeditImg, , "UseErrorLevel")
 }
@@ -2021,44 +2154,6 @@ URegEditMenuHandler(ItemName, ItemPos, MyMenu)
         RunWait(Globals.regeditImg)
         ReleaseBox(run_pid)
     }
-}
-
-getSandboxesArray(ini)
-{
-    local sandboxes_array := []
-    local sandboxes_path := IniRead(ini, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
-    local sandboxeskey_path := IniRead(ini, "GlobalSettings", "KeyRootPath", "\REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%")
-
-    local old_encoding := A_FileEncoding
-    FileEncoding("UTF-16")
-
-    local sections := ""
-    try sections := FileRead(ini)
-    local boxes := []
-    for _, section in StrSplit(sections, "`n")
-    {
-        if (RegExMatch(section, "\[([^\]]+)\]", &m) && m[1] != "GlobalSettings" && !InStr(m[1], "UserSettings_") && !InStr(m[1], "Template"))
-        {
-            boxes.Push(m[1])
-        }
-    }
-    boxes.Sort("CL")
-    FileEncoding(old_encoding)
-
-    for _, boxName in boxes
-    {
-        local bfilerootpath := IniRead(ini, boxName, "FileRootPath", sandboxes_path)
-        local bkeyrootpath := IniRead(ini, boxName, "KeyRootPath", sandboxeskey_path)
-
-        local dropAdminRights := IniRead(ini, boxName, "DropAdminRights", "n") == "y"
-        local enabled := IniRead(ini, boxName, "Enabled", "y") == "y"
-        local neverDelete := IniRead(ini, boxName, "NeverDelete", "n") == "y"
-        local useFileImage := IniRead(ini, boxName, "UseFileImage", "n") == "y"
-        local useRamDisk := IniRead(ini, boxName, "UseRamDisk", "n") == "y"
-
-        sandboxes_array.Push(Sandbox(boxName, bfilerootpath, bkeyrootpath, dropAdminRights, enabled, neverDelete, useFileImage, useRamDisk))
-    }
-    return sandboxes_array
 }
 
 getBoxFromMenu()
@@ -2139,7 +2234,7 @@ NewShortcutMenuHandler(ItemName, ItemPos, MyMenu)
     if (file == "")
         return
 
-    NewShortcut(box, file)
+    ShortcutManager.NewShortcut(box, file)
     SplitPath(file, , &DefaultShortcutFolder)
 }
 
@@ -2147,7 +2242,7 @@ SExploreMenuHandler(ItemName, ItemPos, MyMenu)
 {
     local box := getBoxFromMenu()
     if GetKeyState("Control", "P")
-        writeSandboxedShortcutFileToDesktop(Globals.start, "Explore sandbox " . box . " (Sandboxed)", Globals.sbdir, "/box:" . box . " " . Globals.explorer, "Launches Explorer sandboxed in sandbox " . box, Globals.explorerRes, 1, 1, box)
+        ShortcutManager.writeSandboxedShortcutFileToDesktop(Globals.start, "Explore sandbox " . box . " (Sandboxed)", Globals.sbdir, "/box:" . box . " " . Globals.explorer, "Launches Explorer sandboxed in sandbox " . box, Globals.explorerRes, 1, 1, box)
     else
         Run(Globals.start . " /box:" . box . " " . Globals.explorer, , "UseErrorLevel")
 }
@@ -2159,7 +2254,7 @@ UExploreMenuHandler(ItemName, ItemPos, MyMenu)
     if (!IsObject(sandbox)) return
 
     if GetKeyState("Control", "P")
-        writeUnsandboxedShortcutFileToDesktop(Globals.explorerImg, "Explore sandbox " . box . " (Unsandboxed)", sandbox.bpath, Globals.explorerArgE . " """ . sandbox.bpath . """", "Launches Explorer unsandboxed in sandbox " . box, Globals.explorerRes, 1, 1)
+        ShortcutManager.writeUnsandboxedShortcutFileToDesktop(Globals.explorerImg, "Explore sandbox " . box . " (Unsandboxed)", sandbox.bpath, Globals.explorerArgE . " """ . sandbox.bpath . """", "Launches Explorer unsandboxed in sandbox " . box, Globals.explorerRes, 1, 1)
     else
         Run(Globals.explorer . "\" . sandbox.bpath, , "UseErrorLevel")
 }
@@ -2171,7 +2266,7 @@ URExploreMenuHandler(ItemName, ItemPos, MyMenu)
     if (!IsObject(sandbox)) return
 
     if GetKeyState("Control", "P")
-        writeUnsandboxedShortcutFileToDesktop(Globals.explorerImg, "Explore sandbox " . box . " (Unsandboxed, restricted)", sandbox.bpath, Globals.explorerArgER . " """ . sandbox.bpath . """", "Launches Explorer unsandboxed and restricted to sandbox " . box, Globals.explorerRes, 1, 1)
+        ShortcutManager.writeUnsandboxedShortcutFileToDesktop(Globals.explorerImg, "Explore sandbox " . box . " (Unsandboxed, restricted)", sandbox.bpath, Globals.explorerArgER . " """ . sandbox.bpath . """", "Launches Explorer unsandboxed and restricted to sandbox " . box, Globals.explorerRes, 1, 1)
     else
         Run(Globals.explorerERArg . "\" . sandbox.bpath, , "UseErrorLevel")
 }
