@@ -253,9 +253,9 @@ class GuiManager
 {
     static ListGUI(title, box, type, data)
     {
-        Gui, New, +Resize, % Globals.title . " - " . title . " - " . box
-        Gui, Font, s10, Verdana
-        Gui, Add, ListView, w780 h500 vMyListView gMyListView, Path|Type|Size|Modified
+        Gui, ListGui:New, +Resize, % Globals.title . " - " . title . " - " . box
+        Gui, ListGui:Font, s10, Verdana
+        Gui, ListGui:Add, ListView, w780 h500 vMyListView gMyListView, Path|Type|Size|Modified
         LV_ModifyCol(1, 400)
         LV_ModifyCol(2, 70)
         LV_ModifyCol(3, 70, "Integer")
@@ -276,9 +276,9 @@ class GuiManager
             }
         }
 
-        Gui, Add, Button, gExport x10 y510 w100, Export List
-        Gui, Add, Button, gClose x120 y510 w100, Close
-        Gui, Show
+        Gui, ListGui:Add, Button, gExportListGui x10 y510 w100, Export List
+        Gui, ListGui:Add, Button, gCloseListGui x120 y510 w100, Close
+        Gui, ListGui:Show
         return
 
     MyListView:
@@ -292,15 +292,56 @@ class GuiManager
         }
         return
 
-    Export:
+    ExportListGui:
         ; ... export logic ...
+        MsgBox("Export not implemented yet.")
         return
 
-    Close:
-    GuiClose:
-        Gui, Destroy
+    CloseListGui:
+    ListGui_Close:
+        Gui, ListGui:Destroy
         return
     }
+
+    static ShowAutostartsList(box, autostartList)
+    {
+        Gui, AutostartGui:New, +Resize, % Globals.title . " - Autostart Programs - " . box
+        Gui, AutostartGui:Font, s10, Verdana
+        Gui, AutostartGui:Add, ListView, w780 h500 vMyAutostartListView gMyAutostartListView Checked, Program|Command|Location
+        LV_ModifyCol(1, 200)
+        LV_ModifyCol(2, 400)
+        LV_ModifyCol(3, 150)
+
+        for item in autostartList
+        {
+            local options := item.ticked ? "Check" : ""
+            LV_Add(options, item.name, item.command, item.location)
+        }
+
+        Gui, AutostartGui:Add, Button, gCloseAutostartGui x10 y510 w100, Close
+        Gui, AutostartGui:Show
+        return
+
+    MyAutostartListView:
+        ; Placeholder for event handling
+        return
+
+    CloseAutostartGui:
+    AutostartGui_Close:
+        Gui, AutostartGui:Destroy
+        return
+    }
+}
+ListAutostartsMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if (box == "") return
+
+    local autostarts := ListAutostarts(box)
+    if (autostarts.Length > 0)
+        GuiManager.ShowAutostartsList(box, autostarts)
+    else
+        MsgBox("No autostart programs found in the registry of box '" . box . "'.", Globals.title, "64|IconInfo")
 }
 
 class MenuManager
@@ -312,6 +353,137 @@ class MenuManager
         this.menus := Map()
         this.mainMenu := Menu()
         this.menus["ST2MainMenu"] := this.mainMenu
+        this.menunum := 0
+    }
+
+    getFilenames(directory, includeFolders)
+    {
+        local files := []
+        Loop Files, directory . "\*", includeFolders ? "D" : ""
+        {
+            if (InStr(A_LoopFileAttrib, "H") || InStr(A_LoopFileAttrib, "S"))
+                continue
+
+            if (FileGetTime(A_LoopFileLongPath, "C") == "19860523174702")
+                continue
+
+            local label := A_LoopFileIsDir ? A_LoopFileName : A_LoopFileName.SubString(1, InStr(A_LoopFileName, ".",, -1) -1)
+            files.Push(label . ":" . A_LoopFileLongPath)
+        }
+        files.Sort("CL")
+        return files
+    }
+
+    addCmdsToMenu(box, menuObj, fileslist)
+    {
+        for _, entry in fileslist
+        {
+            if (entry == "") continue
+            local parts := StrSplit(entry, ":",, 2)
+            local label := parts[1]
+            local exefile := parts[2]
+
+            if (this.menuCommands.Has(menuObj.Name . "," . label))
+                label .= " (2)"
+
+            menuObj.Add(label, this.RunProgramMenuHandler.Bind(this))
+            setIconFromSandboxedShortcut(box, exefile, menuObj, label, Settings.smalliconsize)
+            this.menuCommands.Set(menuObj.Name . "," . label, exefile)
+        }
+        return fileslist.Length
+    }
+
+    buildProgramsMenu1(box, menuname, bpath)
+    {
+        local thismenuname := this.menunum > 0 ? menuname . "_" . this.menunum : menuname
+        this.menus[box . "_" . thismenuname] := Menu()
+
+        local numfiles := 0
+        local menufiles := this.getFilenames(bpath, false)
+        if (menufiles.Length > 0) {
+            numfiles := this.addCmdsToMenu(box, this.menus[box . "_" . thismenuname], menufiles)
+        }
+
+        local menudirs := this.getFilenames(bpath, true)
+        if (menudirs.Length > 0) {
+            if (numfiles > 0) this.menus[box . "_" . thismenuname].Add()
+            for _, entry in menudirs
+            {
+                local parts := StrSplit(entry, ":",, 2)
+                local label := parts[1]
+                local dir := parts[2]
+                this.menunum++
+                local newmenuname := this.buildProgramsMenu1(box, menuname, dir)
+                if (newmenuname != "") {
+                    this.menus[box . "_" . thismenuname].Add(label, this.menus[box . "_" . newmenuname])
+                    setMenuIcon(this.menus[box . "_" . thismenuname], label, Globals.shell32, 4, Settings.smalliconsize)
+                    numfiles++
+                }
+            }
+        }
+        return numfiles ? thismenuname : ""
+    }
+
+    buildProgramsMenu2(box, menuname, path1, path2)
+    {
+        local thismenuname := this.menunum > 0 ? menuname . "_" . this.menunum : menuname
+        this.menus[box . "_" . thismenuname] := Menu()
+
+        local numfiles := 0
+        local menufiles1 := this.getFilenames(path1, false)
+        local menufiles2 := this.getFilenames(path2, false)
+        local combinedFiles := menufiles1
+        combinedFiles.Push(menufiles2*)
+        combinedFiles.Sort("CL")
+
+        if (combinedFiles.Length > 0) {
+            numfiles := this.addCmdsToMenu(box, this.menus[box . "_" . thismenuname], combinedFiles)
+        }
+
+        local menudirs1 := this.getFilenames(path1, true)
+        local menudirs2 := this.getFilenames(path2, true)
+        local combinedDirs := menudirs1
+        combinedDirs.Push(menudirs2*)
+        combinedDirs.Sort("CL")
+
+        if (combinedDirs.Length > 0) {
+            if (numfiles > 0) this.menus[box . "_" . thismenuname].Add()
+            // Simplified logic for merging directories. A full port of the v1 logic is very complex.
+            // This version will create duplicate entries if a folder exists in both paths.
+            for _, entry in combinedDirs
+            {
+                local parts := StrSplit(entry, ":",, 2)
+                local label := parts[1]
+                local dir := parts[2]
+                this.menunum++
+                local newmenuname := this.buildProgramsMenu1(box, menuname, dir)
+                if (newmenuname != "") {
+                    this.menus[box . "_" . thismenuname].Add(label, this.menus[box . "_" . newmenuname])
+                    setMenuIcon(this.menus[box . "_" . thismenuname], label, Globals.shell32, 4, Settings.smalliconsize)
+                    numfiles++
+                }
+            }
+        }
+        return numfiles ? thismenuname : ""
+    }
+
+    RunProgramMenuHandler(ItemName, ItemPos, MenuName)
+    {
+        local box := getBoxFromMenu()
+        local shortcut := this.menuCommands.Get(MenuName . "," . ItemName)
+
+        if (shortcut == "")
+            return
+
+        if GetKeyState("Control", "P") {
+            ; TODO: Get icon info from a menuIcons map. For now, pass empty.
+            createDesktopShortcutFromLnk(box, shortcut, "", "")
+        } else if GetKeyState("Shift", "P") {
+            SplitPath(shortcut, , &dir)
+            Run(Globals.start . " /box:" . box . " """ . dir . """")
+        } else {
+            executeShortcut(box, shortcut)
+        }
     }
 
     BuildMainMenu(traymode, singleboxmode, singlebox)
@@ -403,20 +575,20 @@ class MenuManager
                 if (Settings.seperatedstartmenus)
                 {
                     tmp1         := boxpath . "\user\all\Microsoft\Windows\Start Menu"
-                    topicons_arr := getFilenames(tmp1, 0)
+                    topicons_arr := this.getFilenames(tmp1, 0)
                     if (topicons_arr.Length > 0)
                     {
-                        addCmdsToMenu(box, this.menus[box . "_ST2StartMenuAU"], topicons_arr)
+                        this.addCmdsToMenu(box, this.menus[box . "_ST2StartMenuAU"], topicons_arr)
                         this.menus[box . "_ST2MenuBox"].Add("Start Menu (all users)", this.menus[box . "_ST2StartMenuAU"])
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Start Menu (all users)", Globals.shell32, 20, Settings.largeiconsize)
                         added_menus := 1
                     }
                     tmp1       := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs"
-                    files1_arr := getFilenames(tmp1, 1)
+                    files1_arr := this.getFilenames(tmp1, 1)
                     if (files1_arr.Length > 0 && topicons_arr.Length > 0)
                         this.menus[box . "_ST2StartMenuAU"].Add()
-                    menunum  := 0
-                    numicons := buildProgramsMenu1(box, "ST2StartMenuAU", tmp1)
+                    this.menunum  := 0
+                    local numicons := this.buildProgramsMenu1(box, "ST2StartMenuAU", tmp1)
                     if (numicons)
                         added_menus := 1
                     if (topicons_arr.Length == 0 && numicons > 0)
@@ -425,20 +597,20 @@ class MenuManager
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Start Menu (all users)", Globals.shell32, 20, Settings.largeiconsize)
                     }
                     tmp1         := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
-                    topicons_arr := getFilenames(tmp1, 0)
+                    topicons_arr := this.getFilenames(tmp1, 0)
                     if (topicons_arr.Length > 0)
                     {
-                        addCmdsToMenu(box, this.menus[box . "_ST2StartMenuCU"], topicons_arr)
+                        this.addCmdsToMenu(box, this.menus[box . "_ST2StartMenuCU"], topicons_arr)
                         this.menus[box . "_ST2MenuBox"].Add("Start Menu (current user)", this.menus[box . "_ST2StartMenuCU"])
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Start Menu (current user)", Globals.shell32, 20, Settings.largeiconsize)
                         added_menus := 1
                     }
                     tmp1       := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
-                    files1_arr := getFilenames(tmp1, 1)
+                    files1_arr := this.getFilenames(tmp1, 1)
                     if (files1_arr.Length > 0 && topicons_arr.Length > 0)
                         this.menus[box . "_ST2StartMenuCU"].Add()
-                    menunum  := 0
-                    numicons := buildProgramsMenu1(box, "ST2StartMenuCU", tmp1)
+                    this.menunum  := 0
+                    numicons := this.buildProgramsMenu1(box, "ST2StartMenuCU", tmp1)
                     if (numicons)
                         added_menus := 1
                     if (topicons_arr.Length == 0 && numicons > 0)
@@ -447,8 +619,8 @@ class MenuManager
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Start Menu (current user)", Globals.shell32, 20, Settings.largeiconsize)
                     }
                     tmp1    := boxpath . "\drive\" . public_dir . "\Desktop"
-                    menunum := 0
-                    m       := buildProgramsMenu1(box, "ST2DesktopAU", tmp1)
+                    this.menunum := 0
+                    local m       := this.buildProgramsMenu1(box, "ST2DesktopAU", tmp1)
                     if (m)
                     {
                         added_menus := 1
@@ -456,8 +628,8 @@ class MenuManager
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Desktop (all users)", Globals.shell32, 35, Settings.largeiconsize)
                     }
                     tmp1    := boxpath . "\user\current\Desktop"
-                    menunum := 0
-                    m       := buildProgramsMenu1(box, "ST2DesktopCU", tmp1)
+                    this.menunum := 0
+                    m       := this.buildProgramsMenu1(box, "ST2DesktopCU", tmp1)
                     if (m)
                     {
                         added_menus := 1
@@ -468,30 +640,27 @@ class MenuManager
                 else
                 {
                     tmp1          := boxpath . "\user\all\Microsoft\Windows\Start Menu"
-                    files1_arr    := getFilenames(tmp1, 0)
+                    files1_arr    := this.getFilenames(tmp1, 0)
                     tmp2          := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu"
-                    files2_arr    := getFilenames(tmp2, 0)
-                    topicons_arr := []
-                    for _, f in files1_arr
-                        topicons_arr.Push(f)
-                    for _, f in files2_arr
-                        topicons_arr.Push(f)
+                    files2_arr    := this.getFilenames(tmp2, 0)
+                    local topicons_arr := files1_arr
+                    topicons_arr.Push(files2_arr*)
                     topicons_arr.Sort("CL")
                     if (topicons_arr.Length > 0)
                     {
-                        addCmdsToMenu(box, this.menus[box . "_ST2StartMenu"], topicons_arr)
+                        this.addCmdsToMenu(box, this.menus[box . "_ST2StartMenu"], topicons_arr)
                         this.menus[box . "_ST2MenuBox"].Add("Start Menu", this.menus[box . "_ST2StartMenu"])
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Start Menu", Globals.shell32, 20, Settings.largeiconsize)
                         added_menus := 1
                     }
                     tmp1       := boxpath . "\user\all\Microsoft\Windows\Start Menu\Programs"
-                    files1_arr := getFilenames(tmp1, 1)
+                    files1_arr := this.getFilenames(tmp1, 1)
                     tmp2       := boxpath . "\user\current\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
-                    files2_arr := getFilenames(tmp2, 1)
+                    files2_arr := this.getFilenames(tmp2, 1)
                     if ((files1_arr.Length > 0 || files2_arr.Length > 0) && topicons_arr.Length > 0)
                         this.menus[box . "_ST2StartMenu"].Add()
-                    menunum  := 0
-                    numicons := buildProgramsMenu2(box, "ST2StartMenu", tmp1, tmp2)
+                    this.menunum  := 0
+                    numicons := this.buildProgramsMenu2(box, "ST2StartMenu", tmp1, tmp2)
                     if (numicons)
                         added_menus := 1
                     if (topicons_arr.Length == 0 && numicons > 0)
@@ -500,13 +669,13 @@ class MenuManager
                         setMenuIcon(this.menus[box . "_ST2MenuBox"], "Start Menu", Globals.shell32, 20, Settings.largeiconsize)
                     }
                     tmp1       := boxpath . "\drive\" . public_dir . "\Desktop"
-                    files1_arr := getFilenames(tmp1, 1)
+                    files1_arr := this.getFilenames(tmp1, 1)
                     tmp2       := boxpath . "\user\current\Desktop"
-                    files2_arr := getFilenames(tmp2, 1)
+                    files2_arr := this.getFilenames(tmp2, 1)
                     if ((files1_arr.Length > 0 || files2_arr.Length > 0) && topicons_arr.Length > 0)
                         this.menus[box . "_ST2MenuBox"].Add()
-                    menunum := 0
-                    m       := buildProgramsMenu2(box, "ST2Desktop", tmp1, tmp2)
+                    this.menunum := 0
+                    m       := this.buildProgramsMenu2(box, "ST2Desktop", tmp1, tmp2)
                     if (m)
                     {
                         added_menus := 1
@@ -515,8 +684,8 @@ class MenuManager
                     }
                 }
                 tmp1    := boxpath . "\user\current\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch"
-                menunum := 0
-                m       := buildProgramsMenu1(box, "ST2QuickLaunch", tmp1)
+                this.menunum := 0
+                m       := this.buildProgramsMenu1(box, "ST2QuickLaunch", tmp1)
                 if (m)
                 {
                     added_menus := 1
@@ -595,8 +764,8 @@ class MenuManager
             mainmenu_obj := this.menus[singlebox . "_ST2MenuBox"]
         else
             mainmenu_obj := this.menus["ST2MainMenu"]
-        menunum := 0
-        m       := buildProgramsMenu1("", "ST2UserTools", Settings.usertoolsdir)
+        this.menunum := 0
+        m       := this.buildProgramsMenu1("", "ST2UserTools", Settings.usertoolsdir)
         if (m)
         {
             mainmenu_obj.Add()
@@ -832,18 +1001,41 @@ getSandboxByName(name)
     return ""
 }
 
-ListFiles(boxName)
+ListFiles(boxName, compareFile := "")
 {
     local sandbox := getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
 
+    local compareData := ""
+    if (compareFile != "" && FileExist(compareFile))
+        compareData := FileRead(compareFile)
+
     local fileList := []
-    Loop, Files, % sandbox.bpath . "\*", "R"
+    local mainsbpath := sandbox.bpath
+    local mainsbpathlen := StrLen(mainsbpath) + 2
+
+    Loop Files, mainsbpath . "\*", "RF"
     {
+        if (A_LoopFileTimeCreated == "19860523174702")
+            local status := "-"
+        else
+            local status := "+"
+
+        if (A_LoopFileIsDir && status == "+")
+            continue
+
+        if (compareData != "")
+        {
+            local relativePath := SubStr(A_LoopFileFullPath, mainsbpathlen)
+            local comp := status . " " . A_LoopFileTimeModified . " " . relativePath . ":*:"
+            if InStr(compareData, comp)
+                continue
+        }
+
         fileList.Push({
             path: A_LoopFileFullPath,
-            type: InStr(A_LoopFileAttrib, "D") ? "Folder" : "File",
+            type: A_LoopFileIsDir ? "Folder" : "File",
             size: A_LoopFileSize,
             modified: A_LoopFileTimeModified
         })
@@ -882,7 +1074,228 @@ ReleaseBox(run_pid)
     return
 }
 
-ListReg(boxName)
+ListReg(boxName, compareFile := "")
+{
+    local sandbox := getSandboxByName(boxName)
+    if (!IsObject(sandbox))
+        return []
+
+    local compareData := ""
+    if (compareFile != "" && FileExist(compareFile))
+        compareData := FileRead(compareFile)
+
+    local run_pid := InitializeBox(boxName)
+    if (run_pid == 0)
+    {
+        MsgBox("Failed to initialize sandbox " . boxName)
+        return []
+    }
+
+    local regList := []
+    local mainsbkey := sandbox.RegStr_
+    local mainsbkeylen := StrLen(mainsbkey) + 2
+
+    Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
+    {
+        if (compareData != "")
+        {
+            local subkey := SubStr(A_LoopRegPath, mainsbkeylen)
+            local comp := FormatRegConfigKey(A_LoopRegPath, subkey, A_LoopRegType, A_LoopRegName, A_LoopRegTimeModified, " ")
+            if InStr(compareData, comp)
+                continue
+        }
+
+        regList.Push({
+            key: A_LoopRegPath,
+            type: A_LoopRegType,
+            size: "",
+            modified: A_LoopRegTimeModified
+        })
+    }
+
+    ReleaseBox(run_pid)
+    return regList
+}
+
+FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separator, includedate := false)
+{
+    local type := RegType
+    local status := ""
+
+    if (RegTimeModified == "19860523174702")
+        status := "-"
+    else
+        status := "+"
+
+    if (type == "KEY")
+    {
+        if (status == "-")
+            type := "-DELETED_KEY"
+        outtxt := status . separator . subkey . "\" . RegName . separator . type . separator . separator
+    }
+    else
+    {
+        local value := ""
+        try {
+            value := RegRead(RegSubKey, RegName)
+        }
+        catch
+        {
+            value := "(read error)"
+        }
+
+        if (InStr(type, "_SZ"))
+        {
+            value := StrReplace(value, "`n", " ")
+            if (type == "REG_MULTI_SZ")
+                value := RTrim(value)
+        }
+        if (StrLen(value) > 80)
+            value := SubStr(value, 1, 80) . "..."
+
+        local name := RegName == "" ? "@" : RegName
+        outtxt := status . separator . subkey . separator . type . separator . name . separator . value
+    }
+
+    if (includedate)
+        outtxt .= separator . RegTimeModified
+
+    return outtxt
+}
+
+MakeRegConfig(boxName, filename := "")
+{
+    if (filename == "")
+        filename := Settings.regconfig
+
+    local sandbox := getSandboxByName(boxName)
+    if (!IsObject(sandbox))
+        return
+
+    local run_pid := InitializeBox(boxName)
+    if (run_pid == 0)
+        return
+
+    local mainsbkey := "HKEY_USERS\" . sandbox.RegStr_
+    local mainsbkeylen := StrLen(mainsbkey) + 2
+    local outtxt := ""
+
+    Loop Reg, mainsbkey, "KVR"
+    {
+        if (A_LoopRegType == "KEY" && A_LoopRegTimeModified != "19860523174702")
+            continue
+
+        local subkey := SubStr(A_LoopRegPath, mainsbkeylen)
+        local out := FormatRegConfigKey(A_LoopRegPath, subkey, A_LoopRegType, A_LoopRegName, A_LoopRegTimeModified, " ")
+        outtxt .= out . "`n"
+    }
+
+    try FileDelete(filename)
+    FileAppend("`n" . outtxt, filename)
+
+    ReleaseBox(run_pid)
+    return
+}
+
+MakeFilesConfig(boxName, filename)
+{
+    local sandbox := getSandboxByName(boxName)
+    if (!IsObject(sandbox))
+        return
+
+    local mainsbpath := sandbox.bpath
+    local mainsbpathlen := StrLen(mainsbpath) + 2
+    local outtxt := ""
+
+    Loop Files, mainsbpath . "\*", "RF"
+    {
+        if (A_LoopFileTimeCreated == "19860523174702")
+            local status := "-"
+        else
+            local status := "+"
+
+        if (A_LoopFileIsDir && status == "+")
+            continue
+
+        local name := SubStr(A_LoopFileFullPath, mainsbpathlen)
+        outtxt .= status . " " . A_LoopFileTimeModified . " " . name . ":*:`n"
+    }
+
+    try FileDelete(filename)
+    FileAppend("`n" . outtxt, filename)
+    return
+}
+
+WatchRegMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    local comparefile := A_Temp . "\" . sandbox.RegStr_ . "_reg_compare.cfg"
+    MakeRegConfig(box, comparefile)
+
+    local result := MsgBox("The current registry state of sandbox '" . box . "' has been saved.`n`nPerform your actions in the sandbox now. When you are finished, click OK to see the changes.", Globals.title, "1|IconQuestion")
+
+    if (result == "OK")
+        ListReg(box, comparefile)
+}
+
+WatchFilesMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    local comparefile := A_Temp . "\" . sandbox.RegStr_ . "_files_compare.cfg"
+    MakeFilesConfig(box, comparefile)
+
+    local result := MsgBox("The current file state of sandbox '" . box . "' has been saved.`n`nPerform your actions in the sandbox now. When you are finished, click OK to see the changes.", Globals.title, "1|IconQuestion")
+
+    if (result == "OK")
+        ListFiles(box, comparefile)
+}
+
+WatchFilesRegMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    local comparefile_files := A_Temp . "\" . sandbox.RegStr_ . "_files_compare.cfg"
+    MakeFilesConfig(box, comparefile_files)
+
+    local comparefile_reg := A_Temp . "\" . sandbox.RegStr_ . "_reg_compare.cfg"
+    MakeRegConfig(box, comparefile_reg)
+
+    local result := MsgBox("The current file and registry state of sandbox '" . box . "' has been saved.`n`nPerform your actions in the sandbox now. When you are finished, click OK to see the changes.", Globals.title, "1|IconQuestion")
+
+    if (result == "OK")
+    {
+        ListFiles(box, comparefile_files)
+        ListReg(box, comparefile_reg)
+    }
+}
+
+SearchAutostart(regpath, location, tick)
+{
+    local autostartList := []
+    Loop Reg, "HKEY_USERS\" . regpath, "V"
+    {
+        if (A_LoopRegType != "REG_SZ")
+            continue
+
+        autostartList.Push({
+            name: A_LoopRegName,
+            command: A_LoopRegValue,
+            location: location,
+            ticked: tick
+        })
+    }
+    return autostartList
+}
+
+ListAutostarts(boxName)
 {
     local sandbox := getSandboxByName(boxName)
     if (!IsObject(sandbox))
@@ -895,21 +1308,301 @@ ListReg(boxName)
         return []
     }
 
-    local regList := []
-    local mainsbkey := sandbox.RegStr_
+    local bregstr_ := sandbox.RegStr_
+    local allAutostarts := []
 
-    Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
-    {
-        regList.Push({
-            key: A_LoopRegPath,
-            type: A_LoopRegType,
-            size: "",
-            modified: A_LoopRegTimeModified
-        })
-    }
+    local key, location, tick
+
+    key := bregstr_ . '\machine\Software\Microsoft\Windows\CurrentVersion\RunOnce'
+    location := "HKLM RunOnce"
+    allAutostarts.Push(SearchAutostart(key, location, 0)*)
+
+    key := bregstr_ . '\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce'
+    allAutostarts.Push(SearchAutostart(key, location, 0)*)
+
+    key := bregstr_ . '\user\current\Software\Microsoft\Windows\CurrentVersion\RunOnce'
+    location := "HKCU RunOnce"
+    allAutostarts.Push(SearchAutostart(key, location, 0)*)
+
+    key := bregstr_ . '\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce'
+    allAutostarts.Push(SearchAutostart(key, location, 0)*)
+
+    key := bregstr_ . '\machine\Software\Microsoft\Windows\CurrentVersion\Run'
+    location := "HKLM Run"
+    allAutostarts.Push(SearchAutostart(key, location, 1)*)
+
+    key := bregstr_ . '\machine\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run'
+    allAutostarts.Push(SearchAutostart(key, location, 1)*)
+
+    key := bregstr_ . '\user\current\Software\Microsoft\Windows\CurrentVersion\Run'
+    location := "HKCU Run"
+    allAutostarts.Push(SearchAutostart(key, location, 1)*)
+
+    key := bregstr_ . '\user\current\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run'
+    allAutostarts.Push(SearchAutostart(key, location, 1)*)
 
     ReleaseBox(run_pid)
-    return regList
+
+    return allAutostarts
+}
+
+expandEnvVars(str)
+{
+    local result := StrReplace(str, "`%SID`%", Globals.SID)
+    result := StrReplace(result, "`%SESSION`%", Globals.SESSION)
+    result := StrReplace(result, "`%USER`%", Globals.username)
+    return EnvExpand(result)
+}
+
+stdPathToBoxPath(box, bpath)
+{
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return bpath
+
+    local boxpath := sandbox.bpath
+    local outpath := ""
+
+    local userprofile := A_UserProfile . "\"
+    if (SubStr(bpath, 1, StrLen(userprofile)) == userprofile) {
+        local remain := SubStr(bpath, StrLen(userprofile) + 1)
+        outpath := boxpath . "\user\current\" . remain
+    }
+
+    if (outpath == "") {
+        local allusersprofile := A_AllUsersProfile . "\"
+        if (SubStr(bpath, 1, StrLen(allusersprofile)) == allusersprofile) {
+            local remain := SubStr(bpath, StrLen(allusersprofile) + 1)
+            outpath := boxpath . "\user\all\" . remain
+        }
+    }
+
+    if (outpath == "") {
+        if (RegExMatch(bpath, "^([a-zA-Z]):\\", &m)) {
+            local drive := m[1]
+            local remain := SubStr(bpath, 3)
+            outpath := boxpath . "\drive\" . drive . remain
+        }
+    }
+
+    return outpath != "" ? outpath : bpath
+}
+
+boxPathToStdPath(box, bpath)
+{
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return bpath
+
+    local boxpath := sandbox.bpath
+    if (SubStr(bpath, 1, StrLen(boxpath)) == boxpath)
+    {
+        local remain := SubStr(bpath, StrLen(boxpath) + 2)
+        if (SubStr(remain, 1, 12) == "user\current\") {
+            return A_UserProfile . "\" . SubStr(remain, 13)
+        }
+        if (SubStr(remain, 1, 9) == "user\all\") {
+            return A_AllUsersProfile . "\" . SubStr(remain, 10)
+        }
+        if (SubStr(remain, 1, 6) == "drive\") {
+            local driveletter := SubStr(remain, 7, 1)
+            return driveletter . ":\" . SubStr(remain, 9)
+        }
+    }
+    return bpath
+}
+
+findCurrentDir(box, shortcut)
+{
+    local outDir := ""
+    if (StrEndsWith(shortcut, ".lnk"))
+    {
+        try {
+            outDir := FileGetShortcut(shortcut).Target
+            SplitPath(outDir, , &outDir)
+        }
+    }
+    else
+        SplitPath(shortcut, , &outDir)
+
+    return expandEnvVars(outDir)
+}
+
+executeShortcut(box, shortcut)
+{
+    local curdir := findCurrentDir(box, shortcut)
+    try
+        SetWorkingDir(curdir)
+    catch
+    {
+        try
+            SetWorkingDir(A_ScriptDir)
+    }
+
+    if (box)
+        Run(Globals.start . " /box:" . box . " """ . shortcut . """", curdir, "UseErrorLevel")
+    else
+        Run(shortcut, curdir, "UseErrorLevel")
+
+    SetWorkingDir(A_ScriptDir)
+}
+
+writeUnsandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState)
+{
+    local linkFile := A_Desktop . "\" . name . ".lnk"
+    if (FileExist(linkFile))
+    {
+        local result := MsgBox("Shortcut '" . name . "' already exists on your desktop!`n`nOverwrite it?", Globals.title, "4|IconQuestion")
+        if (result == "No")
+            return
+    }
+    FileCreateShortcut(target, linkFile, dir, args, description, iconFile, , iconNum, runState)
+}
+
+writeSandboxedShortcutFileToDesktop(target, name, dir, args, description, iconFile, iconNum, runState, box)
+{
+    if (Settings.includeboxnames)
+    {
+        if (box == "__ask__")
+            name := "[#ask box] " . name
+        else
+            name := "[#" . box . "] " . name
+    }
+    else
+        name := "[#] " . name
+
+    local linkFile := A_Desktop . "\" . name . ".lnk"
+
+    if (FileExist(linkFile))
+    {
+        local result := MsgBox("Shortcut '" . name . "' already exists on your desktop!`n`nOverwrite it?", Globals.title, "4|IconQuestion")
+        if (result == "No")
+            return
+    }
+
+    FileCreateShortcut(target, linkFile, dir, args, description, iconFile, , iconNum, runState)
+}
+
+createDesktopShortcutFromLnk(box, shortcut, iconfile, iconnum)
+{
+    local outTarget, outDir, outArgs, outDescription, outRunState, outNameNoExt, outExtension, file
+
+    SplitPath(shortcut, &outNameNoExt, &outDir, &outExtension)
+
+    if (box == "") {
+        if (outExtension == "lnk") {
+            local dest := A_Desktop . "\" . outNameNoExt . ".lnk"
+            FileCopy(shortcut, dest, true)
+        } else {
+            writeUnsandboxedShortcutFileToDesktop(shortcut, outNameNoExt, outDir, "", "SandboxToys User Tool", "", "", 1)
+        }
+        return
+    }
+
+    if (outExtension == "lnk") {
+        local sc := FileGetShortcut(shortcut)
+        outTarget := sc.Target
+        outDir := sc.Dir
+        outArgs := sc.Args
+        outDescription := sc.Desc
+        outRunState := sc.RunState
+        outArgs := "/box:" . box . " """ . outTarget . """ " . outArgs
+        if (!outDir)
+            outDir := boxPathToStdPath(box, outTarget)
+        outDir := stdPathToBoxPath(box, outDir)
+        outDescription := "Run '" . outNameNoExt . "' in sandbox " . box . ".`n" . outDescription
+    } else {
+        file := boxPathToStdPath(box, shortcut)
+        outTarget := Globals.start
+        outArgs := "/box:" . box . " """ . file . """"
+        SplitPath(file, , &outDir)
+        outDescription := "Run '" . outNameNoExt . "' in sandbox " . box . "."
+        outRunState := 1
+    }
+
+    local iconNumToUse := iconnum == 0 ? 1 : iconnum
+    writeSandboxedShortcutFileToDesktop(outTarget, outNameNoExt, outDir, outArgs, outDescription, iconfile, iconNumToUse, outRunState, box)
+}
+
+setMenuIcon(menuObj, item, iconfile, iconindex, largeiconsize)
+{
+    try {
+        menuObj.SetIcon(item, iconfile, iconindex, largeiconsize)
+        return 0
+    }
+    catch {
+        return 1
+    }
+}
+
+IndexOfIconResource(Filename, ID)
+{
+    Filename := Trim(Filename, '"')
+    Filename := expandEnvVars(Filename)
+    ID := Abs(ID)
+    hmod := DllCall("GetModuleHandle", "str", Filename)
+
+    loaded := !hmod && (hmod := DllCall("LoadLibraryEx", "str", Filename, "ptr", 0, "uint", 0x2))
+
+    enumproc := CallbackCreate("IndexOfIconResource_EnumIconResources")
+    param := Buffer(12, 0)
+    NumPut("int", ID, param, 0)
+
+    DllCall("EnumResourceNames", "ptr", hmod, "ptr", 14, "ptr", enumproc, "ptr", param.ptr)
+    CallbackFree(enumproc)
+
+    if loaded
+        DllCall("FreeLibrary", "ptr", hmod)
+
+    return NumGet(param, 8, "int") ? NumGet(param, 4, "int") : 0
+}
+
+IndexOfIconResource_EnumIconResources(hModule, lpszType, lpszName, lParam)
+{
+    param := Buffer(lParam, 12, 0)
+    NumPut("int", NumGet(param, 4, "int") + 1, param, 4)
+
+    if (lpszName == NumGet(param, 0, "int"))
+    {
+        NumPut("int", 1, param, 8)
+        return false
+    }
+    return true
+}
+
+setIconFromSandboxedShortcut(box, shortcut, menuObj, label, iconsize)
+{
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    ; This function is very complex. For now, we'll use a simplified version.
+    ; TODO: Port the full icon resolution logic from v1.
+    local iconfile, iconnum, target
+
+    if (StrEndsWith(shortcut, ".lnk")) {
+        try {
+            local sc := FileGetShortcut(shortcut)
+            target := sc.Target
+            iconfile := sc.IconFile
+            iconnum := sc.IconNum
+            if (iconnum == 0) iconnum := 1
+            if (iconfile == "") iconfile := target
+        }
+    } else {
+        iconfile := shortcut
+        iconnum := 1
+    }
+
+    iconfile := Trim(iconfile, '"')
+    iconfile := expandEnvVars(iconfile)
+
+    local boxfile := stdPathToBoxPath(box, iconfile)
+    if (FileExist(boxfile)) {
+        iconfile := boxfile
+    }
+
+    local rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+    if (rc != 0) {
+        setMenuIcon(menuObj, label, Globals.shell32, 2, iconsize) ; Default icon
+    }
 }
 
 ListFilesMenuHandler(ItemName, ItemPos, MyMenu)
