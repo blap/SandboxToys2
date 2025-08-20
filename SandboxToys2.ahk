@@ -253,9 +253,160 @@ class GuiManager
 {
     static ListGUI(title, box, type, data)
     {
+        local fileMenu := Menu()
+        local editMenu := Menu()
+        local lvMenuBar := Menu()
+        local popupMenu := Menu()
+
+        MyListViewHandler(ctrl, gui_event, event_info, *)
+        {
+            if (gui_event == "RightClick")
+            {
+                popupMenu.Show()
+            }
+            else if (gui_event == "DoubleClick")
+            {
+                LV_GetText(item, event_info)
+                if (type == "files")
+                    Run(item)
+                else
+                    MsgBox("Double-clicking registry keys is not supported.")
+            }
+        }
+
+        CloseListGui(*)
+        {
+            SaveNewIgnoredItems(type)
+            Gui, ListGui:Destroy
+        }
+
+        ClearAllCheckmarks(*)
+        {
+            Loop LV_GetCount()
+                LV_Modify(A_Index, "-Check")
+        }
+
+        ToggleAllCheckmarks(*)
+        {
+            local total := LV_GetCount()
+            local checked_count := 0
+            Loop total {
+                if LV_GetNext(A_Index - 1, "C")
+                    checked_count++
+            }
+
+            local action := (checked_count == total) ? "-Check" : "+Check"
+            Loop total
+                LV_Modify(A_Index, action)
+        }
+
+        ToggleSelected(*)
+        {
+            local row := 0
+            while row := LV_GetNext(row, "S")
+                LV_Modify(row, "ToggleCheck")
+        }
+
+        ToggleCurrent(*)
+        {
+            local focused_row := LV_GetNext(0, "F")
+            if (focused_row)
+                LV_Modify(focused_row, "ToggleCheck")
+        }
+
+        LVIgnoreEntry(mode)
+        {
+            local row := LV_GetNext(0, "F")
+            if (!row) return
+
+            local relativePath, name
+            LV_GetText(&relativePath, row, 5) ; The hidden relative path column
+
+            if (mode == "files" || mode == "values") {
+                LV_GetText(&name, row, (mode == "files" ? 2 : 4))
+                AddIgnoreItem(mode, relativePath . "\" . name)
+            } else { ; dirs or keys
+                AddIgnoreItem(mode, relativePath)
+            }
+
+            LV_Delete(row)
+        }
+
+        numOfCheckedFiles()
+        {
+            local num := 0, row := 0
+            while row := LV_GetNext(row, "Checked")
+                num++
+            return num
+        }
+
+        FilesSaveTo(*)
+        {
+            if (numOfCheckedFiles() == 0) {
+                SoundBeep()
+                return
+            }
+
+            static DefaultFolder := A_Desktop
+            local dirname := FileSelect("D", DefaultFolder, "Copy checkmarked files to folder...")
+            if (dirname == "") return
+            DefaultFolder := dirname
+
+            local row := 0
+            while row := LV_GetNext(row, "Checked")
+            {
+                LV_GetText(filePath, row, 1)
+                FileCopy(filePath, dirname . "\" . SubStr(filePath, InStr(filePath, "\",,0)+1), true)
+            }
+        }
+
+        CurrentFileRun(*)
+        {
+            local row := LV_GetNext(0, "F")
+            if (!row) return
+            LV_GetText(filePath, row, 1)
+            executeShortcut(box, filePath)
+        }
+
+        if (type == "files")
+        {
+            fileMenu.Add("&Copy Checkmarked Files To...", FilesSaveTo)
+            editMenu.Add("Add Selected &Files to Ignore List", LVIgnoreEntry.Bind("files"))
+            editMenu.Add("Add Selected &Dirs to Ignore List", LVIgnoreEntry.Bind("dirs"))
+
+            popupMenu.Add("Copy To...", (*) => MsgBox("Not implemented"))
+            popupMenu.Add("Open in Sandbox", CurrentFileRun)
+            popupMenu.Add()
+            popupMenu.Add("Add File to Ignore List", LVIgnoreEntry.Bind("files"))
+            popupMenu.Add("Add Folder to Ignore List", LVIgnoreEntry.Bind("dirs"))
+        }
+        else ; type == "reg"
+        {
+            fileMenu.Add("Save Checkmarked entries as &REG file", (*) => MsgBox("Not implemented"))
+            editMenu.Add("Add Selected &Values to Ignore List", LVIgnoreEntry.Bind("values"))
+            editMenu.Add("Add Selected &Keys to Ignore List", LVIgnoreEntry.Bind("keys"))
+
+            popupMenu.Add("Copy Key to Clipboard", (*) => MsgBox("Not implemented"))
+            popupMenu.Add("Toggle Checkmark", ToggleCurrent)
+            popupMenu.Add()
+            popupMenu.Add("Add Value to Ignore List", LVIgnoreEntry.Bind("values"))
+            popupMenu.Add("Add Key to Ignore List", LVIgnoreEntry.Bind("keys"))
+        }
+
+        editMenu.Add("&Clear All Checkmarks", ClearAllCheckmarks)
+        editMenu.Add("&Toggle All Checkmarks", ToggleAllCheckmarks)
+        editMenu.Add("Toggle &Selected Checkmarks", ToggleSelected)
+        editMenu.Add()
+        editMenu.Add("&Hide Selected Entries", (*) => MsgBox("Not implemented"))
+
+        lvMenuBar.Add("&File", fileMenu)
+        lvMenuBar.Add("&Edit", editMenu)
+
         Gui, ListGui:New, +Resize, % Globals.title . " - " . title . " - " . box
-        Gui, ListGui:Font, s10, Verdana
-        Gui, ListGui:Add, ListView, w780 h500 vMyListView gMyListView, Path|Type|Size|Modified
+        Gui, ListGui:Font, "s10", "Verdana"
+        Gui, ListGui:SetMenu(lvMenuBar)
+        Gui, ListGui:Add, "ListView", "w780 h500 vMyListView gMyListViewHandler", ["Path", "Type", "Size", "Modified", "RelativePath"]
+        LV_ModifyCol(5, 0) ; Hidden column
         LV_ModifyCol(1, 400)
         LV_ModifyCol(2, 70)
         LV_ModifyCol(3, 70, "Integer")
@@ -265,14 +416,14 @@ class GuiManager
         {
             for _, item in data
             {
-                LV_Add("", item.path, item.type, item.size, item.modified)
+                LV_Add("", item.path, item.type, item.size, item.modified, item.relativePath)
             }
         }
         else if (type == "reg")
         {
             for _, item in data
             {
-                LV_Add("", item.key, item.type, item.size, item.modified)
+                LV_Add("", item.key, item.type, item.size, item.modified, item.relativePath)
             }
         }
 
@@ -281,16 +432,23 @@ class GuiManager
         Gui, ListGui:Show
         return
 
-    MyListView:
-        if (A_GuiEvent == "DoubleClick")
+    MyListViewHandler(ctrl, gui_event, event_info)
+    {
+        static popupMenu := "" ; This will be set by ListGUI
+        if (gui_event == "RightClick")
         {
-            LV_GetText(item, A_EventInfo)
-            if (type == "files")
+            popupMenu.Show()
+        }
+        else if (gui_event == "DoubleClick")
+        {
+            LV_GetText(item, event_info)
+            if (GuiManager.ListGUI.type == "files") ; Need to access type...
                 Run(item)
             else
                 MsgBox("Double-clicking registry keys is not supported.")
         }
         return
+    }
 
     ExportListGui:
         ; ... export logic ...
@@ -848,6 +1006,9 @@ A_Quotes := """"
 ; --- SCRIPT MAIN LOGIC
 ; ##############################################################################
 
+global ignoredDirs := "", ignoredFiles := "", ignoredKeys := "", ignoredValues := ""
+global newIgnored_dirs := "", newIgnored_files := "", newIgnored_keys := "", newIgnored_values := ""
+
 ; Command Line Parsing
 traymode      := 0
 singlebox     := ""
@@ -1003,6 +1164,7 @@ getSandboxByName(name)
 
 ListFiles(boxName, compareFile := "")
 {
+    ReadIgnoredConfig("files")
     local sandbox := getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
@@ -1025,6 +1187,10 @@ ListFiles(boxName, compareFile := "")
         if (A_LoopFileIsDir && status == "+")
             continue
 
+        local relativePath := SubStr(A_LoopFileFullPath, mainsbpathlen)
+        if (IsIgnored("files", ignoredFiles, relativePath, A_LoopFileName) || IsIgnored("dirs", ignoredDirs, relativePath))
+            continue
+
         if (compareData != "")
         {
             local relativePath := SubStr(A_LoopFileFullPath, mainsbpathlen)
@@ -1033,11 +1199,13 @@ ListFiles(boxName, compareFile := "")
                 continue
         }
 
+        local relativePathForList := SubStr(A_LoopFileFullPath, mainsbpathlen)
         fileList.Push({
             path: A_LoopFileFullPath,
             type: A_LoopFileIsDir ? "Folder" : "File",
             size: A_LoopFileSize,
-            modified: A_LoopFileTimeModified
+            modified: A_LoopFileTimeModified,
+            relativePath: relativePathForList
         })
     }
     return fileList
@@ -1076,6 +1244,7 @@ ReleaseBox(run_pid)
 
 ListReg(boxName, compareFile := "")
 {
+    ReadIgnoredConfig("reg")
     local sandbox := getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
@@ -1097,6 +1266,17 @@ ListReg(boxName, compareFile := "")
 
     Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
     {
+        local subkey := SubStr(A_LoopRegPath, mainsbkeylen)
+        if (A_LoopRegType == "KEY") {
+            if (IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName))
+                continue
+        } else {
+            if (IsIgnored("values", ignoredValues, subkey, A_LoopRegName == "" ? "@" : A_LoopRegName))
+                continue
+        }
+        if (IsIgnored("keys", ignoredKeys, subkey))
+            continue
+
         if (compareData != "")
         {
             local subkey := SubStr(A_LoopRegPath, mainsbkeylen)
@@ -1105,11 +1285,13 @@ ListReg(boxName, compareFile := "")
                 continue
         }
 
+        local subkey := SubStr(A_LoopRegPath, mainsbkeylen)
         regList.Push({
             key: A_LoopRegPath,
             type: A_LoopRegType,
             size: "",
-            modified: A_LoopRegTimeModified
+            modified: A_LoopRegTimeModified,
+            relativePath: subkey
         })
     }
 
@@ -1573,36 +1755,105 @@ setIconFromSandboxedShortcut(box, shortcut, menuObj, label, iconsize)
     local sandbox := getSandboxByName(box)
     if (!IsObject(sandbox)) return
 
-    ; This function is very complex. For now, we'll use a simplified version.
-    ; TODO: Port the full icon resolution logic from v1.
-    local iconfile, iconnum, target
+    local bregstr_ := sandbox.RegStr_
+    local iconfile, iconnum, target, extension
 
-    if (StrEndsWith(shortcut, ".lnk")) {
-        try {
-            local sc := FileGetShortcut(shortcut)
-            target := sc.Target
-            iconfile := sc.IconFile
-            iconnum := sc.IconNum
-            if (iconnum == 0) iconnum := 1
-            if (iconfile == "") iconfile := target
+    SplitPath(shortcut, , , &extension)
+    if (extension == "lnk") {
+        local sc := FileGetShortcut(shortcut)
+        target := sc.Target
+        iconfile := sc.IconFile
+        iconnum := sc.IconNum
+        if (iconnum == 0) iconnum := 1
+        if (iconfile == "") {
+            iconfile := target
+            iconnum := 1
         }
     } else {
         iconfile := shortcut
         iconnum := 1
     }
-
     iconfile := Trim(iconfile, '"')
     iconfile := expandEnvVars(iconfile)
 
+    if (InStr(FileExist(iconfile), "D")) {
+        setMenuIcon(menuObj, label, Globals.imageres, 4, iconsize)
+        return
+    }
+
     local boxfile := stdPathToBoxPath(box, iconfile)
+    if (InStr(FileExist(boxfile), "D")) {
+        setMenuIcon(menuObj, label, Globals.imageres, 4, iconsize)
+        return
+    }
     if (FileExist(boxfile)) {
         iconfile := boxfile
     }
 
     local rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
-    if (rc != 0) {
-        setMenuIcon(menuObj, label, Globals.shell32, 2, iconsize) ; Default icon
+    if (rc == 0) return
+
+    ; If setMenuIcon failed, try to get icon from registry
+    if (extension == "lnk") {
+        SplitPath(target, , , &extension)
+    } else {
+        SplitPath(shortcut, , , &extension)
     }
+
+    local defaulticon := ""
+    try defaulticon := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\." . extension . "\DefaultIcon")
+    catch {}
+
+    if (defaulticon == "") {
+        try {
+            local keyval := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\." . extension)
+            if (keyval != "")
+                defaulticon := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\" . keyval . "\DefaultIcon")
+        } catch {}
+    }
+
+    if (defaulticon != "") {
+        local parts := StrSplit(defaulticon, ",")
+        iconfile := Trim(parts[1], '"')
+        iconnum := parts.Length > 1 ? parts[2] : 1
+        iconfile := expandEnvVars(iconfile)
+        iconfile := stdPathToBoxPath(box, iconfile)
+        rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+        if (rc == 0) return
+    }
+
+    ; If still failed, try unsandboxed registry
+    try defaulticon := RegRead("HKEY_CLASSES_ROOT\." . extension . "\DefaultIcon")
+    catch {}
+
+    if (defaulticon == "") {
+        try {
+            local keyval := RegRead("HKEY_CLASSES_ROOT\." . extension)
+            if (keyval != "")
+                defaulticon := RegRead("HKEY_CLASSES_ROOT\" . keyval . "\DefaultIcon")
+        } catch {}
+    }
+
+    if (defaulticon != "") {
+        if (defaulticon == "%1") {
+            iconfile := shortcut
+            iconnum := 1
+        } else {
+            local parts := StrSplit(defaulticon, ",")
+            iconfile := Trim(parts[1], '"')
+            iconnum := parts.Length > 1 ? parts[2] : 1
+            if (iconnum < 0)
+                iconnum := IndexOfIconResource(iconfile, iconnum)
+            else
+                iconnum++
+        }
+        iconfile := expandEnvVars(iconfile)
+        rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+        if (rc == 0) return
+    }
+
+    ; Final fallback
+    setMenuIcon(menuObj, label, Globals.shell32, 2, iconsize)
 }
 
 ListFilesMenuHandler(ItemName, ItemPos, MyMenu)
@@ -1623,6 +1874,402 @@ DummyMenuHandler(ItemName, ItemPos, MyMenu)
 {
     ; This is a dummy handler for disabled menu items. It does nothing.
     return
+}
+
+getBoxFromMenu()
+{
+    return SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2") - 1)
+}
+
+TerminateMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+        writeUnsandboxedShortcutFileToDesktop(Globals.start, "Terminate Programs in sandbox " . box, "", "/box:" . box . " /terminate", "Terminate all programs running in sandbox " . box, Globals.shell32, 220, 1)
+    else
+        RunWait(Globals.start . " /box:" . box . " /terminate",, "UseErrorLevel")
+}
+
+DeleteBoxMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P") {
+        writeUnsandboxedShortcutFileToDesktop(Globals.start, "! Delete sandbox " . box . " !", "", "/box:" . box . " delete_sandbox", "Deletes the sandbox " . box, Globals.shell32, 132, 1)
+        MsgBox("Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!", Globals.title, "48|IconExclamation")
+    } else {
+        if (MsgBox("Are you sure you want to delete the sandbox '" . box . "'?", Globals.title, "292|IconQuestion") == "No")
+             return
+        RunWait(Globals.start . " /box:" . box . " delete_sandbox",, "UseErrorLevel")
+    }
+}
+
+SCmdMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+    {
+        local args := "/box:" . box . " " . A_ComSpec . " /k ""cd /d " . A_WinDir . "\"""
+        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxed Command Prompt", "", args, "Sandboxed Command Prompt in sandbox " . box, Globals.cmdRes, 1, 1, box)
+    }
+    else
+    {
+        local cdpath := FileExist(expandEnvVars(Settings.sbcommandpromptdir)) ? Settings.sbcommandpromptdir : A_WinDir
+        Run(Globals.start . " /box:" . box . " " . A_ComSpec . " /k ""cd /d " . cdpath . """",, "UseErrorLevel")
+    }
+}
+
+UCmdMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    if GetKeyState("Control", "P")
+    {
+        local args := "/k ""cd /d """ . sandbox.bpath . """"""
+        writeUnsandboxedShortcutFileToDesktop(A_ComSpec, "Unsandboxed Command Prompt in sandbox " . box, sandbox.bpath, args, "Unsandboxed Command Prompt in sandbox " . box, Globals.cmdRes, 1, 1)
+    }
+    else
+        Run(A_ComSpec . " /k ""cd /d """ . sandbox.bpath . """""",, "UseErrorLevel")
+}
+
+RunDialogMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxie's Run dialog", "", "/box:" . box . " run_dialog", "Launch Sandboxie's Run Dialog in sandbox " . box, Globals.SbieAgentResMain, Globals.SbieAgentResMainId, 1, box)
+    else
+        Run(Globals.start . " /box:" . box . " run_dialog",, "UseErrorLevel")
+}
+
+StartMenuMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxie's Start Menu", "", "/box:" . box . " start_menu", "Launch Sandboxie's Start Menu in sandbox " . box, Globals.SbieAgentResMain, Globals.SbieAgentResMainId, 1, box)
+    else
+        Run(Globals.start . " /box:" . box . " start_menu",, "UseErrorLevel")
+}
+
+UninstallMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+        writeSandboxedShortcutFileToDesktop(Globals.start, "Uninstall Programs", "", "/box:" . box . " appwiz.cpl", "Uninstall or installs programs in sandbox " . box, Globals.shell32, 22, 1, box)
+    else
+        RunWait(Globals.start . " /box:" . box . " appwiz.cpl",, "UseErrorLevel")
+}
+
+SRegEditMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+        writeSandboxedShortcutFileToDesktop(Globals.start, "Sandboxed Registry Editor", "", "/box:" . box . " " . Globals.regeditImg, "Launch RegEdit in sandbox " . box, Globals.regeditRes, 1, 1, box)
+    else
+        Run(Globals.start . " /box:" . box . " " . Globals.regeditImg, , "UseErrorLevel")
+}
+
+URegEditMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    if GetKeyState("Control", "P") {
+        MsgBox("Creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported, as it requires initializing the sandbox first.", Globals.title, "48|IconExclamation")
+    } else {
+        local box := getBoxFromMenu()
+        local sandbox := getSandboxByName(box)
+        if (!IsObject(sandbox)) return
+
+        local run_pid := InitializeBox(box)
+
+        local reg_path := "HKEY_USERS\" . sandbox.RegStr_
+        try RegWrite(reg_path, "REG_SZ", "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "LastKey")
+
+        RunWait(Globals.regeditImg)
+        ReleaseBox(run_pid)
+    }
+}
+
+getSandboxesArray(ini)
+{
+    local sandboxes_array := []
+    local sandboxes_path := IniRead(ini, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
+    local sandboxeskey_path := IniRead(ini, "GlobalSettings", "KeyRootPath", "\REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%")
+
+    local old_encoding := A_FileEncoding
+    FileEncoding("UTF-16")
+
+    local sections := ""
+    try sections := FileRead(ini)
+    local boxes := []
+    for _, section in StrSplit(sections, "`n")
+    {
+        if (RegExMatch(section, "\[([^\]]+)\]", &m) && m[1] != "GlobalSettings" && !InStr(m[1], "UserSettings_") && !InStr(m[1], "Template"))
+        {
+            boxes.Push(m[1])
+        }
+    }
+    boxes.Sort("CL")
+    FileEncoding(old_encoding)
+
+    for _, boxName in boxes
+    {
+        local bfilerootpath := IniRead(ini, boxName, "FileRootPath", sandboxes_path)
+        local bkeyrootpath := IniRead(ini, boxName, "KeyRootPath", sandboxeskey_path)
+
+        local dropAdminRights := IniRead(ini, boxName, "DropAdminRights", "n") == "y"
+        local enabled := IniRead(ini, boxName, "Enabled", "y") == "y"
+        local neverDelete := IniRead(ini, boxName, "NeverDelete", "n") == "y"
+        local useFileImage := IniRead(ini, boxName, "UseFileImage", "n") == "y"
+        local useRamDisk := IniRead(ini, boxName, "UseRamDisk", "n") == "y"
+
+        sandboxes_array.Push(Sandbox(boxName, bfilerootpath, bkeyrootpath, dropAdminRights, enabled, neverDelete, useFileImage, useRamDisk))
+    }
+    return sandboxes_array
+}
+
+getBoxFromMenu()
+{
+    return SubStr(A_ThisMenu, 1, InStr(A_ThisMenu, "_ST2") - 1)
+}
+
+getSandboxName(title, include_ask := false)
+{
+    static selected_box := "unset"
+
+    handler(name, *) {
+        global selected_box := name
+    }
+
+    selected_box := "unset"
+    box_menu := Menu()
+    box_menu.Add(title, handler.Bind("")).Disable()
+    box_menu.Add()
+
+
+    for _, sandbox in Globals.sandboxes_array
+    {
+        local label := sandbox.exist ? sandbox.name : sandbox.name . " (empty)"
+        box_menu.Add(label, handler.Bind(sandbox.name))
+        setMenuIcon(box_menu, label, sandbox.exist ? Globals.SbieAgentResFull : Globals.SbieAgentResEmpty, sandbox.exist ? Globals.SbieAgentResFullId : Globals.SbieAgentResEmptyId, Settings.largeiconsize)
+    }
+
+    if (include_ask)
+    {
+        box_menu.Add()
+        box_menu.Add("Ask box at run time", handler.Bind("__ask__"))
+        setMenuIcon(box_menu, "Ask box at run time", Globals.SbieAgentResMain, Globals.SbieAgentResMainId, Settings.largeiconsize)
+    }
+
+    box_menu.Add()
+    box_menu.Add("Cancel", handler.Bind(""))
+
+    box_menu.Show()
+
+    while (selected_box == "unset")
+        Sleep(50)
+
+    local result := selected_box
+    selected_box := "unset"
+    return result
+}
+
+NewShortcut(box, file)
+{
+    SplitPath(file, , &dir, &extension, &label)
+    if (!FileExist(dir))
+        dir := stdPathToBoxPath(box, dir)
+
+    local iconfile, iconnum
+    if (extension == "exe")
+    {
+        iconfile := file
+        iconnum := 1
+    }
+    else
+    {
+        ; Simplified icon logic for now. A full port is a future task.
+        iconfile := Globals.shell32
+        iconnum := 2
+    }
+
+    local tip := (box == "__ask__") ? "Launch '" . label . "' in any sandbox" : "Launch '" . label . "' in sandbox " . box
+    writeSandboxedShortcutFileToDesktop(Globals.start, label, dir, "/box:" . box . " """ . file . """", tip, iconfile, iconnum, 1, box)
+}
+
+NewShortcutMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    static DefaultShortcutFolder := A_Desktop
+    local box := getBoxFromMenu()
+
+    local file := FileSelect(33, DefaultShortcutFolder, "Select the file to launch sandboxed in box " . box, "All files (*.*)")
+    if (file == "")
+        return
+
+    NewShortcut(box, file)
+    SplitPath(file, , &DefaultShortcutFolder)
+}
+
+ReadIgnoredConfig(type)
+{
+    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
+    if (type == "files")
+    {
+        try ignoredDirs := "`n" . FileRead(Settings.ignorelist . "dirs.cfg")
+        catch ignoredDirs := "`n"
+        try ignoredFiles := "`n" . FileRead(Settings.ignorelist . "files.cfg")
+        catch ignoredFiles := "`n"
+    }
+    else
+    {
+        try ignoredKeys := "`n" . FileRead(Settings.ignorelist . "keys.cfg")
+        catch ignoredKeys := "`n"
+        try ignoredValues := "`n" . FileRead(Settings.ignorelist . "values.cfg")
+        catch ignoredValues := "`n"
+    }
+}
+
+IsIgnored(mode, ignoredList, checkpath, item := "")
+{
+    if (ignoredList == "`n") return false
+
+    if (mode == "values" || mode == "files")
+    {
+        local tocheck := "`n" . checkpath . "\" . item . "`n"
+        return InStr(ignoredList, tocheck)
+    }
+    else
+    {
+        loop
+        {
+            local tocheck := "`n" . checkpath . "`n"
+            if InStr(ignoredList, tocheck)
+                return true
+            SplitPath(checkpath, , &checkpath)
+            if (checkpath == "")
+                return false
+        }
+    }
+    return false
+}
+
+AddIgnoreItem(mode, item)
+{
+    global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
+    if (mode == "dirs") newIgnored_dirs .= "`n" . item
+    else if (mode == "files") newIgnored_files .= "`n" . item
+    else if (mode == "keys") newIgnored_keys .= "`n" . item
+    else if (mode == "values") newIgnored_values .= "`n" . item
+}
+
+SaveNewIgnoredItems(mode)
+{
+    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
+    global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
+
+    local pathdata, itemdata, pathfilename, itemfilename
+    if (mode == "files")
+    {
+        if (newIgnored_dirs == "" && newIgnored_files == "") return
+        pathdata := ignoredDirs . newIgnored_dirs
+        itemdata := ignoredFiles . newIgnored_files
+        pathfilename := Settings.ignorelist . "dirs.cfg"
+        itemfilename := Settings.ignorelist . "files.cfg"
+    }
+    else
+    {
+        if (newIgnored_keys == "" && newIgnored_values == "") return
+        pathdata := ignoredKeys . newIgnored_keys
+        itemdata := ignoredValues . newIgnored_values
+        pathfilename := Settings.ignorelist . "keys.cfg"
+        itemfilename := Settings.ignorelist . "values.cfg"
+    }
+
+    local pathArray := Sort(StrSplit(pathdata, "`n", "`r"), "U")
+    local itemArray := Sort(StrSplit(itemdata, "`n", "`r"), "U")
+
+    ; TODO: Port the sub-path reduction logic from v1 for more efficient ignore files.
+
+    try FileDelete(pathfilename)
+    FileAppend(Format("{:s}", pathArray), pathfilename)
+
+    try FileDelete(itemfilename)
+    FileAppend(Format("{:s}", itemArray), itemfilename)
+}
+
+getSandboxName(title, include_ask := false)
+{
+    static selected_box := "unset"
+
+    handler(name, *) {
+        global selected_box := name
+    }
+
+    selected_box := "unset"
+    box_menu := Menu()
+    box_menu.Add(title, handler.Bind("")).Disable()
+    box_menu.Add()
+
+
+    for _, sandbox in Globals.sandboxes_array
+    {
+        local label := sandbox.exist ? sandbox.name : sandbox.name . " (empty)"
+        box_menu.Add(label, handler.Bind(sandbox.name))
+        setMenuIcon(box_menu, label, sandbox.exist ? Globals.SbieAgentResFull : Globals.SbieAgentResEmpty, sandbox.exist ? Globals.SbieAgentResFullId : Globals.SbieAgentResEmptyId, Settings.largeiconsize)
+    }
+
+    if (include_ask)
+    {
+        box_menu.Add()
+        box_menu.Add("Ask box at run time", handler.Bind("__ask__"))
+        setMenuIcon(box_menu, "Ask box at run time", Globals.SbieAgentResMain, Globals.SbieAgentResMainId, Settings.largeiconsize)
+    }
+
+    box_menu.Add()
+    box_menu.Add("Cancel", handler.Bind(""))
+
+    box_menu.Show()
+
+    while (selected_box == "unset")
+        Sleep(50)
+
+    local result := selected_box
+    selected_box := "unset"
+    return result
+}
+
+NewShortcut(box, file)
+{
+    SplitPath(file, , &dir, &extension, &label)
+    if (!FileExist(dir))
+        dir := stdPathToBoxPath(box, dir)
+
+    local iconfile, iconnum
+    if (extension == "exe")
+    {
+        iconfile := file
+        iconnum := 1
+    }
+    else
+    {
+        ; Simplified icon logic for now. A full port is a future task.
+        iconfile := Globals.shell32
+        iconnum := 2
+    }
+
+    local tip := (box == "__ask__") ? "Launch '" . label . "' in any sandbox" : "Launch '" . label . "' in sandbox " . box
+    writeSandboxedShortcutFileToDesktop(Globals.start, label, dir, "/box:" . box . " """ . file . """", tip, iconfile, iconnum, 1, box)
+}
+
+NewShortcutMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    static DefaultShortcutFolder := A_Desktop
+    local box := getBoxFromMenu()
+
+    local file := FileSelect(33, DefaultShortcutFolder, "Select the file to launch sandboxed in box " . box, "All files (*.*)")
+    if (file == "")
+        return
+
+    NewShortcut(box, file)
+    SplitPath(file, , &DefaultShortcutFolder)
 }
 
 ; ... (rest of the original file)
