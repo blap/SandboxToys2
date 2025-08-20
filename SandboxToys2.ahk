@@ -822,13 +822,39 @@ Return
 ; Functions
 ; ###################################################################################################
 
+getSandboxByName(name)
+{
+    for _, sandbox in Globals.sandboxes_array
+    {
+        if (sandbox.name == name)
+            return sandbox
+    }
+    return ""
+}
+
+ListFiles(boxName)
+{
+    local sandbox := getSandboxByName(boxName)
+    if (!IsObject(sandbox))
+        return []
+
+    local fileList := []
+    Loop, Files, % sandbox.bpath . "\*", "R"
+    {
+        fileList.Push({
+            path: A_LoopFileFullPath,
+            type: InStr(A_LoopFileAttrib, "D") ? "Folder" : "File",
+            size: A_LoopFileSize,
+            modified: A_LoopFileTimeModified
+        })
+    }
+    return fileList
+}
+
 ListFilesMenuHandler(ItemName, ItemPos, MyMenu)
 {
     global box
-    ; TODO: The original logic for fetching the list of files from the sandbox needs to be implemented here.
-    ; The original script likely had a function like `getFiles(box)` or `ListFiles(box)`.
-    ; For now, using placeholder data.
-    files := [{path: "C:\file1.txt", type: "File", size: 1024, modified: "2023-10-27"}, {path: "C:\file2.txt", type: "File", size: 2048, modified: "2023-10-27"}]
+    local files := ListFiles(box)
     GuiManager.ListGUI("Files", box, "files", files)
 }
 
