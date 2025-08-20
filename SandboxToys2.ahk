@@ -1,8 +1,6 @@
-#Persistent
-#SingleInstance Off
-
-A_UseHook := false
-version := 2.5.4
+A_Persistent := true
+A_SingleInstance := "Off"
+version := "3.0.0.0"
 ; SandboxToys: Main Menu
 ; Author: r0lZ updated by blap and others
 ; Developed and compiled with AHK2Exe(Unicode 64-bit.bin) with no compression v 1.1.36.02.
@@ -729,56 +727,57 @@ BuildMainMenu(ItemName, ItemPos, MyMenu)
 ; get sandbox names, paths and properties from Sandboxie's INI file
 ; and from the current state of the sandboxes.
 ; Returns a Map of sandboxes, where each key is the box name and the value is a Map of properties.
-getSandboxesArray(ini)
+getSandboxesArray(iniFile)
 {
-    global username
     sandboxes_map := Map()
-    sandboxes_path_template := IniRead(ini, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
-    sandboxeskey_path_template := IniRead(ini, "GlobalSettings", "KeyRootPath", "\REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%")
+    sandboxes_path_template := IniRead(iniFile, "GlobalSettings", "FileRootPath", A_WinDir . "\Sandbox\`%USER`%\`%SANDBOX`%")
+    sandboxeskey_path_template := IniRead(iniFile, "GlobalSettings", "KeyRootPath", "\REGISTRY\USER\Sandbox_`%USER`%_`%SANDBOX`%")
 
-    old_encoding := A_FileEncoding
-    A_FileEncoding := "UTF-16"
-
-    boxes_str := ""
-    Loop Read, ini
+    file := FileOpen(iniFile, "r", "UTF-16")
+    if !IsObject(file)
     {
-        line := A_LoopReadLine
-        if (SubStr(line, 1, 1) == "[" && SubStr(line, -1) == "]" && line != "[GlobalSettings]" && SubStr(line, 1, 14) != "[UserSettings_" && SubStr(line, 1, 10) != "[Template_" && line != "[TemplateSettings]") {
-            boxes_str .= SubStr(line, 2, -1) . ","
+        MsgBox("Failed to open " . iniFile)
+        return
+    }
+
+    boxes_list := []
+    while !file.AtEOF
+    {
+        line := file.ReadLine()
+        if (SubStr(line, 1, 1) == "[" && SubStr(line, -0) == "]" && line != "[GlobalSettings]" && SubStr(line, 1, 14) != "[UserSettings_" && SubStr(line, 1, 10) != "[Template_" && line != "[TemplateSettings]") {
+            boxes_list.Push(SubStr(line, 2, -1))
         }
     }
-    A_FileEncoding := old_encoding
-    boxes_str := Trim(boxes_str, ",")
-    boxlist := StrSplit(boxes_str, ",")
-    boxlist.Sort("CL")
+    file.Close()
+    boxes_list.Sort("CL")
 
-    for _, boxname in boxlist
+    for _, boxname in boxes_list
     {
         box_data := Map()
         box_data.name := boxname
 
-        current_sandboxes_path := IniRead(ini, boxname, "FileRootPath", sandboxes_path_template)
+        current_sandboxes_path := IniRead(iniFile, boxname, "FileRootPath", sandboxes_path_template)
         box_data.FileRootPath := current_sandboxes_path
         expanded_path := expandEnvVars(current_sandboxes_path)
         box_data.bpath := StrReplace(expanded_path, "`%SANDBOX`%", boxname)
 
-        current_sandboxeskey_path := IniRead(ini, boxname, "KeyRootPath", sandboxeskey_path_template)
+        current_sandboxeskey_path := IniRead(iniFile, boxname, "KeyRootPath", sandboxeskey_path_template)
         box_data.KeyRootPath := current_sandboxeskey_path
         expanded_key_path := expandEnvVars(current_sandboxeskey_path)
         box_data.bkey := StrReplace(expanded_key_path, "`%SANDBOX`%", boxname)
 
-        bkeyrootpathR := StrReplace(current_sandboxeskey_path, username, "`%USER`%")
+        bkeyrootpathR := StrReplace(current_sandboxeskey_path, A_UserName, "`%USER`%")
         regspos := InStr(bkeyrootpathR, "\",, 0)
         regepos := InStr(bkeyrootpathR, "%")
         box_data.RegStr_ := SubStr(bkeyrootpathR, regspos + 1, regepos - regspos - 2)
 
         box_data.exist := DirExist(box_data.bpath) && FileExist(box_data.bpath . "\RegHive")
 
-        box_data.DropAdminRights := IniRead(ini, boxname, "DropAdminRights", "n") == "y"
-        box_data.Enabled := IniRead(ini, boxname, "Enabled", "y") != "n"
-        box_data.NeverDelete := IniRead(ini, boxname, "NeverDelete", "n") == "y"
-        box_data.UseFileImage := IniRead(ini, boxname, "UseFileImage", "n") == "y"
-        box_data.UseRamDisk := IniRead(ini, boxname, "UseRamDisk", "n") == "y"
+        box_data.DropAdminRights := IniRead(iniFile, boxname, "DropAdminRights", "n") == "y"
+        box_data.Enabled := IniRead(iniFile, boxname, "Enabled", "y") != "n"
+        box_data.NeverDelete := IniRead(iniFile, boxname, "NeverDelete", "n") == "y"
+        box_data.UseFileImage := IniRead(iniFile, boxname, "UseFileImage", "n") == "y"
+        box_data.UseRamDisk := IniRead(iniFile, boxname, "UseRamDisk", "n") == "y"
 
         sandboxes_map[boxname] := box_data
     }
@@ -795,7 +794,8 @@ getSandboxName(sandboxes_map, title, include_ask := false) {
     boxMenu.Disable(title)
     boxMenu.Add()
 
-    boxMenu.OnEvent("Click", getSandboxName_ClickHandler)
+    handler := getSandboxName_ClickHandler
+    boxMenu.OnEvent("Click", handler)
 
     for boxname, boxdata in sandboxes_map {
         local menuText := boxname
@@ -821,7 +821,8 @@ getSandboxName(sandboxes_map, title, include_ask := false) {
     boxMenu.Add()
     boxMenu.Add("Cancel")
 
-    global __selected_box__ := unset
+    global __selected_box__
+    __selected_box__ := unset
     boxMenu.Show()
 
     while __selected_box__ == unset
@@ -845,10 +846,7 @@ getSandboxName_ClickHandler(menu, item, *) {
 setMenuIcon(menuObj, item, iconfile, iconindex, iconsize)
 {
     try {
-        if IsObject(menuObj)
-            menuObj.SetIcon(item, iconfile, iconindex, iconsize)
-        else
-            Menu(menuObj).SetIcon(item, iconfile, iconindex, iconsize)
+        menuObj.SetIcon(item, iconfile, iconindex, iconsize)
         return 0
     } catch {
         return 1
@@ -857,8 +855,8 @@ setMenuIcon(menuObj, item, iconfile, iconindex, iconsize)
 
 getFilenames(directory, includeFolders)
 {
-    files := ""
-    loopMode := ""
+    local files := []
+    local loopMode := ""
     if (includeFolders == 0)
         loopMode := "F"
     else if (includeFolders == 1)
@@ -879,19 +877,17 @@ getFilenames(directory, includeFolders)
         if InStr(A_LoopFileAttrib, "D")
         {
             SplitPath(A_LoopFileName, &OutDirName)
-            files .= OutDirName . ":" . A_LoopFileLongPath . "`n"
+            files.Push(OutDirName . ":" . A_LoopFileLongPath)
         } else {
             SplitPath(A_LoopFileName, , , , &OutNameNoExt)
-            files .= OutNameNoExt . ":" . A_LoopFileLongPath . "`n"
+            files.Push(OutNameNoExt . ":" . A_LoopFileLongPath)
         }
     }
-    files := Trim(files, "`n")
-    if (files) {
-        local file_array := StrSplit(files, "`n")
-        file_array.Sort("CL")
-        files := file_array.Join("`n")
+    if (files.Length > 0) {
+        files.Sort("CL")
+        return files.Join("`n")
     }
-    Return files
+    Return ""
 }
 
 ; Build a menu with the files from a specific directory
@@ -917,9 +913,8 @@ buildProgramsMenu1(box, menuname, bpath)
 
     menudirs := getFilenames(bpath, 2)
     if (menudirs) {
-        Loop, parse, menudirs, "`n"
+        for _, entry in StrSplit(menudirs, "`n")
         {
-            entry := A_LoopField
             idx := InStr(entry, ":")
             label := SubStr(entry, 1, idx-1)
             dir := SubStr(entry, idx+1)
@@ -974,9 +969,8 @@ buildProgramsMenu2(box, menuname, path1, path2)
     menudirsStr := Trim(menudirsStr, A_Return)
     if (menudirsStr) {
         dirMap := Map()
-        Loop, parse, menudirsStr, "`n"
+        for _, entry in StrSplit(menudirsStr, "`n")
         {
-            entry := A_LoopField
             idx := InStr(entry, ":")
             label := SubStr(entry, 1, idx-1)
             dir := SubStr(entry, idx+1)
@@ -989,7 +983,7 @@ buildProgramsMenu2(box, menuname, path1, path2)
         sortedLabels := []
         for label in dirMap.OwnProps()
             sortedLabels.Push(label)
-        Sort(sortedLabels, "CL")
+        sortedLabels.Sort("CL")
 
         for _, label in sortedLabels
         {
@@ -1016,20 +1010,26 @@ buildProgramsMenu2(box, menuname, path1, path2)
 }
 
 ; TODO: rewrite this stuff, too complicated
-setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
+setIconFromSandboxedShortcut(box, shortcut, menuObj, label, iconsize)
 {
-    global menuicons, imageres, username, sandboxes_array, shell32
+    global menuicons, imageres, sandboxes_array, shell32
     A_Quotes := """"
 
     bregstr_ := sandboxes_array[box].KeyRootPath
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', A_UserName)
 
-    menuicons[menuname,label,"file"] := ""
-    menuicons[menuname,label,"num"] := ""
+    if !menuicons.Has(menuObj.Name)
+        menuicons[menuObj.Name] := Map()
+    if !menuicons[menuObj.Name].Has(label)
+        menuicons[menuObj.Name][label] := Map()
+
+    menuicons[menuObj.Name][label]["file"] := ""
+    menuicons[menuObj.Name][label]["num"] := ""
 
     ; get icon file and number in shortcut.
     ; If not specified, assumes it's the file pointed to by the shortcut
     SplitPath(shortcut, , , &extension)
+    local target, iconfile, iconnum
     if (extension == "lnk") {
         FileGetShortcut(shortcut, &target, , , , &iconfile, &iconnum)
         if (iconnum == "")
@@ -1045,18 +1045,18 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
     iconfile := Trim(iconfile, A_Quotes)
     iconfile := expandEnvVars(iconfile)
 
-    if (InStr(FileExist(iconfile), "D")) {
-        setMenuIcon(menuname, label, imageres, 4, iconsize)
-        menuicons[menuname,label,"file"] := imageres
-        menuicons[menuname,label,"num"] := 4
+    if (DirExist(iconfile)) {
+        setMenuIcon(menuObj, label, imageres, 4, iconsize)
+        menuicons[menuObj.Name][label]["file"] := imageres
+        menuicons[menuObj.Name][label]["num"] := 4
         return imageres . "," . 4
     }
 
     boxfile := stdPathToBoxPath(box, iconfile)
-    if (InStr(FileExist(boxfile), "D")) {
-        setMenuIcon(menuname, label, imageres, 4, iconsize)
-        menuicons[menuname,label,"file"] := imageres
-        menuicons[menuname,label,"num"] := 4
+    if (DirExist(boxfile)) {
+        setMenuIcon(menuObj, label, imageres, 4, iconsize)
+        menuicons[menuObj.Name][label]["file"] := imageres
+        menuicons[menuObj.Name][label]["num"] := 4
         return imageres . "," . 4
     }
     if (FileExist(boxfile)) {
@@ -1065,9 +1065,9 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
 
     rc := 1
     if (iconfile != "") {
-        rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-        menuicons[menuname,label,"file"] := iconfile
-        menuicons[menuname,label,"num"] := iconnum
+        rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+        menuicons[menuObj.Name][label]["file"] := iconfile
+        menuicons[menuObj.Name][label]["num"] := iconnum
     }
 
     if (rc) {
@@ -1082,12 +1082,13 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
         }
         ; try to get the icon from the sandboxed registry first
         ; (will fail is nothing is running in the sandbox)
-        try defaulticon := RegRead("HKEY_USERS", bregstr_ . "\machine\software\classes\." . extension . "\DefaultIcon")
+        local defaulticon := ""
+        try defaulticon := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\." . extension . "\DefaultIcon")
         catch {
             try {
-                keyval := RegRead("HKEY_USERS", bregstr_ . "\machine\software\classes\." . extension)
+                keyval := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\." . extension)
                 if (keyval != "") {
-                    try defaulticon := RegRead("HKEY_USERS", bregstr_ . "\machine\software\classes\" . keyval . "\DefaultIcon")
+                    try defaulticon := RegRead("HKEY_USERS\" . bregstr_ . "\machine\software\classes\" . keyval . "\DefaultIcon")
                 }
             }
         }
@@ -1105,9 +1106,9 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                 iconfile := Trim(iconfile, A_Quotes)
                 iconfile := expandEnvVars(iconfile)
                 iconfile := stdPathToBoxPath(box, iconfile)
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+                menuicons[menuObj.Name][label]["file"] := iconfile
+                menuicons[menuObj.Name][label]["num"] := iconnum
             } else
                 rc := 1
             if (rc == 0)
@@ -1127,6 +1128,7 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
             }
         }
         if (defaulticon == "") {
+            local percievedtype := ""
             try percievedtype := RegRead("HKEY_CLASSES_ROOT", "." . extension, "PerceivedType")
             catch {
                 try {
@@ -1138,23 +1140,17 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
             }
             if (percievedtype == "document") {
                 defaulticon := imageres . ",2"
-            }
-            if (percievedtype == "system") {
+            } else if (percievedtype == "system") {
                 defaulticon := imageres . ",63"
-            }
-            if (percievedtype == "text") {
+            } else if (percievedtype == "text") {
                 defaulticon := imageres . ",97"
-            }
-            if (percievedtype == "audio") {
+            } else if (percievedtype == "audio") {
                 defaulticon := imageres . ",125"
-            }
-            if (percievedtype == "image") {
+            } else if (percievedtype == "image") {
                 defaulticon := imageres . ",126"
-            }
-            if (percievedtype == "video") {
+            } else if (percievedtype == "video") {
                 defaulticon := imageres . ",127"
-            }
-            if (percievedtype == "compressed") {
+            } else if (percievedtype == "compressed") {
                 defaulticon := imageres . ",165"
             }
         }
@@ -1175,29 +1171,29 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                 }
             }
             iconfile := Trim(iconfile, A_Quotes)
-            rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-            menuicons[menuname,label,"file"] := iconfile
-            menuicons[menuname,label,"num"] := iconnum
+            rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+            menuicons[menuObj.Name][label]["file"] := iconfile
+            menuicons[menuObj.Name][label]["num"] := iconnum
         } else
             rc := 1
         if (rc) {
             if (InStr(defaulticon, "%programfiles%")) {
                 iconfile := StrReplace(iconfile, '`%programfiles`%', A_ProgramFiles)
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+                menuicons[menuObj.Name][label]["file"] := iconfile
+                menuicons[menuObj.Name][label]["num"] := iconnum
             }
             if (rc) {
                 iconfile := StrReplace(iconfile, '`%programfiles`%', A_ProgramFilesX86)
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+                menuicons[menuObj.Name][label]["file"] := iconfile
+                menuicons[menuObj.Name][label]["num"] := iconnum
             }
             if (rc) {
                 iconfile := expandEnvVars(iconfile)
-                rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-                menuicons[menuname,label,"file"] := iconfile
-                menuicons[menuname,label,"num"] := iconnum
+                rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+                menuicons[menuObj.Name][label]["file"] := iconfile
+                menuicons[menuObj.Name][label]["num"] := iconnum
             }
         }
         if (rc || iconfile == "") {
@@ -1207,9 +1203,9 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
                 iconnum := 3
             else
                 iconnum := 2
-            rc := setMenuIcon(menuname, label, iconfile, iconnum, iconsize)
-            menuicons[menuname,label,"file"] := iconfile
-            menuicons[menuname,label,"num"] := iconnum
+            rc := setMenuIcon(menuObj, label, iconfile, iconnum, iconsize)
+            menuicons[menuObj.Name][label]["file"] := iconfile
+            menuicons[menuObj.Name][label]["num"] := iconnum
         }
     }
     return iconfile . "," . iconnum
@@ -1219,34 +1215,34 @@ setIconFromSandboxedShortcut(box, shortcut, menuname, label, iconsize)
 ; Assumes the order of the icon resources defines the icon indices.
 IndexOfIconResource(Filename, ID)
 {
-    A_Quotes = "
+    A_Quotes := """"
     Filename := Trim(Filename, A_Quotes)
     Filename := expandEnvVars(Filename)
     ID := Abs(ID)
     hmod := DllCall("GetModuleHandle", "str", Filename)
     ; If the DLL isn't already loaded, load it as a data file.
-    loaded := !hmod
-        && hmod := DllCall("LoadLibraryEx", "str", Filename, "uint", 0, "uint", 0x2)
+    loaded := !hmod && (hmod := DllCall("LoadLibraryEx", "str", Filename, "ptr", 0, "uint", 0x2))
 
-    enumproc := RegisterCallback("IndexOfIconResource_EnumIconResources","F")
-    VarSetCapacity(param,12,0), NumPut(ID,param,0)
+    enumproc := CallbackCreate(IndexOfIconResource_EnumIconResources, "F")
+    param := Buffer(12, 0)
+    NumPut("int", ID, param, 0)
     ; Enumerate the icon group resources. (RT_GROUP_ICON=14)
-    DllCall("EnumResourceNames", "uint", hmod, "uint", 14, "uint", enumproc, "uint", &param)
-    DllCall("GlobalFree", "uint", enumproc)
+    DllCall("EnumResourceNames", "ptr", hmod, "uint", 14, "ptr", enumproc, "ptr", param.Ptr)
+    CallbackFree(enumproc)
 
     ; If we loaded the DLL, free it now.
     if loaded
-        DllCall("FreeLibrary", "uint", hmod)
+        DllCall("FreeLibrary", "ptr", hmod)
 
-    return NumGet(param,8) ? NumGet(param,4) : 0
+    return NumGet(param, 8, "int") ? NumGet(param, 4, "int") : 0
 }
 IndexOfIconResource_EnumIconResources(hModule, lpszType, lpszName, lParam)
 {
-    NumPut(NumGet(lParam+4)+1, lParam+4)
+    NumPut("int", NumGet(lParam+4, "int")+1, lParam+4)
 
-    if (lpszName = NumGet(lParam+0))
+    if (lpszName == NumGet(lParam+0, "int"))
     {
-        NumPut(1, lParam+8)
+        NumPut("int", 1, lParam+8)
         return false ; break
     }
     return true
@@ -1254,12 +1250,16 @@ IndexOfIconResource_EnumIconResources(hModule, lpszType, lpszName, lParam)
 
 GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", deleted = 0)
 {
-    static sfi
+    static sfi, iconCache := Map()
     local sfi_size := 352
-    local hIcon, Ext, Fileto, FileIcon, FileIconNum, old
+    local hIcon, Ext, Fileto, FileIcon, FileIconNum
     local programsx86 := EnvGet("ProgramFiles(x86)")
     if !IsSet(sfi)
-        VarSetCapacity(sfi, sfi_size)
+        sfi := Buffer(sfi_size)
+
+    local cacheKey := File . "|" . hideshortcutoverlay . "|" . iconsize . "|" . box . "|" . deleted
+    if iconCache.Has(cacheKey)
+        return iconCache[cacheKey]
 
     SplitPath(File, , , &Ext)
     if (Ext == "LNK")
@@ -1268,8 +1268,10 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
         if (hideshortcutoverlay) {
             if (FileIcon) {
                 hIcon := MI_ExtractIcon(FileIcon, FileIconNum, iconsize)
-                if (hIcon)
+                if (hIcon) {
+                    iconCache[cacheKey] := hIcon
                     return hIcon
+                }
             } else {
                 File := Fileto
                 SplitPath(File, , , &Ext)
@@ -1286,11 +1288,10 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
             local attrs := 0x8101
             if (deleted)
                 attrs += 0x10000
-            if (DllCall("Shell32\SHGetFileInfoA", "astr", FileTo, "uint", 0, "ptr", &sfi, "uint", sfi_size, "uint", attrs))
+            if (DllCall("Shell32\SHGetFileInfoW", "wstr", FileTo, "uint", 0, "ptr", sfi.ptr, "uint", sfi_size, "uint", attrs))
             {
-                hIcon := 0
-                Loop 4
-                    hIcon += NumGet(sfi, A_Index - 1, "UChar") << (8 * (A_Index - 1))
+                hIcon := NumGet(sfi, 0, "ptr")
+                iconCache[cacheKey] := hIcon
                 return hIcon
             }
         }
@@ -1302,22 +1303,21 @@ GetAssociatedIcon(File, hideshortcutoverlay = true, iconsize = 16, box = "", del
     local attrs := 0x101
     if (deleted)
         attrs += 0x10000
-    if (DllCall("Shell32\SHGetFileInfoA", "astr", File, "uint", 0, "ptr", &sfi, "uint", sfi_size, "uint", attrs))
+    if (DllCall("Shell32\SHGetFileInfoW", "wstr", File, "uint", 0, "ptr", sfi.ptr, "uint", sfi_size, "uint", attrs))
     {
+        hIcon := NumGet(sfi, 0, "ptr")
+    } else {
         hIcon := 0
-        Loop 4
-            hIcon += NumGet(sfi, A_Index - 1, "UChar") << (8 * (A_Index - 1))
     }
+    iconCache[cacheKey] := hIcon
     return hIcon
 }
 
 MI_SetMenuItemIcon(MenuNameOrHandle, ItemPos, h_icon, IconSize=0)
 {
-    ; Set for compatibility with older scripts:
-    unused1=0
-    unused2=0
-
-    if MenuNameOrHandle is integer
+    local loaded_icon := 0
+    local h_menu
+    if MenuNameOrHandle is Integer
         h_menu := MenuNameOrHandle
     else
         h_menu := MI_GetMenuHandle(MenuNameOrHandle)
@@ -1325,166 +1325,149 @@ MI_SetMenuItemIcon(MenuNameOrHandle, ItemPos, h_icon, IconSize=0)
     if !h_menu
         return false
 
-    h_icon := DllCall("CopyImage","uint",h_icon,"uint",1
+    h_icon := DllCall("CopyImage","ptr",h_icon,"uint",1
         ,"int",IconSize,"int",IconSize,"uint",0)
 
     ; Get the previous bitmap or icon handle.
-    VarSetCapacity(mii,48,0), NumPut(48,mii), NumPut(0xA0,mii,4)
-    if DllCall("GetMenuItemInfo","uint",h_menu,"uint",ItemPos-1,"uint",1,"uint",&mii)
-        h_previous := NumGet(mii,44,"int")
+    local mii := Buffer(48, 0)
+    NumPut("uint", 48, mii)
+    NumPut("uint", 0xA0, mii, 4)
+    local h_previous := 0
+    if DllCall("GetMenuItemInfo","ptr",h_menu,"uint",ItemPos-1,"int",1,"ptr",mii.ptr)
+        h_previous := NumGet(mii,44,"ptr")
 
     h_bitmap := MI_GetBitmapFromIcon32Bit(h_icon, IconSize, IconSize)
 
-    if loaded_icon
+    if IsSet(loaded_icon) && loaded_icon
     {
-        ; The icon we loaded is no longer needed.
-        DllCall("DestroyIcon","uint",loaded_icon)
-        ; Don't try to destroy the now invalid handle again:
+        DllCall("DestroyIcon","ptr",loaded_icon)
         loaded_icon := 0
     }
 
     if !h_bitmap
         return false
 
-    NumPut(0x80,mii,4) ; fMask: Set hbmpItem only, not dwItemData.
-        , NumPut(h_bitmap,mii,44) ; hbmpItem = h_bitmap
+    NumPut("uint", 0x80, mii, 4) ; fMask: Set hbmpItem only, not dwItemData.
+    NumPut("ptr", h_bitmap, mii, 44) ; hbmpItem = h_bitmap
 
-    if DllCall("SetMenuItemInfo","uint",h_menu,"uint",ItemPos-1,"uint",1,"uint",&mii)
+    if DllCall("SetMenuItemInfo","ptr",h_menu,"uint",ItemPos-1,"int",1,"ptr",mii.ptr)
     {
-        ; Only now that we know it's a success, delete the previous icon or bitmap.
-        if (h_previous < -1 || h_previous > 11)
-            DllCall("DeleteObject","uint",h_previous)
+        if (h_previous && h_previous < -1 || h_previous > 11)
+            DllCall("DeleteObject","ptr",h_previous)
         return true
     }
-    ; ELSE FAIL
-    if loaded_icon
-        DllCall("DestroyIcon","uint",loaded_icon)
+
+    if IsSet(loaded_icon) && loaded_icon
+        DllCall("DestroyIcon","ptr",loaded_icon)
     return false
 }
 MI_ExtractIcon(Filename, IconNumber, IconSize)
 {
-    DllCall("PrivateExtractIcons", "wStr", Filename, "Int", IconNumber-1, "Int", IconSize, "Int", IconSize, "UInt*", hIcon, "UInt*", 0, "UInt", 1, "UInt", 0, "Int")
-    If !ErrorLevel
+    local hIcon := 0, hIcon_Small := 0
+    DllCall("PrivateExtractIcons", "wStr", Filename, "Int", IconNumber-1, "Int", IconSize, "Int", IconSize, "ptr*", &hIcon, "ptr*", 0, "UInt", 1, "UInt", 0)
+    if (hIcon)
         Return hIcon
 
-    If DllCall("shell32.dll\ExtractIconExA", "wStr", Filename, "Int", IconNumber-1, "UInt*", hIcon, "UInt*", hIcon_Small, "UInt", 1)
+    if DllCall("shell32.dll\ExtractIconExW", "wStr", Filename, "Int", IconNumber-1, "ptr*", &hIcon, "ptr*", &hIcon_Small, "UInt", 1)
     {
-        SysGet, SmallIconSize, 49
-        If (IconSize <= SmallIconSize) {
-            DllCall("DeStroyIcon", "UInt", hIcon)
+        local SmallIconSize := DllCall("GetSystemMetrics", "int", 49)
+        if (IconSize <= SmallIconSize) {
+            if hIcon DllCall("DestroyIcon", "ptr", hIcon)
             hIcon := hIcon_Small
+        } else {
+            if hIcon_Small DllCall("DestroyIcon", "ptr", hIcon_Small)
         }
-        Else
-            DllCall("DeStroyIcon", "UInt", hIcon_Small)
 
-        If (hIcon && IconSize)
-            hIcon := DllCall("CopyImage", "UInt", hIcon, "UInt", 1, "Int", IconSize, "Int", IconSize, "UInt", 4|8)
+        if (hIcon && IconSize)
+            hIcon := DllCall("CopyImage", "ptr", hIcon, "UInt", 1, "Int", IconSize, "Int", IconSize, "UInt", 4|8)
     }
-    Return, hIcon ? hIcon : 0
+    return hIcon ? hIcon : 0
 }
 MI_GetMenuHandle(menu_name)
 {
     static h_menuDummy
-    ; v2.2: Check for !h_menuDummy instead of h_menuDummy="" in case init failed last time.
-    If !h_menuDummy
+    if !IsSet(h_menuDummy)
     {
-        Menu, menuDummy, Add
-        Menu, menuDummy, DeleteAll
-
-        Gui, 99:Menu, menuDummy
-        ; v2.2: Use LastFound method instead of window title. [Thanks animeaime.]
-        Gui, 99:+LastFound
-
-        h_menuDummy := DllCall("GetMenu", "uint", WinExist())
-
-        Gui, 99:Menu
-        Gui, 99:Destroy
-
-        ; v2.2: Return only after cleaning up. [Thanks animeaime.]
-        if !h_menuDummy
-            return 0
+        local menuDummy := Menu()
+        local tempGui := Gui()
+        tempGui.Menu := menuDummy
+        h_menuDummy := DllCall("GetMenu", "ptr", tempGui.Hwnd)
     }
 
-    Menu, menuDummy, Add, :%menu_name%
-    h_menu := DllCall( "GetSubMenu", "uint", h_menuDummy, "int", 0 )
-    DllCall( "RemoveMenu", "uint", h_menuDummy, "uint", 0, "uint", 0x400 )
-    Menu, menuDummy, Delete, :%menu_name%
+    local tempMenu := Menu()
+    h_menu := DllCall( "GetSubMenu", "ptr", h_menuDummy, "int", 0 )
+    DllCall( "RemoveMenu", "ptr", h_menuDummy, "uint", 0, "uint", 0x400 )
 
     return h_menu
 }
 
 MI_GetBitmapFromIcon32Bit(h_icon, width=0, height=0)
 {
-    VarSetCapacity(buf,40) ; used as ICONINFO (20), BITMAP (24), BITMAPINFO (40)
-    if DllCall("GetIconInfo","uint",h_icon,"uint",&buf) {
-        hbmColor := NumGet(buf,16) ; used to measure the icon
-        hbmMask := NumGet(buf,12) ; used to generate alpha data (if necessary)
+    local buf := Buffer(40)
+    local hbmColor := 0, hbmMask := 0, pBits := 0
+    if DllCall("GetIconInfo","ptr",h_icon,"ptr",buf.ptr) {
+        hbmColor := NumGet(buf,16, "ptr")
+        hbmMask := NumGet(buf,12, "ptr")
     }
 
     if !(width && height) {
-        if !hbmColor or !DllCall("GetObject","uint",hbmColor,"int",24,"uint",&buf)
+        if !hbmColor or !DllCall("GetObject","ptr",hbmColor,"int",24,"ptr",buf.ptr)
             return 0
         width := NumGet(buf,4,"int"), height := NumGet(buf,8,"int")
     }
 
-    ; Create a device context compatible with the screen.
-    if (hdcDest := DllCall("CreateCompatibleDC","uint",0))
+    if (hdcDest := DllCall("CreateCompatibleDC","ptr",0))
     {
-        ; Create a 32-bit bitmap to draw the icon onto.
-        VarSetCapacity(buf,40,0), NumPut(40,buf), NumPut(1,buf,12,"ushort")
-        NumPut(width,buf,4), NumPut(height,buf,8), NumPut(32,buf,14,"ushort")
+        NumPut("uint", 40, buf, 0)
+        NumPut("ushort", 1, buf, 12)
+        NumPut("int", width, buf, 4)
+        NumPut("int", height, buf, 8)
+        NumPut("ushort", 32, buf, 14)
 
-        if (bm := DllCall("CreateDIBSection","uint",hdcDest,"uint",&buf,"uint",0
-            ,"uint*",pBits,"uint",0,"uint",0))
+        if (bm := DllCall("CreateDIBSection","ptr",hdcDest,"ptr",buf.ptr,"uint",0
+            ,"ptr*", &pBits,"ptr",0,"uint",0))
         {
-            ; SelectObject -- use hdcDest to draw onto bm
-            if (bmOld := DllCall("SelectObject","uint",hdcDest,"uint",bm))
+            if (bmOld := DllCall("SelectObject","ptr",hdcDest,"ptr",bm))
             {
-                ; Draw the icon onto the 32-bit bitmap.
-                DllCall("DrawIconEx","uint",hdcDest,"int",0,"int",0,"uint",h_icon
-                    ,"uint",width,"uint",height,"uint",0,"uint",0,"uint",3)
-
-                DllCall("SelectObject","uint",hdcDest,"uint",bmOld)
+                DllCall("DrawIconEx","ptr",hdcDest,"int",0,"int",0,"ptr",h_icon
+                    ,"uint",width,"uint",height,"uint",0,"ptr",0,"uint",3)
+                DllCall("SelectObject","ptr",hdcDest,"ptr",bmOld)
             }
 
-            ; Check for alpha data.
-            has_alpha_data := false
-            Loop, % height*width
-                if NumGet(pBits+0,(A_Index-1)*4) & 0xFF000000 {
+            local has_alpha_data := false
+            Loop, height*width {
+                if NumGet(pBits+0,(A_Index-1)*4, "uint") & 0xFF000000 {
                     has_alpha_data := true
                     break
                 }
+            }
             if !has_alpha_data
             {
-                ; Ensure the mask is the right size.
-                hbmMask := DllCall("CopyImage","uint",hbmMask,"uint",0
+                hbmMask := DllCall("CopyImage","ptr",hbmMask,"uint",0
                     ,"int",width,"int",height,"uint",4|8)
 
-                VarSetCapacity(mask_bits, width*height*4, 0)
-                if DllCall("GetDIBits","uint",hdcDest,"uint",hbmMask,"uint",0
-                    ,"uint",height,"uint",&mask_bits,"uint",&buf,"uint",0)
-                { ; Use icon mask to generate alpha data.
-                    Loop, % height*width
-                        if (NumGet(mask_bits, (A_Index-1)*4))
-                            NumPut(0, pBits+(A_Index-1)*4)
+                local mask_bits := Buffer(width*height*4)
+                if DllCall("GetDIBits","ptr",hdcDest,"ptr",hbmMask,"uint",0
+                    ,"uint",height,"ptr",mask_bits.ptr,"ptr",buf.ptr,"uint",0)
+                {
+                    Loop, height*width {
+                        if (NumGet(mask_bits, (A_Index-1)*4, "uint"))
+                            NumPut("uint", 0, pBits+(A_Index-1)*4)
                         else
-                            NumPut(NumGet(pBits+(A_Index-1)*4) | 0xFF000000, pBits+(A_Index-1)*4)
-                } else { ; Make the bitmap entirely opaque.
-                    Loop, % height*width
-                        NumPut(NumGet(pBits+(A_Index-1)*4) | 0xFF000000, pBits+(A_Index-1)*4)
+                            NumPut("uint", NumGet(pBits+(A_Index-1)*4, "uint") | 0xFF000000, pBits+(A_Index-1)*4)
+                    }
+                } else {
+                    Loop, height*width
+                        NumPut("uint", NumGet(pBits+(A_Index-1)*4, "uint") | 0xFF000000, pBits+(A_Index-1)*4)
                 }
             }
         }
-
-        ; Done using the device context.
-        DllCall("DeleteDC","uint",hdcDest)
+        DllCall("DeleteDC","ptr",hdcDest)
     }
 
-    if hbmColor
-        DllCall("DeleteObject","uint",hbmColor)
-    if hbmMask
-        DllCall("DeleteObject","uint",hbmMask)
-    return bm
+    if hbmColor DllCall("DeleteObject","ptr",hbmColor)
+    if hbmMask DllCall("DeleteObject","ptr",hbmMask)
+    return IsSet(bm) ? bm : 0
 }
 
 ; converts a path to its equivalent in a sandbox
@@ -1492,30 +1475,22 @@ stdPathToBoxPath(box, bpath)
 {
     global sandboxes_path
     local boxpath := StrReplace(sandboxes_path, "`%SANDBOX`%", box)
-    local outpath := ""
     local userprofile := A_UserProfile . "\"
     if (SubStr(bpath, 1, StrLen(userprofile)) == userprofile) {
         local remain := SubStr(bpath, StrLen(userprofile) + 1)
-        outpath := boxpath . "\user\current\" . remain
+        return boxpath . "\user\current\" . remain
     }
-    if (outpath == "") {
-        local allusersprofile := A_AllUsersProfile . "\"
-        if (SubStr(bpath, 1, StrLen(allusersprofile)) == allusersprofile) {
-            local remain := SubStr(bpath, StrLen(allusersprofile) + 1)
-            outpath := boxpath . "\user\all\" . remain
-        }
+    local allusersprofile := A_AllUsersProfile . "\"
+    if (SubStr(bpath, 1, StrLen(allusersprofile)) == allusersprofile) {
+        local remain := SubStr(bpath, StrLen(allusersprofile) + 1)
+        return boxpath . "\user\all\" . remain
     }
-    if (outpath == "") {
-        if (SubStr(bpath, 2, 2) == ":\") {
-            local drive := SubStr(bpath, 1, 1)
-            local remain := SubStr(bpath, 3)
-            outpath := boxpath . "\drive\" . drive . remain
-        }
+    if (SubStr(bpath, 2, 2) == ":\") {
+        local drive := SubStr(bpath, 1, 1)
+        local remain := SubStr(bpath, 3)
+        return boxpath . "\drive\" . drive . remain
     }
-    if (outpath == "") {
-        outpath := bpath
-    }
-    return outpath
+    return bpath
 }
 
 ; converts a sandbox path to its equivalent in "the real world"
@@ -1523,28 +1498,26 @@ boxPathToStdPath(box, bpath)
 {
     global sandboxes_path
     local boxpath := StrReplace(sandboxes_path, "`%SANDBOX`%", box)
-    if (SubStr(bpath, 1, StrLen(boxpath)) == boxpath) {
-        local remain := SubStr(bpath, StrLen(boxpath) + 2)
-        local tmp := "user\current\"
-        if (SubStr(remain, 1, StrLen(tmp)) == tmp) {
-            remain := SubStr(remain, StrLen(tmp) + 1)
-            bpath := A_UserProfile . "\" . remain
-            return bpath
-        }
-        tmp := "user\all\"
-        if (SubStr(remain, 1, StrLen(tmp)) == tmp) {
-            remain := SubStr(remain, StrLen(tmp) + 1)
-            bpath := A_AllUsersProfile . "\" . remain
-            return bpath
-        }
-        tmp := "drive\"
-        if (SubStr(remain, 1, StrLen(tmp)) == tmp) {
-            remain := SubStr(remain, StrLen(tmp) + 1)
-            local driveletter := SubStr(remain, 1, 1)
-            remain := SubStr(remain, 3)
-            bpath := driveletter . ":\" . remain
-            return bpath
-        }
+    if (SubStr(bpath, 1, StrLen(boxpath)) != boxpath) {
+        return bpath
+    }
+    local remain := SubStr(bpath, StrLen(boxpath) + 2)
+    local tmp := "user\current\"
+    if (SubStr(remain, 1, StrLen(tmp)) == tmp) {
+        remain := SubStr(remain, StrLen(tmp) + 1)
+        return A_UserProfile . "\" . remain
+    }
+    tmp := "user\all\"
+    if (SubStr(remain, 1, StrLen(tmp)) == tmp) {
+        remain := SubStr(remain, StrLen(tmp) + 1)
+        return A_AllUsersProfile . "\" . remain
+    }
+    tmp := "drive\"
+    if (SubStr(remain, 1, StrLen(tmp)) == tmp) {
+        remain := SubStr(remain, StrLen(tmp) + 1)
+        local driveletter := SubStr(remain, 1, 1)
+        remain := SubStr(remain, 3)
+        return driveletter . ":\" . remain
     }
     return bpath
 }
@@ -1555,9 +1528,8 @@ addCmdsToMenu(box, menuObj, fileslist)
 {
     global menucommands, smalliconsize
     numentries := 0
-    Loop, parse, fileslist, "`n"
+    for _, entry in StrSplit(fileslist, "`n")
     {
-        entry := A_LoopField
         idx := InStr(entry, ":")
         label := SubStr(entry, 1, idx-1)
         if menucommands.Has(menuObj.Name) && menucommands[menuObj.Name].Has(label)
@@ -1576,18 +1548,16 @@ addCmdsToMenu(box, menuObj, fileslist)
 ; determines current directory to run the shortcut
 findCurrentDir(box, shortcut)
 {
-    SplitPath(shortcut, , , &extension)
+    local curdir := ""
+    SplitPath(shortcut, , &curdir, &extension)
     if (extension == "lnk") {
-        FileGetShortcut(shortcut, &target, &outDir, &outArgs, &outDescription, &outIcon, &outIconNum, &outRunState)
+        FileGetShortcut(shortcut, &target, &outDir)
         if (outDir != "")
             curdir := outDir
         else
             SplitPath(target, , &curdir)
-    } else {
-        SplitPath(shortcut, , &curdir)
     }
 
-    ;curdir := expandVariables(curdir, box)
     curdir := expandEnvVars(curdir)
     return curdir
 }
@@ -1596,16 +1566,16 @@ findCurrentDir(box, shortcut)
 ; Leave the other %variables% untouched.
 expandEnvVars(str)
 {
-    global SID, SESSION, username
+    global SID, SESSION
     str := StrReplace(str, "`%SID`%", SID)
     str := StrReplace(str, "`%SESSION`%", SESSION)
-    str := StrReplace(str, "`%USER`%", username)
+    str := StrReplace(str, "`%USER`%", A_UserName)
 
     if sz := DllCall("ExpandEnvironmentStrings", "Str", str, "Ptr", 0, "UInt", 0)
     {
-        VarSetCapacity(dst, sz * (A_IsUnicode ? 2 : 1))
-        if DllCall("ExpandEnvironmentStrings", "Str", str, "Str", dst, "UInt", sz)
-            return dst
+        local dst := Buffer(sz * 2)
+        if DllCall("ExpandEnvironmentStrings", "Str", str, "Ptr", dst.Ptr, "UInt", sz)
+            return StrGet(dst)
     }
     return str
 }
@@ -1847,79 +1817,52 @@ ReleaseBox(run_pid)
 ; "Find" and associated ListBox functions and handlers
 ; ###################################################################################################
 
-SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
+SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata:="")
 {
     global listemptyitems
-    local A_nl := "`n"
+    local fileList := []
     local sep := A_Tab
 
-    local olddir := A_WorkingDir
-    SetWorkingDir(bp)
-
-    local boxbasepathlen := StrLen(boxbasepath) + 2
-
-    local r := ""
-    Loop Files, "*", "F"
+    Loop Files, bp . "\*", "F"
     {
         local rf := rp . "\" . A_LoopFileFullPath
         local bf := bp . "\" . A_LoopFileFullPath
         SplitPath(bf, &fname, &boxsubpath)
-        boxsubpath := SubStr(boxsubpath, boxbasepathlen)
+        boxsubpath := SubStr(boxsubpath, StrLen(boxbasepath) + 2)
         if (IsIgnored("files", ignoredFiles, boxsubpath, fname))
             continue
 
         if (comparedata != "")
         {
-            local status
-            if (A_LoopFileTimeCreated == "19860523174702")
-                status := "-"
-            else
-                status := "+"
+            local status := (A_LoopFileTimeCreated == "19860523174702") ? "-" : "+"
             local comp := status . " " . A_LoopFileTimeModified . " " . boxsubpath . "\" . fname . ":*:"
-            if (InStr(comparedata, comp))
+            if InStr(comparedata, comp)
                 Continue
         }
 
         local timeCreated := FormatTime(A_LoopFileTimeCreated, "yyyy/MM/dd HH:mm:ss")
         local timeModified := FormatTime(A_LoopFileTimeModified, "yyyy/MM/dd HH:mm:ss")
         local timeAccessed := FormatTime(A_LoopFileTimeAccessed, "yyyy/MM/dd HH:mm:ss")
-        local st
-        if (A_LoopFileTimeCreated == "19860523174702")
-            st := "-"
-        else
-        {
-            if (FileExist(rf))
-                st := "#"
-            else
-                st := "+"
-        }
-        r .= st . sep . rf . sep . A_LoopFileAttrib . sep . A_LoopFileSize . sep . timeCreated . sep . timeModified . sep . timeAccessed . sep . boxsubpath . A_nl
+        local st := (A_LoopFileTimeCreated == "19860523174702") ? "-" : (FileExist(rf) ? "#" : "+")
+
+        fileList.Push(st . sep . rf . sep . A_LoopFileAttrib . sep . A_LoopFileSize . sep . timeCreated . sep . timeModified . sep . timeAccessed . sep . boxsubpath)
     }
-    Loop Files, "*", "D"
+    Loop Files, bp . "\*", "D"
     {
         local bdir := bp . "\" . A_LoopFileFullPath
-        local boxsubpath := SubStr(bdir, boxbasepathlen)
+        local boxsubpath := SubStr(bdir, StrLen(boxbasepath) + 2)
         if (IsIgnored("dirs", ignoredDirs, boxsubpath))
             continue
 
         if (comparedata != "")
         {
-            local status
-            if (A_LoopFileTimeCreated == "19860523174702")
-                status := "-"
-            else
-                status := "+"
+            local status := (A_LoopFileTimeCreated == "19860523174702") ? "-" : "+"
             local comp := status . " " . A_LoopFileTimeModified . " " . boxsubpath . ":*:"
-            if (InStr(comparedata, comp))
+            if InStr(comparedata, comp)
                 Continue
         }
 
-        local is_empty := true
-        Loop Files, bdir . "\*", "FD"
-        {
-            is_empty := false
-            break
-        }
+        local is_empty := !DirExist(bdir . "\*")
 
         if (is_empty && listemptyitems)
         {
@@ -1927,29 +1870,19 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
             local timeCreated := FormatTime(A_LoopFileTimeCreated, "yyyy/MM/dd HH:mm:ss")
             local timeModified := FormatTime(A_LoopFileTimeModified, "yyyy/MM/dd HH:mm:ss")
             local timeAccessed := FormatTime(A_LoopFileTimeAccessed, "yyyy/MM/dd HH:mm:ss")
-            local st
-            if (A_LoopFileTimeCreated == "19860523174702")
-                st := "-"
-            else
-            {
-                if (DirExist(rdir_empty))
-                    st := "#"
-                else
-                    st := "+"
-            }
-            r .= st . sep . rdir_empty . sep . A_LoopFileAttrib . sep . "0" . sep . timeCreated . sep . timeModified . sep . timeAccessed . sep . boxsubpath . A_nl
+            local st := (A_LoopFileTimeCreated == "19860523174702") ? "-" : (DirExist(rdir_empty) ? "#" : "+")
+            fileList.Push(st . sep . rdir_empty . sep . A_LoopFileAttrib . sep . "0" . sep . timeCreated . sep . timeModified . sep . timeAccessed . sep . boxsubpath)
         }
 
         local rdir := rp . "\" . A_LoopFileFullPath
-        local ret := SearchFiles(bdir, rdir, boxbasepath, ignoredDirs, ignoredFiles, comparedata)
-        if (ret != "")
-            r .= ret . A_nl
+        local subFiles := SearchFiles(bdir, rdir, boxbasepath, ignoredDirs, ignoredFiles, comparedata)
+        if (subFiles.Length > 0) {
+            for _, f in subFiles
+                fileList.Push(f)
+        }
     }
-    r := Trim(r, A_nl)
 
-    SetWorkingDir(olddir)
-
-    return r
+    return fileList
 }
 
 
@@ -1969,8 +1902,9 @@ SearchFiles(bp, rp, boxbasepath, ignoredDirs, ignoredFiles, comparedata="")
 ;     GuiControl, +Report, MyListView
 ; Return
 
-SortByPath(a, b, sep)
+SortByPath(a, b, *)
 {
+    local sep := A_Tab
     local a_fields := StrSplit(a, sep)
     local b_fields := StrSplit(b, sep)
     local path_a := a_fields[2]
@@ -1991,9 +1925,6 @@ ListFiles(box, bpath, comparefilename="")
 
     static MainLabel
 
-    local A_nl := "`n"
-    local allfiles := ""
-
     ReadIgnoredConfig("files")
     newIgnored := Map("dirs", "", "files", "")
 
@@ -2003,21 +1934,25 @@ ListFiles(box, bpath, comparefilename="")
     if (comparefilename != "")
         comparedata := FileRead(comparefilename)
 
+    local allfiles := []
+
     local bp := bpath . "\user\current"
     local rp := A_UserProfile
-    if (InStr(FileExist(bp),"D"))
+    if DirExist(bp)
     {
-        local f := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
-        allfiles .= f . A_nl
+        local f_array := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
+        for _, f in f_array
+            allfiles.Push(f)
     }
 
     Progress(13)
     bp := bpath . "\user\all"
     rp := A_AllUsersProfile
-    if (InStr(FileExist(bp),"D"))
+    if DirExist(bp)
     {
-        local f := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
-        allfiles .= f . A_nl
+        local f_array := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
+        for _, f in f_array
+            allfiles.Push(f)
     }
 
     Progress(16)
@@ -2026,23 +1961,22 @@ ListFiles(box, bpath, comparefilename="")
         local drive := A_LoopFileName
         bp := bpath . "\drive\" . A_LoopFileName
         rp := A_LoopFileName . ":"
-        local f := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
-        allfiles .= f . A_nl
+        local f_array := SearchFiles(bp, rp, bpath, ignoredDirs, ignoredFiles, comparedata)
+        for _, f in f_array
+            allfiles.Push(f)
     }
 
     Progress(19, "Please wait...", "Sorting list of files in box """ . box . """...", title)
-    allfiles := Trim(allfiles, A_nl)
-    local fileArray := allfiles ? StrSplit(allfiles, A_nl) : []
-    if (fileArray.Length > 0)
-        fileArray.Sort(SortByPath.Bind(A_Tab))
-    local numfiles := fileArray.Length
+    if (allfiles.Length > 0)
+        allfiles.Sort(SortByPath)
+    local numfiles := allfiles.Length
     if (numfiles = 0)
     {
         Progress(0)
         if (comparefilename == "")
-            MsgBox("No meaningful files in box """ . box . """!", title, 64)
+            MsgBox("No meaningful files in box """ . box . """!",, "IconInfo")
         else
-            MsgBox("No new or modified files in box """ . box . """!", title, 64)
+            MsgBox("No new or modified files in box """ . box . """!",, "IconInfo")
         Return
     }
 
@@ -2138,7 +2072,7 @@ ListFiles(box, bpath, comparefilename="")
     local sep := A_Tab
     MyListView.Redraw := false
     local old_prog := 0
-    for i, entry in fileArray
+    for i, entry in allfiles
     {
         local prog := Round(80 * i / numfiles) + 20
         if (prog != old_prog)
@@ -2177,7 +2111,7 @@ ListFiles(box, bpath, comparefilename="")
             iconfile := boxPathToStdPath(box, iconfile)
 
         local hIcon := GetAssociatedIcon(iconfile, false, 16, box, deleted)
-        local IconNumber := DllCall("ImageList_ReplaceIcon", "uint", ImageListID1, "int", -1, "uint", hIcon) + 1
+        local IconNumber := DllCall("ImageList_ReplaceIcon", "ptr", ImageListID1, "int", -1, "ptr", hIcon) + 1
         MyListView.Add("Icon" . IconNumber, St . A_Space, OutFileName, OutDir, Size, Attribs, Created, Modified, Accessed, OutExtension, BoxPath)
     }
     Progress(100)
@@ -3094,34 +3028,28 @@ GetReg(inrootkey, insubkey, outrootkey, outsubkey)
 FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separator, includedate := false)
 {
     local type := RegType
-    if (type == "")
-        type := RegRead64KeyType("HKEY_USERS", RegSubKey, RegName, false)
-    if (type == "")
-        type := "UNKNOWN"
+    if (type == "") {
+        try type := RegRead64KeyType("HKEY_USERS", RegSubKey, RegName, false)
+        catch
+            type := "UNKNOWN"
+    }
 
-    local status
-    if (RegTimeModified == "19860523174702")
-        status := "-"
-    else
-        status := "+"
+    local status := (RegTimeModified == "19860523174702") ? "-" : "+"
     if (type == "REG_SB_DELETED") {
         status := "-"
         type := "-DELETED_VALUE"
     }
 
     local value := ""
-    try
-        value := RegRead("HKEY_USERS", RegSubKey, RegName)
-    catch
-    {
-        try
+    try {
+        value := RegRead("HKEY_USERS\" . RegSubKey, RegName)
+    } catch {
+        try {
             value := RegRead64("HKEY_USERS", RegSubKey, RegName)
-        catch
-        {
-            try
+        } catch {
+            try {
                 value := RegRead64("HKEY_USERS", RegSubKey, RegName, false)
-            catch
-            {
+            } catch {
                 value := ""
                 status := "-"
             }
@@ -3136,17 +3064,14 @@ FormatRegConfigKey(RegSubKey, subkey, RegType, RegName, RegTimeModified, separat
     if (StrLen(value) > 80)
         value := SubStr(value, 1, 80) . "..."
 
-    local name := RegName
-    if (name == "")
-        name := "@"
+    local name := RegName == "" ? "@" : RegName
 
     local outtxt := ""
     if (type == "KEY") {
         if (status == "-")
             type := "-DELETED_KEY"
         outtxt := status . separator . subkey . "\" . name . separator . type . separator . separator
-    }
-    else {
+    } else {
         outtxt := status . separator . subkey . separator . type . separator . name . separator . value
     }
     if (includedate)
@@ -3159,25 +3084,9 @@ MakeFilesConfig(box, filename, mainsbpath)
     local mainsbpathlen := StrLen(mainsbpath) + 2
     local outtxt := ""
 
-    Loop Files, mainsbpath . "\drive\*", "FDR"
+    Loop Files, mainsbpath . "\*", "FDR"
     {
-        local status
-        if (A_LoopFileTimeCreated == "19860523174702")
-            status := "-"
-        else
-            status := "+"
-        if (InStr(A_LoopFileAttrib, "D") && status == "+")
-            Continue
-        local name := SubStr(A_LoopFileFullPath, mainsbpathlen)
-        outtxt .= status . " " . A_LoopFileTimeModified . " " . name . ":*:`n"
-    }
-    Loop Files, mainsbpath . "\user\*", "FDR"
-    {
-        local status
-        if (A_LoopFileTimeCreated == "19860523174702")
-            status := "-"
-        else
-            status := "+"
+        local status := (A_LoopFileTimeCreated == "19860523174702") ? "-" : "+"
         if (InStr(A_LoopFileAttrib, "D") && status == "+")
             Continue
         local name := SubStr(A_LoopFileFullPath, mainsbpathlen)
@@ -3191,11 +3100,11 @@ MakeFilesConfig(box, filename, mainsbpath)
 
 MakeRegConfig(box, filename := "")
 {
-    global regconfig, sandboxes_array, username
+    global regconfig, sandboxes_array
     run_pid := InitializeBox(box)
 
     local bregstr_ := sandboxes_array[box].KeyRootPath
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', A_UserName)
 
     local mainsbkey := bregstr_
     local mainsbkeylen := StrLen(mainsbkey) + 2
@@ -3224,11 +3133,11 @@ MakeRegConfig(box, filename := "")
 
 SearchReg(box, ignoredKeys, ignoredValues, filename := "")
 {
-    global regconfig, sandboxes_array, username, listemptyitems
+    global regconfig, sandboxes_array, listemptyitems
     run_pid := InitializeBox(box)
 
     local bregstr_ := sandboxes_array[box].KeyRootPath
-    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
+    bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', A_UserName)
 
     local mainsbkey := bregstr_
     local mainsbkeylen := StrLen(mainsbkey) + 2
@@ -3236,7 +3145,7 @@ SearchReg(box, ignoredKeys, ignoredValues, filename := "")
     if (filename == "")
         filename := regconfig
     local regconfigdata := FileRead(filename)
-    local outtxt := ""
+    local outArr := []
     local LastIgnoredKey := "!xxx!:\"
 
     Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
@@ -3286,12 +3195,12 @@ SearchReg(box, ignoredKeys, ignoredValues, filename := "")
         local out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, A_Space)
         if (is_key_without_values || !InStr(regconfigdata, out)) {
             out := FormatRegConfigKey(A_LoopRegSubKey, subkey, A_LoopRegType, A_LoopRegName, RegTimeModified, Chr(1), true)
-            outtxt .= out . "`n"
+            outArr.Push(out)
         }
     }
 
     ReleaseBox(run_pid)
-    return outtxt
+    return outArr
 }
 
 ListReg(box, bpath, filename="")
@@ -3301,26 +3210,19 @@ ListReg(box, bpath, filename="")
     global newIgnored, guinotclosed, title, MyListView, LVLastSize, listemptyitems
     static MainLabel
 
-    local comparemode
-    if (filename != "")
-        comparemode := 1
-    else
-        comparemode := 0
+    local comparemode := filename != ""
     A_Quotes := '"'
 
     ReadIgnoredConfig("reg")
     newIgnored := Map("keys", "", "values", "")
 
-    A_nl := "`n"
     Progress(1,"Please wait...", "Scanning registry of box """ . box . """...", title)
 
     ignoredKeys := StrReplace(ignoredKeys, ":", ".",, 1)
-    allregs := SearchReg(box, ignoredKeys, ignoredValues, filename)
+    allregs_array := SearchReg(box, ignoredKeys, ignoredValues, filename)
 
     Progress(90,"Please wait...", "Sorting list of keys in box """ . box . """...", title)
     Sleep(150)
-    allregs := Trim(allregs, A_nl)
-    local allregs_array := allregs ? StrSplit(allregs, "`n") : []
     if (allregs_array.Length > 0)
         allregs_array.Sort("CL")
     local numregs := allregs_array.Length
@@ -3328,9 +3230,9 @@ ListReg(box, bpath, filename="")
     {
         Progress(0)
         if (comparemode)
-            MsgBox("No registry keys or values have been modified in box """ . box . """!", title, 64)
+            MsgBox("No registry keys or values have been modified in box """ . box . """!",, "IconInfo")
         else
-            MsgBox("No meaningful registry keys or values found in box """ . box . """!", title, 64)
+            MsgBox("No meaningful registry keys or values found in box """ . box . """!",, "IconInfo")
         Return
     }
 
@@ -3494,17 +3396,15 @@ ListReg(box, bpath, filename="")
 
 SearchAutostart(box, regpath, location, tick)
 {
-    local outtxt := ""
+    local outArr := []
     Loop Reg, "HKEY_USERS\" . regpath
     {
         if (A_LoopRegType != "REG_SZ")
             Continue
-        outtxt .= A_LoopRegName . A_Tab . A_LoopRegValue . A_Tab . location . A_Tab . tick . A_nl
+        outArr.Push(A_LoopRegName . A_Tab . A_LoopRegValue . A_Tab . location . A_Tab . tick)
     }
-    outtxt := Trim(outtxt, "`n")
-    local out_array := outtxt ? StrSplit(outtxt, "`n") : []
-    out_array.Sort("CL")
-    Return out_array.Length ? out_array.Join("`n") . "`n" : ""
+    outArr.Sort("CL")
+    Return outArr
 }
 ListAutostarts(box, bpath)
 {
@@ -3560,7 +3460,7 @@ ListAutostarts(box, bpath)
     local numregs := autostarts_array.Length
     if (numregs = 0)
     {
-        MsgBox("No autostart programs found in the registry of box """ . box . """.", title, 64)
+        MsgBox("No autostart programs found in the registry of box """ . box . """.",, "IconInfo")
         Return
     }
 
@@ -3704,12 +3604,8 @@ ListAutostarts(box, bpath)
 ; argument to read either in 64bit or 32bit mode added by r0lZ
 RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
     static keyMap := Map(
-        "HKEY_CLASSES_ROOT", 0x80000000,
-        "HKEY_CURRENT_USER", 0x80000001,
-        "HKEY_LOCAL_MACHINE", 0x80000002,
-        "HKEY_USERS", 0x80000003,
-        "HKEY_CURRENT_CONFIG", 0x80000005,
-        "HKEY_DYN_DATA", 0x80000006
+        "HKEY_CLASSES_ROOT", 0x80000000, "HKEY_CURRENT_USER", 0x80000001, "HKEY_LOCAL_MACHINE", 0x80000002,
+        "HKEY_USERS", 0x80000003, "HKEY_CURRENT_CONFIG", 0x80000005, "HKEY_DYN_DATA", 0x80000006
     )
     static REG_NONE := 0, REG_SZ := 1, REG_EXPAND_SZ := 2, REG_BINARY := 3, REG_DWORD := 4,
            REG_DWORD_BIG_ENDIAN := 5, REG_LINK := 6, REG_MULTI_SZ := 7, REG_RESOURCE_LIST := 8,
@@ -3717,70 +3613,59 @@ RegRead64(sRootKey, sKeyName, sValueName="", mode64bit=true, DataMaxSize=1024) {
     static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
 
     if !keyMap.Has(sRootKey) {
-        ErrorLevel := 3
-        return ""
+        throw Error("Invalid root key specified.")
     }
     local myhKey := keyMap[sRootKey]
-
-    local RegAccessRight
-    if (mode64bit)
-        RegAccessRight := KEY_QUERY_VALUE | KEY_WOW64_64KEY
-    else
-        RegAccessRight := KEY_QUERY_VALUE | KEY_WOW64_32KEY
+    local RegAccessRight := mode64bit ? (KEY_QUERY_VALUE | KEY_WOW64_64KEY) : (KEY_QUERY_VALUE | KEY_WOW64_32KEY)
 
     local hKey := 0
-    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
-    if (hKey == 0) {
-        ErrorLevel := 4
-        return ""
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key.")
     }
-    local sValueType := 0
-    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint*", &sValueType, "ptr", 0, "ptr", 0)
+    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
 
-    local sValue, vValueSize
+    local sValueType := 0, vValueSize := 0
+    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "uint*", &sValueType, "ptr", 0, "uint*", &vValueSize)
+
+    local sValue
     if (sValueType == REG_SZ || sValueType == REG_EXPAND_SZ) {
-        vValueSize := DataMaxSize
-        VarSetCapacity(sValue, vValueSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", &sValue, "uint*", &vValueSize)
+        sValue := Buffer(vValueSize)
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "str", sValue, "uint*", &vValueSize)
+        return StrGet(sValue)
     } else if (sValueType == REG_DWORD || sValueType == REG_DWORD_BIG_ENDIAN) {
-        vValueSize := 4
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint*", &sValue, "uint*", &vValueSize)
+        local dwordValue := 0
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "uint*", &dwordValue, "uint*", &vValueSize)
+        return dwordValue
     } else if (sValueType == REG_QWORD) {
-        vValueSize := 8
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint", 0, "uint64*", &sValue, "uint*", &vValueSize)
+        local qwordValue := 0
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "uint64*", &qwordValue, "uint*", &vValueSize)
+        return qwordValue
     } else if (sValueType == REG_MULTI_SZ) {
-        local sTmp
-        vValueSize := DataMaxSize
-        VarSetCapacity(sTmp, vValueSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", &sTmp, "uint*", &vValueSize)
-        sValue := ""
+        local sTmp := Buffer(vValueSize)
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "ptr", sTmp, "uint*", &vValueSize)
+        local result := ""
         local offset := 0
-        while offset < vValueSize - 1
-        {
-            local part := StrGet(&sTmp + offset)
+        while offset < vValueSize - 1 {
+            local part := StrGet(sTmp.Ptr + offset)
             if part == ""
                 break
-            sValue .= part . "`n"
-            offset += StrLen(part) + 1
+            result .= part . "`n"
+            offset += (StrLen(part) + 1) * (A_IsUnicode ? 2 : 1)
         }
+        return result
     } else if (sValueType == REG_BINARY) {
-        local sTmp
-        vValueSize := DataMaxSize
-        VarSetCapacity(sTmp, vValueSize)
-        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint", 0, "str", &sTmp, "uint*", &vValueSize)
-        sValue := ""
+        local sTmp := Buffer(vValueSize)
+        DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "ptr", 0, "ptr", sTmp, "uint*", &vValueSize)
+        local result := ""
         Loop vValueSize {
-            sValue .= Format("{:02X}", NumGet(&sTmp, A_Index - 1, "UChar"))
+            result .= Format("{:02X}", NumGet(sTmp, A_Index - 1, "UChar"))
         }
+        return result
     } else if (sValueType == REG_NONE) {
-        sValue := ""
-    } else { ; value does not exist or unsupported value type
-        DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
-        ErrorLevel := 1
         return ""
+    } else {
+        throw Error("Unsupported value type or value does not exist.")
     }
-    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
-    return sValue
 }
 
 RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
@@ -3797,27 +3682,22 @@ RegRead64KeyType(sRootKey, sKeyName, sValueName = "", mode64bit=true) {
     static KEY_QUERY_VALUE := 0x0001, KEY_WOW64_64KEY := 0x0100, KEY_WOW64_32KEY := 0x0200
 
     if !keyMap.Has(sRootKey) {
-        ErrorLevel := 3
-        return ""
+        throw Error("Invalid root key specified.")
     }
     local myhKey := keyMap[sRootKey]
 
     local RegAccessRight := mode64bit ? (KEY_QUERY_VALUE | KEY_WOW64_64KEY) : (KEY_QUERY_VALUE | KEY_WOW64_32KEY)
 
     local hKey := 0
-    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
-    if (hKey == 0) {
-        ErrorLevel := 4
-        return ""
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key.")
     }
+    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
 
     local sValueType := 0
-    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "uint", 0, "uint*", &sValueType, "ptr", 0, "ptr", 0)
+    DllCall("Advapi32.dll\RegQueryValueEx", "ptr", hKey, "str", sValueName, "ptr", 0, "uint*", &sValueType, "ptr", 0, "ptr", 0)
 
-    local keytype := typeMap.Has(sValueType) ? typeMap[sValueType] : ""
-
-    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
-    return keytype
+    return typeMap.Has(sValueType) ? typeMap[sValueType] : ""
 }
 
 RegEnumKey(sRootKey, sKeyName, x64mode=true) {
@@ -3829,42 +3709,28 @@ RegEnumKey(sRootKey, sKeyName, x64mode=true) {
     static ERROR_NO_MORE_ITEMS := 259
 
     if !keyMap.Has(sRootKey) {
-        ErrorLevel := 3
-        return ""
+        throw Error("Invalid root key specified.")
     }
     local myhKey := keyMap[sRootKey]
 
     local RegAccessRight := x64mode ? (KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_64KEY) : (KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_32KEY)
 
     local hKey := 0
-    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
-    if (hKey == 0) {
-        ErrorLevel := 4
-        return ""
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key.")
     }
+    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
 
-    local lpcName := 512
-    local lpName := Buffer(lpcName)
-    local names := ""
+    local names := []
     local dwIndex := 0
+    local lpName := Buffer(512 * (A_IsUnicode ? 2 : 1))
 
-    loop
-    {
-        lpcName := 512
-        local rc := DllCall("Advapi32.dll\RegEnumKeyEx", "ptr", hKey, "uint", dwIndex, "str", lpName, "uint*", &lpcName, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0)
-        if (rc == 0) {
-            names .= StrGet(lpName) . "`n"
-            dwIndex++
-        } else {
-            ErrorLevel := (rc == ERROR_NO_MORE_ITEMS) ? 0 : rc
-            break
-        }
+    while DllCall("Advapi32.dll\RegEnumKeyEx", "ptr", hKey, "uint", dwIndex, "str", lpName, "uint*", 512, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0) == 0 {
+        names.Push(StrGet(lpName))
+        dwIndex++
     }
 
-    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
-
-    names := Trim(names, "`n")
-    Sort(names, "CL")
+    names.Sort("CL")
     return names
 }
 
@@ -3877,55 +3743,32 @@ RegEnumValue(sRootKey, sKeyName, x64mode=true) {
     static ERROR_NO_MORE_ITEMS := 259
 
     if !keyMap.Has(sRootKey) {
-        ErrorLevel := 3
-        return ""
+        throw Error("Invalid root key specified.")
     }
     local myhKey := keyMap[sRootKey]
 
     local RegAccessRight := x64mode ? (KEY_QUERY_VALUE | KEY_WOW64_64KEY) : (KEY_QUERY_VALUE | KEY_WOW64_32KEY)
 
     local hKey := 0
-    DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey)
-    if (hKey == 0) {
-        ErrorLevel := 4
-        return ""
+    if DllCall("Advapi32.dll\RegOpenKeyEx", "ptr", myhKey, "str", sKeyName, "uint", 0, "uint", RegAccessRight, "ptr*", &hKey) != 0 {
+        throw Error("Failed to open registry key.")
     }
+    defer DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
 
     local lpcMaxValueNameLen := 0
     DllCall("Advapi32.dll\RegQueryInfoKey", "ptr", hKey, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0, "uint*", &lpcMaxValueNameLen, "ptr", 0, "ptr", 0, "ptr", 0)
-    lpcMaxValueNameLen := lpcMaxValueNameLen * (A_IsUnicode ? 1 : 2) + 1
-    local lpName := Buffer(lpcMaxValueNameLen)
-    local names := ""
+
+    local names := []
     local dwIndex := 0
+    local lpName := Buffer((lpcMaxValueNameLen + 1) * (A_IsUnicode ? 2 : 1))
 
-    loop
-    {
-        local lpcName := lpcMaxValueNameLen
-        local rc := DllCall("Advapi32.dll\RegEnumValue", "ptr", hKey, "uint", dwIndex, "wstr", lpName, "uint*", &lpcName, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0)
-        if (rc == 0) {
-            names .= StrGet(lpName) . "`n"
-            dwIndex++
-        } else {
-            ErrorLevel := (rc == ERROR_NO_MORE_ITEMS) ? 0 : rc
-            break
-        }
+    while DllCall("Advapi32.dll\RegEnumValue", "ptr", hKey, "uint", dwIndex, "wstr", lpName, "uint*", lpcMaxValueNameLen + 1, "ptr", 0, "ptr", 0, "ptr", 0, "ptr", 0) == 0 {
+        names.Push(StrGet(lpName))
+        dwIndex++
     }
 
-    DllCall("Advapi32.dll\RegCloseKey", "ptr", hKey)
-
-    names := Trim(names, "`n")
-    Sort(names, "CL")
+    names.Sort("CL")
     return names
-}
-
-ExtractData(pointer) { ; http://www.autohotkey.com/forum/viewtopic.php?p=91578#91578 SKAN
-    Loop {
-        errorLevel := ( pointer+(A_Index-1) )
-        Asc := *( errorLevel )
-        IfEqual, Asc, 0, Break ; Break if NULL Character
-        String := String . Chr(Asc)
-    }
-    Return String
 }
 
 ; ###########################################
@@ -4273,7 +4116,7 @@ RunProgramMenuHandler(ItemName, ItemPos, MyMenu) {
     } else if (GetKeyState("Shift", "P")) {
         SplitPath(shortcut, , &dir)
         Run(start . " /box:" . box . " """ . dir . """")
-        MsgBox("Opening sandboxed folder`n""" . dir . """`n`nPlease wait", title, 64 + 262144)
+        MsgBox("Opening sandboxed folder`n""" . dir . """`n`nPlease wait",, "IconInfo SystemModal")
     } else {
         executeShortcut(box, shortcut)
     }
@@ -4287,7 +4130,7 @@ RunUserToolMenuHandler(ItemName, ItemPos, MyMenu) {
 NewShortcutMenuHandler(ItemName, ItemPos, MyMenu) {
     box := getBoxFromMenu(MyMenu.Name)
     static DefaultShortcutFolder
-    if (!InStr(FileExist(DefaultShortcutFolder . "\"), "D"))
+    if (!DirExist(DefaultShortcutFolder))
         DefaultShortcutFolder := A_Desktop
     file := FileSelect(33, A_ProgramFiles, "Select the file to launch sandboxed in box " . box . " via a shortcut on the desktop", "Executable files (*.exe)")
     if (!file)
@@ -4318,7 +4161,7 @@ SCmdMenuHandler(ItemName, ItemPos, MyMenu) {
         args := "/box:" . box . " " . A_ComSpec . " /k ""cd /d " . A_WinDir . "\"""
         writeSandboxedShortcutFileToDesktop(start, "Sandboxed Command Prompt", "", args, "Sandboxed Command Prompt in sandbox " . box, cmdRes, 1, 1, box)
     } else {
-        cdpath := InStr(FileExist(expandEnvVars(sbcommandpromptdir)), "D") ? sbcommandpromptdir : A_WinDir
+        cdpath := DirExist(expandEnvVars(sbcommandpromptdir)) ? sbcommandpromptdir : A_WinDir
         Run(start . " /box:" . box . " " . A_ComSpec . " /k ""cd /d " . cdpath . """")
     }
 }
@@ -4344,15 +4187,15 @@ SRegEditMenuHandler(ItemName, ItemPos, MyMenu) {
 
 URegEditMenuHandler(ItemName, ItemPos, MyMenu) {
     if (GetKeyState("Control", "P")) {
-        MsgBox("Since something must be running in the box to analyse its registry, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.", title, 48)
+        MsgBox("Since something must be running in the box to analyse its registry, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.",, "IconStop")
     } else {
         box := getBoxFromMenu(MyMenu.Name)
         ; ensure that the box is in use, or the hive will not be loaded
         run_pid := InitializeBox(box)
         ; pre-select the right registry key
         bregstr_ := sandboxes_array[box].KeyRootPath
-        bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', username)
-        RegWrite("REG_SZ", "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "LastKey", "HKEY_USERS\" . regstr_)
+        bregstr_ := StrReplace(StrReplace(SubStr(bregstr_, 16), '`%SANDBOX`%', box), '`%USER`%', A_UserName)
+        RegWrite("REG_SZ", "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "LastKey", "HKEY_USERS\" . bregstr_)
         ; launch regedit
         RunWait("RegEdit.exe")
         ReleaseBox(run_pid)
@@ -4379,9 +4222,9 @@ DeleteBoxMenuHandler(ItemName, ItemPos, MyMenu) {
     box := getBoxFromMenu(MyMenu.Name)
     if (GetKeyState("Control", "P")) {
         writeUnsandboxedShortcutFileToDesktop(start, "! Delete sandbox " . box . " !", "", "/box:" . box . " delete_sandbox", "Deletes the sandbox " . box, shell32, 132, 1)
-        MsgBox("Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!", title, 48)
+        MsgBox("Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!",, "IconStop")
     } else {
-        if (MsgBox("Are you sure you want to delete the sandbox """ . box . """?", title, 289) == "OK") {
+        if (MsgBox("Are you sure you want to delete the sandbox """ . box . """?",, "YesNo IconQuestion") == "Yes") {
             RunWait(start . " /box:" . box . " delete_sandbox")
         }
     }
