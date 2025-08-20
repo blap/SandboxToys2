@@ -1978,9 +1978,9 @@ ListFiles(box, bpath, comparefilename="")
     {
         Progress(0)
         if (comparefilename == "")
-            MsgBox("No meaningful files in box """ . box . """!",, "IconInfo")
+            MsgBox("No meaningful files in box """ . box . """!", title, "IconInfo")
         else
-            MsgBox("No new or modified files in box """ . box . """!",, "IconInfo")
+            MsgBox("No new or modified files in box """ . box . """!", title, "IconInfo")
         Return
     }
 
@@ -3234,9 +3234,9 @@ ListReg(box, bpath, filename="")
     {
         Progress(0)
         if (comparemode)
-            MsgBox("No registry keys or values have been modified in box """ . box . """!",, "IconInfo")
+            MsgBox("No registry keys or values have been modified in box """ . box . """!", title, "IconInfo")
         else
-            MsgBox("No meaningful registry keys or values found in box """ . box . """!",, "IconInfo")
+            MsgBox("No meaningful registry keys or values found in box """ . box . """!", title, "IconInfo")
         Return
     }
 
@@ -3464,7 +3464,7 @@ ListAutostarts(box, bpath)
     local numregs := autostarts_array.Length
     if (numregs = 0)
     {
-        MsgBox("No autostart programs found in the registry of box """ . box . """.",, "IconInfo")
+        MsgBox("No autostart programs found in the registry of box """ . box . """.", title, "IconInfo")
         Return
     }
 
@@ -4131,7 +4131,7 @@ RunProgramMenuHandler(ItemName, ItemPos, MyMenu) {
     } else if (GetKeyState("Shift", "P")) {
         SplitPath(shortcut, , &dir)
         Run(start . " /box:" . box . " """ . dir . """")
-        MsgBox("Opening sandboxed folder`n""" . dir . """`n`nPlease wait",, "IconInfo SystemModal")
+        MsgBox("Opening sandboxed folder`n""" . dir . """`n`nPlease wait", title, "IconInfo SystemModal")
     } else {
         executeShortcut(box, shortcut)
     }
@@ -4202,7 +4202,7 @@ SRegEditMenuHandler(ItemName, ItemPos, MyMenu) {
 
 URegEditMenuHandler(ItemName, ItemPos, MyMenu) {
     if (GetKeyState("Control", "P")) {
-        MsgBox("Since something must be running in the box to analyse its registry, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.",, "IconStop")
+        MsgBox("Since something must be running in the box to analyse its registry, creating a desktop shortcut to launch the unsandboxed Registry Editor is not supported. Sorry.`n`nNote that creating a shortcut to a sandboxed Registry Editor is supported, but on x64 systems you can launch it only in sandboxes with the Drop Rights restriction disabled.", title, "IconStop")
     } else {
         box := getBoxFromMenu(MyMenu.Name)
         ; ensure that the box is in use, or the hive will not be loaded
@@ -4237,9 +4237,9 @@ DeleteBoxMenuHandler(ItemName, ItemPos, MyMenu) {
     box := getBoxFromMenu(MyMenu.Name)
     if (GetKeyState("Control", "P")) {
         writeUnsandboxedShortcutFileToDesktop(start, "! Delete sandbox " . box . " !", "", "/box:" . box . " delete_sandbox", "Deletes the sandbox " . box, shell32, 132, 1)
-        MsgBox("Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!",, "IconStop")
+        MsgBox("Warning! Unlike when Delete Sandbox is run from the SandboxToys Menu, the desktop shortcut that has been created doesn't ask for confirmation!`n`nUse the shortcut with care!", title, "IconStop")
     } else {
-        if (MsgBox("Are you sure you want to delete the sandbox """ . box . """?",, "YesNo IconQuestion") == "Yes") {
+        if (MsgBox("Are you sure you want to delete the sandbox """ . box . """?", title, "YesNo IconQuestion") == "Yes") {
             RunWait(start . " /box:" . box . " delete_sandbox")
         }
     }
