@@ -344,14 +344,8 @@ class GuiManager
 
         CloseListGui(*)
         {
-            SaveNewIgnoredItems(type)
+            IgnoreManager.SaveNewIgnoredItems(type)
             Gui, ListGui:Destroy
-        }
-
-        ClearAllCheckmarks(*)
-        {
-            Loop LV_GetCount()
-                LV_Modify(A_Index, "-Check")
         }
 
         ToggleAllCheckmarks(*)
@@ -392,9 +386,9 @@ class GuiManager
 
             if (mode == "files" || mode == "values") {
                 LV_GetText(&name, row, (mode == "files" ? 2 : 4))
-                AddIgnoreItem(mode, relativePath . "\" . name)
+                IgnoreManager.AddIgnoreItem(mode, relativePath . "\" . name)
             } else { ; dirs or keys
-                AddIgnoreItem(mode, relativePath)
+                IgnoreManager.AddIgnoreItem(mode, relativePath)
             }
 
             LV_Delete(row)
@@ -415,16 +409,22 @@ class GuiManager
                 return
             }
 
-            static DefaultFolder := A_Desktop
-            local dirname := FileSelect("D", DefaultFolder, "Copy checkmarked files to folder...")
-            if (dirname == "") return
-            DefaultFolder := dirname
+            try {
+                static DefaultFolder := A_Desktop
+                local dirname := FileSelect("D", DefaultFolder, "Copy checkmarked files to folder...")
+                if (dirname == "") return
+                DefaultFolder := dirname
 
-            local row := 0
-            while row := LV_GetNext(row, "Checked")
+                local row := 0
+                while row := LV_GetNext(row, "Checked")
+                {
+                    LV_GetText(filePath, row, 1)
+                    FileCopy(filePath, dirname . "\" . SubStr(filePath, InStr(filePath, "\",,0)+1), true)
+                }
+            }
+            catch e
             {
-                LV_GetText(filePath, row, 1)
-                FileCopy(filePath, dirname . "\" . SubStr(filePath, InStr(filePath, "\",,0)+1), true)
+                MsgBox("An error occurred while copying files: `n" . e.Message, Globals.title, 16)
             }
         }
 
@@ -477,38 +477,46 @@ class GuiManager
         RegistrySaveAsReg(*)
         {
             if (numOfCheckedFiles() == 0) { SoundBeep(); return }
-            static DefaultFolder := A_Desktop
-            local filename := FileSelect("S16", DefaultFolder . "\box " . box . ".reg", "Save checkmarked as REG file", "*.reg")
-            if (filename == "") return
-            SplitPath(filename, , &DefaultFolder)
+            try {
+                static DefaultFolder := A_Desktop
+                local filename := FileSelect("S16", DefaultFolder . "\box " . box . ".reg", "Save checkmarked as REG file", "*.reg")
+                if (filename == "") return
+                SplitPath(filename, , &DefaultFolder)
 
-            local run_pid := InitializeBox(box)
-            local out := "REGEDIT4`n"
-            local row := 0
-            while row := LV_GetNext(row, "Checked")
-            {
-                LV_GetText(&key, row, 1)
-                LV_GetText(&type, row, 2)
-                LV_GetText(&valName, row, 4)
-                LV_GetText(&valData, row, 5)
+                local run_pid := InitializeBox(box)
+                if (run_pid == 0) throw Error("Failed to initialize sandbox for registry export.")
 
-                if (A_Index == 1)
-                    out .= "`n[" . key . "]`n"
+                local out := "REGEDIT4`n"
+                local row := 0
+                while row := LV_GetNext(row, "Checked")
+                {
+                    LV_GetText(&key, row, 1)
+                    LV_GetText(&type, row, 2)
+                    LV_GetText(&valName, row, 4)
+                    LV_GetText(&valData, row, 5)
 
-                if valName == "@"
-                    out .= "@="
-                else
-                    out .= """" . valName . """="
+                    if (A_Index == 1)
+                        out .= "`n[" . key . "]`n"
 
-                if type == "REG_SZ"
-                    out .= """" . valData . """`n"
-                else if type == "REG_DWORD"
-                    out .= "dword:" . dec2hex(valData, 8) . "`n"
-                ; TODO: Add other REG types
+                    if valName == "@"
+                        out .= "@="
+                    else
+                        out .= """" . valName . """="
+
+                    if type == "REG_SZ"
+                        out .= """" . valData . """`n"
+                    else if type == "REG_DWORD"
+                        out .= "dword:" . dec2hex(valData, 8) . "`n"
+                    ; TODO: Add other REG types
+                }
+                ReleaseBox(run_pid)
+                FileDelete(filename)
+                FileAppend(out, filename)
             }
-            ReleaseBox(run_pid)
-            FileDelete(filename)
-            FileAppend(out, filename)
+            catch e
+            {
+                MsgBox("An error occurred while saving the REG file: `n" . e.Message, Globals.title, 16)
+            }
         }
 
         CurrentCopyToClipboard(*)
@@ -625,7 +633,7 @@ class GuiManager
             popupMenu.Add("Add Key to Ignore List", LVIgnoreEntry.Bind("keys"))
         }
 
-        editMenu.Add("&Clear All Checkmarks", ClearAllCheckmarks)
+        editMenu.Add("&Clear All Checkmarks", GuiManager.ClearAllCheckmarks.Bind(MyListView))
         editMenu.Add("&Toggle All Checkmarks", ToggleAllCheckmarks)
         editMenu.Add("Toggle &Selected Checkmarks", ToggleSelected)
         editMenu.Add()
@@ -691,6 +699,12 @@ class GuiManager
     ListGui_Close:
         Gui, ListGui:Destroy
         return
+    }
+
+    static ClearAllCheckmarks(ctrl)
+    {
+        Loop ctrl.GetCount()
+            ctrl.Modify(A_Index, "-Check")
     }
 
     static ShowAutostartsList(box, autostartList)
@@ -1531,7 +1545,7 @@ Return
 
 ListFiles(boxName, compareFile := "")
 {
-    ReadIgnoredConfig("files")
+    IgnoreManager.ReadIgnoredConfig("files")
     local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
@@ -1555,7 +1569,7 @@ ListFiles(boxName, compareFile := "")
             continue
 
         local relativePath := SubStr(A_LoopFileFullPath, mainsbpathlen)
-        if (IsIgnored("files", ignoredFiles, relativePath, A_LoopFileName) || IsIgnored("dirs", ignoredDirs, relativePath))
+        if (IgnoreManager.IsIgnored("files", ignoredFiles, relativePath, A_LoopFileName) || IgnoreManager.IsIgnored("dirs", ignoredDirs, relativePath))
             continue
 
         if (compareData != "")
@@ -1616,7 +1630,7 @@ ReleaseBox(run_pid)
 ; It uses the InitializeBox/ReleaseBox trick to read the live hive.
 ListReg(boxName, compareFile := "")
 {
-    ReadIgnoredConfig("reg")
+    IgnoreManager.ReadIgnoredConfig("reg")
     local sandbox := Globals.getSandboxByName(boxName)
     if (!IsObject(sandbox))
         return []
@@ -1640,13 +1654,13 @@ ListReg(boxName, compareFile := "")
     {
         local subkey := SubStr(A_LoopRegPath, mainsbkeylen)
         if (A_LoopRegType == "KEY") {
-            if (IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName))
+            if (IgnoreManager.IsIgnored("keys", ignoredKeys, subkey . "\" . A_LoopRegName))
                 continue
         } else {
-            if (IsIgnored("values", ignoredValues, subkey, A_LoopRegName == "" ? "@" : A_LoopRegName))
+            if (IgnoreManager.IsIgnored("values", ignoredValues, subkey, A_LoopRegName == "" ? "@" : A_LoopRegName))
                 continue
         }
-        if (IsIgnored("keys", ignoredKeys, subkey))
+        if (IgnoreManager.IsIgnored("keys", ignoredKeys, subkey))
             continue
 
         if (compareData != "")
@@ -2517,91 +2531,94 @@ ExitMenuHandler(*)
     ExitApp()
 }
 
-ReadIgnoredConfig(type)
+class IgnoreManager
 {
-    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
-    if (type == "files")
+    static ReadIgnoredConfig(type)
     {
-        try ignoredDirs := "`n" . FileRead(Settings.ignorelist . "dirs.cfg")
-        catch ignoredDirs := "`n"
-        try ignoredFiles := "`n" . FileRead(Settings.ignorelist . "files.cfg")
-        catch ignoredFiles := "`n"
-    }
-    else
-    {
-        try ignoredKeys := "`n" . FileRead(Settings.ignorelist . "keys.cfg")
-        catch ignoredKeys := "`n"
-        try ignoredValues := "`n" . FileRead(Settings.ignorelist . "values.cfg")
-        catch ignoredValues := "`n"
-    }
-}
-
-IsIgnored(mode, ignoredList, checkpath, item := "")
-{
-    if (ignoredList == "`n") return false
-
-    if (mode == "values" || mode == "files")
-    {
-        local tocheck := "`n" . checkpath . "\" . item . "`n"
-        return InStr(ignoredList, tocheck)
-    }
-    else
-    {
-        loop
+        global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
+        if (type == "files")
         {
-            local tocheck := "`n" . checkpath . "`n"
-            if InStr(ignoredList, tocheck)
-                return true
-            SplitPath(checkpath, , &checkpath)
-            if (checkpath == "")
-                return false
+            try ignoredDirs := "`n" . FileRead(Settings.ignorelist . "dirs.cfg")
+            catch ignoredDirs := "`n"
+            try ignoredFiles := "`n" . FileRead(Settings.ignorelist . "files.cfg")
+            catch ignoredFiles := "`n"
+        }
+        else
+        {
+            try ignoredKeys := "`n" . FileRead(Settings.ignorelist . "keys.cfg")
+            catch ignoredKeys := "`n"
+            try ignoredValues := "`n" . FileRead(Settings.ignorelist . "values.cfg")
+            catch ignoredValues := "`n"
         }
     }
-    return false
-}
 
-AddIgnoreItem(mode, item)
-{
-    global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
-    if (mode == "dirs") newIgnored_dirs .= "`n" . item
-    else if (mode == "files") newIgnored_files .= "`n" . item
-    else if (mode == "keys") newIgnored_keys .= "`n" . item
-    else if (mode == "values") newIgnored_values .= "`n" . item
-}
-
-SaveNewIgnoredItems(mode)
-{
-    global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
-    global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
-
-    local pathdata, itemdata, pathfilename, itemfilename
-    if (mode == "files")
+    static IsIgnored(mode, ignoredList, checkpath, item := "")
     {
-        if (newIgnored_dirs == "" && newIgnored_files == "") return
-        pathdata := ignoredDirs . newIgnored_dirs
-        itemdata := ignoredFiles . newIgnored_files
-        pathfilename := Settings.ignorelist . "dirs.cfg"
-        itemfilename := Settings.ignorelist . "files.cfg"
-    }
-    else
-    {
-        if (newIgnored_keys == "" && newIgnored_values == "") return
-        pathdata := ignoredKeys . newIgnored_keys
-        itemdata := ignoredValues . newIgnored_values
-        pathfilename := Settings.ignorelist . "keys.cfg"
-        itemfilename := Settings.ignorelist . "values.cfg"
+        if (ignoredList == "`n") return false
+
+        if (mode == "values" || mode == "files")
+        {
+            local tocheck := "`n" . checkpath . "\" . item . "`n"
+            return InStr(ignoredList, tocheck)
+        }
+        else
+        {
+            loop
+            {
+                local tocheck := "`n" . checkpath . "`n"
+                if InStr(ignoredList, tocheck)
+                    return true
+                SplitPath(checkpath, , &checkpath)
+                if (checkpath == "")
+                    return false
+            }
+        }
+        return false
     }
 
-    local pathArray := Sort(StrSplit(pathdata, "`n", "`r"), "U")
-    local itemArray := Sort(StrSplit(itemdata, "`n", "`r"), "U")
+    static AddIgnoreItem(mode, item)
+    {
+        global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
+        if (mode == "dirs") newIgnored_dirs .= "`n" . item
+        else if (mode == "files") newIgnored_files .= "`n" . item
+        else if (mode == "keys") newIgnored_keys .= "`n" . item
+        else if (mode == "values") newIgnored_values .= "`n" . item
+    }
 
-    ; TODO: Port the sub-path reduction logic from v1 for more efficient ignore files.
+    static SaveNewIgnoredItems(mode)
+    {
+        global ignoredDirs, ignoredFiles, ignoredKeys, ignoredValues
+        global newIgnored_dirs, newIgnored_files, newIgnored_keys, newIgnored_values
 
-    try FileDelete(pathfilename)
-    FileAppend(Format("{:s}", pathArray), pathfilename)
+        local pathdata, itemdata, pathfilename, itemfilename
+        if (mode == "files")
+        {
+            if (newIgnored_dirs == "" && newIgnored_files == "") return
+            pathdata := ignoredDirs . newIgnored_dirs
+            itemdata := ignoredFiles . newIgnored_files
+            pathfilename := Settings.ignorelist . "dirs.cfg"
+            itemfilename := Settings.ignorelist . "files.cfg"
+        }
+        else
+        {
+            if (newIgnored_keys == "" && newIgnored_values == "") return
+            pathdata := ignoredKeys . newIgnored_keys
+            itemdata := ignoredValues . newIgnored_values
+            pathfilename := Settings.ignorelist . "keys.cfg"
+            itemfilename := Settings.ignorelist . "values.cfg"
+        }
 
-    try FileDelete(itemfilename)
-    FileAppend(Format("{:s}", itemArray), itemfilename)
+        local pathArray := Sort(StrSplit(pathdata, "`n", "`r"), "U")
+        local itemArray := Sort(StrSplit(itemdata, "`n", "`r"), "U")
+
+        ; TODO: Port the sub-path reduction logic from v1 for more efficient ignore files.
+
+        try FileDelete(pathfilename)
+        FileAppend(Format("{:s}", pathArray), pathfilename)
+
+        try FileDelete(itemfilename)
+        FileAppend(Format("{:s}", itemArray), itemfilename)
+    }
 }
 
 getSandboxName(title, include_ask := false)
