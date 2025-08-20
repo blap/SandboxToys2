@@ -851,6 +851,67 @@ ListFiles(boxName)
     return fileList
 }
 
+InitializeBox(boxName)
+{
+    local sandbox := getSandboxByName(boxName)
+    if (!IsObject(sandbox))
+        return 0
+
+    Run(Globals.start . " /box:" . boxName . " run_dialog", , "Hide UseErrorLevel", &run_pid)
+
+    local boxkeypath := sandbox.RegStr_ . '\user\current\software\SandboxAutoExec'
+    Loop 100
+    {
+        Sleep(50)
+        try {
+            RegRead("HKEY_USERS\" . boxkeypath)
+            if (!ErrorLevel)
+                break
+        }
+    }
+    return run_pid
+}
+
+ReleaseBox(run_pid)
+{
+    if (run_pid == 0)
+        return
+    Sleep(800)
+    ProcessClose(run_pid)
+    Sleep(200)
+    return
+}
+
+ListReg(boxName)
+{
+    local sandbox := getSandboxByName(boxName)
+    if (!IsObject(sandbox))
+        return []
+
+    local run_pid := InitializeBox(boxName)
+    if (run_pid == 0)
+    {
+        MsgBox("Failed to initialize sandbox " . boxName)
+        return []
+    }
+
+    local regList := []
+    local mainsbkey := sandbox.RegStr_
+
+    Loop Reg, "HKEY_USERS\" . mainsbkey, "KVR"
+    {
+        regList.Push({
+            key: A_LoopRegPath,
+            type: A_LoopRegType,
+            size: "",
+            modified: A_LoopRegTimeModified
+        })
+    }
+
+    ReleaseBox(run_pid)
+    return regList
+}
+
 ListFilesMenuHandler(ItemName, ItemPos, MyMenu)
 {
     global box
@@ -861,10 +922,7 @@ ListFilesMenuHandler(ItemName, ItemPos, MyMenu)
 ListRegMenuHandler(ItemName, ItemPos, MyMenu)
 {
     global box
-    ; TODO: The original logic for fetching the list of registry keys from the sandbox needs to be implemented here.
-    ; The original script likely had a function like `getRegKeys(box)` or `ListReg(box)`.
-    ; For now, using placeholder data.
-    keys := [{key: "HKCU\Software\Test", type: "Key", size: "", modified: ""}]
+    local keys := ListReg(box)
     GuiManager.ListGUI("Registry", box, "reg", keys)
 }
 
