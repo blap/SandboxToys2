@@ -644,6 +644,41 @@ class MenuManager
         }
     }
 
+    SetupMenuMenuHandler1(*)
+    {
+        Settings.largeiconsize := Settings.largeiconsize > 16 ? 16 : 32
+        this.menus["SBMenuSetup"].ToggleCheck("Large main-menu and box icons?")
+        Settings.save()
+    }
+
+    SetupMenuMenuHandler2(*)
+    {
+        Settings.smalliconsize := Settings.smalliconsize > 16 ? 16 : 32
+        this.menus["SBMenuSetup"].ToggleCheck("Large sub-menu icons?")
+        Settings.save()
+    }
+
+    SetupMenuMenuHandler3(*)
+    {
+        Settings.seperatedstartmenus := !Settings.seperatedstartmenus
+        this.menus["SBMenuSetup"].ToggleCheck("Seperated All Users menus?")
+        Settings.save()
+    }
+
+    SetupMenuMenuHandler4(*)
+    {
+        Settings.includeboxnames := !Settings.includeboxnames
+        this.menus["SBMenuSetup"].ToggleCheck("Include [#BoxName] in shortcut names?")
+        Settings.save()
+    }
+
+    SetupMenuMenuHandler5(*)
+    {
+        Settings.listemptyitems := !Settings.listemptyitems
+        this.menus["SBMenuSetup"].ToggleCheck("List empty folders and keys?")
+        Settings.save()
+    }
+
     BuildMainMenu(traymode, singleboxmode, singlebox)
     {
         local box, boxpath, boxexist, dropadminrights, benabled, boxlabel
@@ -951,21 +986,21 @@ class MenuManager
         this.menus["SBMenuSetup"].Add("About and Help", MainHelpMenuHandler)
         setMenuIcon(this.menus["SBMenuSetup"], "About and Help", Globals.shell32, 24, 16)
         this.menus["SBMenuSetup"].Add()
-        this.menus["SBMenuSetup"].Add("Large main-menu and box icons?", SetupMenuMenuHandler1)
+        this.menus["SBMenuSetup"].Add("Large main-menu and box icons?", this.SetupMenuMenuHandler1.Bind(this))
         if (Settings.largeiconsize > 16)
             this.menus["SBMenuSetup"].Check("Large main-menu and box icons?")
-        this.menus["SBMenuSetup"].Add("Large sub-menu icons?", SetupMenuMenuHandler2)
+        this.menus["SBMenuSetup"].Add("Large sub-menu icons?", this.SetupMenuMenuHandler2.Bind(this))
         if (Settings.smalliconsize > 16)
             this.menus["SBMenuSetup"].Check("Large sub-menu icons?")
-        this.menus["SBMenuSetup"].Add("Seperated All Users menus?", SetupMenuMenuHandler3)
+        this.menus["SBMenuSetup"].Add("Seperated All Users menus?", this.SetupMenuMenuHandler3.Bind(this))
         if (Settings.seperatedstartmenus)
             this.menus["SBMenuSetup"].Check("Seperated All Users menus?")
         this.menus["SBMenuSetup"].Add()
-        this.menus["SBMenuSetup"].Add("Include [#BoxName] in shortcut names?", SetupMenuMenuHandler4)
+        this.menus["SBMenuSetup"].Add("Include [#BoxName] in shortcut names?", this.SetupMenuMenuHandler4.Bind(this))
         if (Settings.includeboxnames)
             this.menus["SBMenuSetup"].Check("Include [#BoxName] in shortcut names?")
         this.menus["SBMenuSetup"].Add()
-        this.menus["SBMenuSetup"].Add("List empty folders and keys?", SetupMenuMenuHandler5)
+        this.menus["SBMenuSetup"].Add("List empty folders and keys?", this.SetupMenuMenuHandler5.Bind(this))
         if (Settings.listemptyitems)
             this.menus["SBMenuSetup"].Check("List empty folders and keys?")
         mainmenu_obj.Add()
@@ -2106,6 +2141,55 @@ NewShortcutMenuHandler(ItemName, ItemPos, MyMenu)
 
     NewShortcut(box, file)
     SplitPath(file, , &DefaultShortcutFolder)
+}
+
+SExploreMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    if GetKeyState("Control", "P")
+        writeSandboxedShortcutFileToDesktop(Globals.start, "Explore sandbox " . box . " (Sandboxed)", Globals.sbdir, "/box:" . box . " " . Globals.explorer, "Launches Explorer sandboxed in sandbox " . box, Globals.explorerRes, 1, 1, box)
+    else
+        Run(Globals.start . " /box:" . box . " " . Globals.explorer, , "UseErrorLevel")
+}
+
+UExploreMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    if GetKeyState("Control", "P")
+        writeUnsandboxedShortcutFileToDesktop(Globals.explorerImg, "Explore sandbox " . box . " (Unsandboxed)", sandbox.bpath, Globals.explorerArgE . " """ . sandbox.bpath . """", "Launches Explorer unsandboxed in sandbox " . box, Globals.explorerRes, 1, 1)
+    else
+        Run(Globals.explorer . "\" . sandbox.bpath, , "UseErrorLevel")
+}
+
+URExploreMenuHandler(ItemName, ItemPos, MyMenu)
+{
+    local box := getBoxFromMenu()
+    local sandbox := getSandboxByName(box)
+    if (!IsObject(sandbox)) return
+
+    if GetKeyState("Control", "P")
+        writeUnsandboxedShortcutFileToDesktop(Globals.explorerImg, "Explore sandbox " . box . " (Unsandboxed, restricted)", sandbox.bpath, Globals.explorerArgER . " """ . sandbox.bpath . """", "Launches Explorer unsandboxed and restricted to sandbox " . box, Globals.explorerRes, 1, 1)
+    else
+        Run(Globals.explorerERArg . "\" . sandbox.bpath, , "UseErrorLevel")
+}
+
+MainHelpMenuHandler(*)
+{
+    local msg := ""
+    msg .= "SandboxToys2 Main Menu usage:`n`n"
+    msg .= "The main menu displays the shortcuts present in the Start Menu, Desktop and QuickLaunch folders of your sandboxes. Just select any of these shortcuts to launch the program, sandboxed in the right box.`n`n"
+    msg .= "You can create a 'sandboxed shortcut' on your real destkop to launch any program displayed in the SandboxToys Menu even easier! Just Control-Click on the menu entry, and the shortcut will be created on your desktop.`n`n"
+    msg .= "Similarly, Shift-clicking on a menu icon opens the folder containing the file. The Windows explorer is run sandboxed.`n`n"
+    msg .= "The User Tools menu is a configurable menu. To use it, place a shortcut in the '" . Settings.usertoolsdir . "' folder."
+    MsgBox(msg, Globals.title, "64|IconInfo")
+}
+
+ExitMenuHandler(*)
+{
+    ExitApp()
 }
 
 ReadIgnoredConfig(type)
